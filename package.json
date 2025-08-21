@@ -1,0 +1,46 @@
+{
+  "name": "mycompaxml",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "seed": "npx tsx scripts/seed-users.ts",
+    "seed:clear": "npx tsx scripts/seed-users.ts --clear",
+    "seed:channels": "npx tsx scripts/seed-channels.ts",
+    "seed:user-channels": "npx tsx scripts/seed-user-channels.ts",
+    "check:user-channels": "npx tsx scripts/check-users-channels.ts",
+    "debug:channels": "npx tsx scripts/debug-channels.ts",
+    "verify:channels": "npx tsx scripts/verify-channels.ts",
+    "test:users": "npx tsx scripts/test-users-module.ts",
+    "test:home": "npx tsx scripts/test-home-page.ts",
+    "diagnose:users-channels": "npx tsx scripts/diagnose-users-channels.ts",
+    "import:cabys": "node scripts/import-cabys.js",
+    "verify:cabys": "node scripts/verify-cabys.js",
+    "excel-to-json": "node scripts/excel-to-json.js",
+    "test:cabys-tipos": "node scripts/test-cabys-tipos.js"
+  },
+  "dependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/mongoose": "^5.11.96",
+    "bcryptjs": "^3.0.2",
+    "mongodb": "^6.17.0",
+    "mongoose": "^8.16.3",
+    "next": "14.0.4",
+    "node-fetch": "^3.3.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tsx": "^4.20.3",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "14.0.4",
+    "typescript": "^5.3.3"
+  }
+}

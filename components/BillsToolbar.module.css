@@ -1,0 +1,197 @@
+/* Toolbar principal */
+.toolbar {
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 60px;
+  position: relative;
+  z-index: 100;
+}
+
+.toolbarSection {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Dropdown containers */
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.toolbarButton {
+  background: white;
+  color: #495057;
+  border: 1px solid #dee2e6;
+  padding: 0.75rem 1.25rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.toolbarButton:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+  color: #333;
+}
+
+.toolbarButton.active {
+  background: #007bff;
+  border-color: #007bff;
+  color: white;
+}
+
+.dropdownArrow {
+  font-size: 0.75rem;
+  transition: transform 0.2s ease;
+}
+
+.toolbarButton.active .dropdownArrow {
+  color: white;
+}
+
+/* Backdrop para cerrar menús */
+.backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 200;
+  background: transparent;
+}
+
+/* Menús dropdown */
+.dropdownMenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  min-width: 220px;
+  z-index: 300;
+  margin-top: 0.25rem;
+  animation: dropdownSlideIn 0.2s ease-out;
+}
+
+@keyframes dropdownSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdownItem {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #495057;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.dropdownItem:hover {
+  background: #f8f9fa;
+  color: #333;
+}
+
+.dropdownItem:first-child {
+  border-radius: 6px 6px 0 0;
+}
+
+.dropdownItem:last-child {
+  border-radius: 0 0 6px 6px;
+}
+
+.dropdownItem:only-child {
+  border-radius: 6px;
+}
+
+/* Estados especiales */
+.dropdownItem:active {
+  background: #e9ecef;
+}
+
+.deleteItem {
+  color: #dc3545;
+}
+
+.deleteItem:hover {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .toolbar {
+    padding: 0.5rem 1rem;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: stretch;
+    min-height: auto;
+  }
+  
+  .toolbarSection {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .toolbarButton {
+    font-size: 0.8rem;
+    padding: 0.625rem 1rem;
+  }
+  
+  .dropdownMenu {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90vw;
+    max-width: 300px;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  }
+  
+  .dropdownItem {
+    padding: 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .toolbar {
+    padding: 0.5rem;
+  }
+  
+  .toolbarButton {
+    font-size: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    gap: 0.5rem;
+  }
+  
+  .dropdownArrow {
+    font-size: 0.7rem;
+  }
+}
