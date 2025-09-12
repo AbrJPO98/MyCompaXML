@@ -372,9 +372,6 @@ export default function BillsTable({ channelId }: { channelId: string }) {
           compraVentaRevisar = 'Documento de importación'
         } else if (isMyCompaXMLDoc) {
           compraVentaRevisar = 'Documento MyCompaXML'
-        }
-        else if (isMyCompaXMLDoc) {
-          compraVentaRevisar = 'Documento MyCompaXML'
         } else if (numeroCon === channelData.ident && numero2Con !== channelData.ident) {
           compraVentaRevisar = 'Venta'
         } else if (numero2Con === channelData.ident && numeroCon !== channelData.ident) {
@@ -707,7 +704,7 @@ export default function BillsTable({ channelId }: { channelId: string }) {
     
     // Cargar facturas solo una vez al montar el componente
     loadBills()
-  }, [channelId]) // Remover loadBills de las dependencias
+  }, [channelId, loadBills])
 
   const handleShowProgress = (show: boolean, current: number, total: number, title: string) => {
     setShowProgress(show)

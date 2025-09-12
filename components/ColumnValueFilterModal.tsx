@@ -263,7 +263,7 @@ const ColumnValueFilterModal: React.FC<ColumnFilterModalProps> = ({
 
           {filteredValues.length === 0 && searchTerm && (
             <div className={styles.noResults}>
-              No se encontraron valores que coincidan con "{searchTerm}"
+              No se encontraron valores que coincidan con &quot;{searchTerm}&quot;
             </div>
           )}
         </div>
