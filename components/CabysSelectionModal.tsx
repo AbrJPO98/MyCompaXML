@@ -86,7 +86,7 @@ const CabysSelectionModal: React.FC<CabysSelectionModalProps> = ({ channelId, on
   // Load data when parameters change
   useEffect(() => {
     loadData()
-  }, [mode, pagination.page, pagination.limit, searchDebounced, channelId, loadData])
+  }, [mode, pagination.page, pagination.limit, searchDebounced, channelId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset page when mode or search changes
   useEffect(() => {
