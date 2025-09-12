@@ -120,7 +120,7 @@ const FileLogsModal: React.FC<FileLogsModalProps> = ({ isOpen, onClose, channelI
     if (isOpen) {
       loadLogs()
     }
-  }, [isOpen, channelId])
+  }, [isOpen, channelId, loadLogs])
 
   if (!isOpen) return null
 

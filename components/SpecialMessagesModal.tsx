@@ -154,7 +154,7 @@ const SpecialMessagesModal: React.FC<SpecialMessagesModalProps> = ({ isOpen, onC
     if (isOpen) {
       loadMessages()
     }
-  }, [isOpen, channelId])
+  }, [isOpen, channelId, loadMessages])
 
   if (!isOpen) return null
 
