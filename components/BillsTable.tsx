@@ -1,7 +1,10 @@
 'use client'
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import BillsToolbar from './BillsToolbar'
-import ColumnFilterModal from './ColumnFilterModal'
+import ColumnValueFilterModal, { ColumnFilter } from './ColumnValueFilterModal'
+import ColumnVisibilityModal from './ColumnVisibilityModal'
+import ProgressBar from './ProgressBar'
+import FileLogsModal, { addFileLog } from './FileLogsModal'
 import styles from './BillsTable.module.css'
 
 // Definición de columnas con sus propiedades
@@ -13,6 +16,7 @@ export interface ColumnDefinition {
 
 export const COLUMN_DEFINITIONS: ColumnDefinition[] = [
   { header: "Eliminar", systemName: "opcionElim", visible: true },
+  { header: "Descargar", systemName: "opcionDesc", visible: true },
   { header: "Nombre original del archivo", systemName: "path", visible: true },
   { header: "Propiedad", systemName: "compraVentaRevisar", visible: true },
   { header: "Descartar", systemName: "opcionDescartar", visible: true },
@@ -184,7 +188,23 @@ export default function BillsTable({ channelId }: { channelId: string }) {
   const [columns, setColumns] = useState<ColumnDefinition[]>(COLUMN_DEFINITIONS)
   const [showFilterModal, setShowFilterModal] = useState(false)
   const [bills, setBills] = useState<any[]>([])
+  const [filteredBills, setFilteredBills] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [showFileLogsModal, setShowFileLogsModal] = useState(false)
+  
+  // Estados para el sistema de filtros
+  const [showColumnFilterModal, setShowColumnFilterModal] = useState(false)
+  const [selectedColumn, setSelectedColumn] = useState<{ name: string; systemName: string } | null>(null)
+  const [columnFilters, setColumnFilters] = useState<ColumnFilter[]>([])
+  
+  // Estados para la barra de progreso
+  const [showProgress, setShowProgress] = useState(false)
+  const [progressCurrent, setProgressCurrent] = useState(0)
+  const [progressTotal, setProgressTotal] = useState(0)
+  const [progressTitle, setProgressTitle] = useState("Procesando archivos...")
+  
+  const hasLoadedBills = useRef(false)
+  const hasInitialized = useRef(false)
 
   // Obtener columnas visibles
   const visibleColumns = columns.filter(col => col.visible)
@@ -236,6 +256,23 @@ export default function BillsTable({ channelId }: { channelId: string }) {
     }
   }
 
+  // Función para convertir fecha ISO a formato emision (YYMMDDHHMMSS)
+  const emisionFromFecha = (fechaIso: string): string => {
+    // Formato esperado: YYYY-MM-DDThh:mm:ss±zz:zz
+    // Resultado: yymmddhhmmss
+    const match = fechaIso.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/)
+    if (!match) return ''
+    
+    const year = match[1].slice(-2) // últimos 2 dígitos del año
+    const month = match[2]
+    const day = match[3]
+    const hour = match[4]
+    const minute = match[5]
+    const second = match[6]
+    
+    return `${year}${month}${day}${hour}${minute}${second}`
+  }
+
   // Función para obtener el nombre del tipo de documento
   const getTipoDocumentoNombre = (codigo: string): string => {
     const tipos: { [key: string]: string } = {
@@ -265,56 +302,95 @@ export default function BillsTable({ channelId }: { channelId: string }) {
         return {}
       }
 
+      // Detectar tipo de documento
+      const rootElement = xmlDoc.documentElement
+      const rootNodeName = rootElement.nodeName
+      const isImportDocument = rootNodeName === 'MyCompaXMLDOCIMP'
+      const isMyCompaXMLDoc = rootNodeName === 'MyCompaXMLDOC'
+
       // Extraer datos básicos
       const clave = extractTagValue(xmlDoc, 'Clave')
-      const fechaEmision = extractTagValue(xmlDoc, 'FechaEmision')
-      const numeroConsecutivo = extractTagValue(xmlDoc, 'NumeroConsecutivo')
-      const proveedorSistemas = extractTagValue(xmlDoc, 'ProveedorSistemas')
-      // Buscar códigos de actividad en el contexto del Emisor y Receptor
-      const codigoActividadEmisor = extractContextValue(xmlDoc, 'Emisor', 'CodigoActividad') || 
-                                   extractContextValue(xmlDoc, 'Emisor', 'CodigoActividadEmisor') ||
-                                   extractTagValue(xmlDoc, 'CodigoActividad') || 
-                                   extractTagValue(xmlDoc, 'CodigoActividadEmisor')
-      const codigoActividadReceptor = extractContextValue(xmlDoc, 'Receptor', 'CodigoActividadReceptor') ||
-                                     extractTagValue(xmlDoc, 'CodigoActividadReceptor')
+      const fechaEmision = extractTagValue(xmlDoc, 'FechaEmision') // Extraer FechaEmision para todos los tipos de documento
+      const numeroConsecutivo = (isImportDocument || isMyCompaXMLDoc) ? null : extractTagValue(xmlDoc, 'NumeroConsecutivo')
+      const proveedorSistemas = (isImportDocument || isMyCompaXMLDoc) ? null : extractTagValue(xmlDoc, 'ProveedorSistemas')
+      // Buscar códigos de actividad según el tipo de documento
+      let codigoActividadEmisor, codigoActividadReceptor, numeroCon, numero2Con, sucursalCodigo, tipoDocCodigo, tipoDocNom
 
-      // Debug logging para códigos de actividad
-      console.log('Códigos de actividad extraídos:')
-      console.log('- Emisor (CodigoActividad):', extractContextValue(xmlDoc, 'Emisor', 'CodigoActividad'))
-      console.log('- Emisor (CodigoActividadEmisor):', extractContextValue(xmlDoc, 'Emisor', 'CodigoActividadEmisor'))
-      console.log('- Global (CodigoActividad):', extractTagValue(xmlDoc, 'CodigoActividad'))
-      console.log('- Global (CodigoActividadEmisor):', extractTagValue(xmlDoc, 'CodigoActividadEmisor'))
-      console.log('- Receptor (CodigoActividadReceptor):', extractContextValue(xmlDoc, 'Receptor', 'CodigoActividadReceptor'))
-      console.log('- Global (CodigoActividadReceptor):', extractTagValue(xmlDoc, 'CodigoActividadReceptor'))
-      console.log('- Resultado final emisor:', codigoActividadEmisor)
-      console.log('- Resultado final receptor:', codigoActividadReceptor)
-      
-      // Extraer datos de emisor y receptor para comparación
-      const numeroCon = extractContextValue(xmlDoc, 'Emisor', 'Numero')
-      const numero2Con = extractContextValue(xmlDoc, 'Receptor', 'Numero')
-      
-      // Procesar sucursal (primeros 3 dígitos del consecutivo)
-      const sucursalCodigo = numeroConsecutivo.slice(0, 3)
-      
-      // Procesar tipo de documento (dígitos 9 y 10 del consecutivo)
-      const tipoDocCodigo = numeroConsecutivo.slice(8, 10)
-      const tipoDocNom = getTipoDocumentoNombre(tipoDocCodigo)
+      if (isImportDocument) {
+        // Para documentos de importación MyCompaXMLDOCIMP
+        codigoActividadEmisor = extractTagValue(xmlDoc, 'CodigoActividad')
+        codigoActividadReceptor = null
+        numeroCon = extractContextValue(xmlDoc, 'Emisor', 'NumeroIdentificacion')
+        numero2Con = extractContextValue(xmlDoc, 'Receptor', 'Numero') || 
+                    (xmlDoc.getElementsByTagName('Identificacion')[0] && 
+                     extractContextValue(xmlDoc.getElementsByTagName('Identificacion')[0] as any, '', 'Numero'))
+        
+        // Extraer datos de la clave (posiciones específicas)
+        sucursalCodigo = clave && clave.length >= 24 ? clave.substring(21, 24) : ''
+        tipoDocCodigo = null
+        tipoDocNom = 'Documento de importación'
+      } else if (isMyCompaXMLDoc) {
+        // Para documentos MyCompaXMLDOC
+        codigoActividadEmisor = extractTagValue(xmlDoc, 'CodigoActividad')
+        codigoActividadReceptor = null
+        
+        // Extraer datos de emisor y receptor específicos para MyCompaXMLDOC
+        numeroCon = extractContextValue(xmlDoc, 'Emisor', 'NumeroIdentificacion')
+        numero2Con = extractContextValue(xmlDoc, 'Receptor', 'Numero') || 
+                    (xmlDoc.getElementsByTagName('Identificacion')[0] && 
+                     extractContextValue(xmlDoc.getElementsByTagName('Identificacion')[0] as any, '', 'Numero'))
+        
+        // Extraer sucursal de la clave (posiciones 22, 23 y 24)
+        sucursalCodigo = clave && clave.length >= 24 ? clave.substring(21, 24) : ''
+        
+        tipoDocNom = 'Documento MyCompaXML'
+      } else {
+        // Para facturas normales
+        codigoActividadEmisor = extractContextValue(xmlDoc, 'Emisor', 'CodigoActividad') || 
+                               extractContextValue(xmlDoc, 'Emisor', 'CodigoActividadEmisor') ||
+                               extractTagValue(xmlDoc, 'CodigoActividad') || 
+                               extractTagValue(xmlDoc, 'CodigoActividadEmisor')
+        codigoActividadReceptor = extractContextValue(xmlDoc, 'Receptor', 'CodigoActividadReceptor') ||
+                                 extractTagValue(xmlDoc, 'CodigoActividadReceptor')
+        
+        // Extraer datos de emisor y receptor para comparación
+        numeroCon = extractContextValue(xmlDoc, 'Emisor', 'Numero')
+        numero2Con = extractContextValue(xmlDoc, 'Receptor', 'Numero')
+        
+        // Procesar sucursal (primeros 3 dígitos del consecutivo)
+        sucursalCodigo = numeroConsecutivo ? numeroConsecutivo.slice(0, 3) : ''
+        
+        // Procesar tipo de documento (dígitos 9 y 10 del consecutivo)
+        tipoDocCodigo = numeroConsecutivo ? numeroConsecutivo.slice(8, 10) : ''
+        tipoDocNom = getTipoDocumentoNombre(tipoDocCodigo)
+      }
       
       // Determinar si es Venta, Compra o Indeterminable
       let compraVentaRevisar = 'Indeterminable'
       if (channelData && channelData.ident) {
-        if (numeroCon === channelData.ident && numero2Con !== channelData.ident) {
+        if (isImportDocument) {
+          compraVentaRevisar = 'Documento de importación'
+        } else if (isMyCompaXMLDoc) {
+          compraVentaRevisar = 'Documento MyCompaXML'
+        }
+        else if (isMyCompaXMLDoc) {
+          compraVentaRevisar = 'Documento MyCompaXML'
+        } else if (numeroCon === channelData.ident && numero2Con !== channelData.ident) {
           compraVentaRevisar = 'Venta'
         } else if (numero2Con === channelData.ident && numeroCon !== channelData.ident) {
           compraVentaRevisar = 'Compra'
         }
       }
 
+      // Generar emision para documentos de importación y MyCompaXMLDOC si no existe
+      const emision = (isImportDocument || isMyCompaXMLDoc) && fechaEmision ? emisionFromFecha(fechaEmision) : null
+
       // Extraer todos los datos necesarios para las columnas de la tabla
       return {
         // Datos básicos procesados
         claveCon: clave,
         fechaEmisionCon: fechaEmision,
+        emision: emision, // Agregar campo emision para consistencia
         numeroConsecutivoCon: numeroConsecutivo,
         tipoDocNom: tipoDocNom,
         
@@ -325,20 +401,28 @@ export default function BillsTable({ channelId }: { channelId: string }) {
         codigoActividadEmisorCon: codigoActividadEmisor,
         codigoActividadReceptorCon: codigoActividadReceptor,
         
-        // Datos del Emisor
-        nombreCon: extractContextValue(xmlDoc, 'Emisor', 'Nombre'),
-        tipoCon: extractContextValue(xmlDoc, 'Emisor', 'Tipo'),
-        numeroCon: extractContextValue(xmlDoc, 'Emisor', 'Numero'),
-        nombreComercialCon: extractContextValue(xmlDoc, 'Emisor', 'NombreComercial'),
-        correoElectronicoCon: extractContextValue(xmlDoc, 'Emisor', 'CorreoElectronico'),
-        registroFiscalCon: extractContextValue(xmlDoc, 'Emisor', 'NumRegimen'),
+        // Datos del Emisor (adaptados según tipo de documento)
+        nombreCon: (isImportDocument || isMyCompaXMLDoc) ? extractContextValue(xmlDoc, 'Emisor', 'Nombre') : extractContextValue(xmlDoc, 'Emisor', 'Nombre'),
+        tipoCon: (isImportDocument || isMyCompaXMLDoc) ? null : extractContextValue(xmlDoc, 'Emisor', 'Tipo'),
+        numeroCon: (isImportDocument || isMyCompaXMLDoc) ? extractContextValue(xmlDoc, 'Emisor', 'NumeroIdentificacion') : extractContextValue(xmlDoc, 'Emisor', 'Numero'),
+        nombreComercialCon: (isImportDocument || isMyCompaXMLDoc) ? null : extractContextValue(xmlDoc, 'Emisor', 'NombreComercial'),
+        correoElectronicoCon: (isImportDocument || isMyCompaXMLDoc) ? null : extractContextValue(xmlDoc, 'Emisor', 'CorreoElectronico'),
+        registroFiscalCon: (isImportDocument || isMyCompaXMLDoc) ? null : extractContextValue(xmlDoc, 'Emisor', 'NumRegimen'),
         
-        // Datos del Receptor
-        nombre2Con: extractContextValue(xmlDoc, 'Receptor', 'Nombre'),
-        tipo2Con: extractContextValue(xmlDoc, 'Receptor', 'Tipo'),
-        numero2Con: extractContextValue(xmlDoc, 'Receptor', 'Numero'),
-        nombreComercial2Con: extractContextValue(xmlDoc, 'Receptor', 'NombreComercial'),
-        correoElectronico2Con: extractContextValue(xmlDoc, 'Receptor', 'CorreoElectronico'),
+        // Datos del Receptor (adaptados según tipo de documento)
+        nombre2Con: (isImportDocument || isMyCompaXMLDoc) ? extractContextValue(xmlDoc, 'Emisor', 'Nombre') : extractContextValue(xmlDoc, 'Receptor', 'Nombre'),
+        tipo2Con: (isImportDocument || isMyCompaXMLDoc) ? 
+          (extractContextValue(xmlDoc, 'Receptor', 'Tipo') || 
+           (xmlDoc.getElementsByTagName('Identificacion')[0] && 
+            extractContextValue(xmlDoc.getElementsByTagName('Identificacion')[0] as any, '', 'Tipo'))) : 
+          extractContextValue(xmlDoc, 'Receptor', 'Tipo'),
+        numero2Con: (isImportDocument || isMyCompaXMLDoc) ? 
+          (extractContextValue(xmlDoc, 'Receptor', 'Numero') || 
+           (xmlDoc.getElementsByTagName('Identificacion')[0] && 
+            extractContextValue(xmlDoc.getElementsByTagName('Identificacion')[0] as any, '', 'Numero'))) : 
+          extractContextValue(xmlDoc, 'Receptor', 'Numero'),
+        nombreComercial2Con: (isImportDocument || isMyCompaXMLDoc) ? null : extractContextValue(xmlDoc, 'Receptor', 'NombreComercial'),
+        correoElectronico2Con: (isImportDocument || isMyCompaXMLDoc) ? null : extractContextValue(xmlDoc, 'Receptor', 'CorreoElectronico'),
         
         // Ubicación Emisor
         provinciaCon: extractContextValue(xmlDoc, 'Emisor', 'Provincia'),
@@ -398,10 +482,23 @@ export default function BillsTable({ channelId }: { channelId: string }) {
         codigoMonedaCon: extractTagValue(xmlDoc, 'CodigoMoneda'),
         tipoCambioCon: extractTagValue(xmlDoc, 'TipoCambio'),
         
-        // Fechas adicionales
-        diaDoc: extractTagValue(xmlDoc, 'FechaEmision')?.split('-')[2]?.split('T')[0] || '',
-        mesDoc: extractTagValue(xmlDoc, 'FechaEmision')?.split('-')[1] || '',
-        annoDoc: extractTagValue(xmlDoc, 'FechaEmision')?.split('-')[0] || '',
+        // Fechas adicionales (adaptadas según tipo de documento)
+        diaDoc: (isImportDocument || isMyCompaXMLDoc) ? 
+          (clave && clave.length >= 5 ? clave.substring(3, 5) : '') : 
+          (extractTagValue(xmlDoc, 'FechaEmision')?.split('-')[2]?.split('T')[0] || ''),
+        mesDoc: (isImportDocument || isMyCompaXMLDoc) ? 
+          (clave && clave.length >= 7 ? clave.substring(5, 7) : '') : 
+          (extractTagValue(xmlDoc, 'FechaEmision')?.split('-')[1] || ''),
+        annoDoc: (isImportDocument || isMyCompaXMLDoc) ? 
+          (clave && clave.length >= 9 ? (isMyCompaXMLDoc ? clave.substring(7, 9) : '20' + clave.substring(7, 9)) : '') : 
+          (extractTagValue(xmlDoc, 'FechaEmision')?.split('-')[0] || ''),
+        
+        // Campos específicos para documentos MyCompaXMLDOC
+        leyALECon: isMyCompaXMLDoc ? extractTagValue(xmlDoc, 'Ley') : '',
+        articuloALECon: isMyCompaXMLDoc ? extractTagValue(xmlDoc, 'Articulo') : '',
+        incisoALECon: isMyCompaXMLDoc ? extractTagValue(xmlDoc, 'Inciso') : '',
+        montoALECon: isMyCompaXMLDoc ? extractTagValue(xmlDoc, 'Monto') : '',
+        impuestoALECon: isMyCompaXMLDoc ? extractTagValue(xmlDoc, 'Impuesto') : '',
       }
     } catch (error) {
       console.error('Error procesando XML:', error)
@@ -410,7 +507,17 @@ export default function BillsTable({ channelId }: { channelId: string }) {
   }, [])
 
   const loadBills = useCallback(async () => {
+    // Evitar ejecuciones múltiples
+    if (hasLoadedBills.current) {
+      return
+    }
+    
+    hasLoadedBills.current = true
     setLoading(true)
+    
+    // Limpiar logs al inicio de la carga
+    localStorage.removeItem(`fileLogs_${channelId}`)
+    
     try {
       // Cargar datos del canal primero
       const channelResponse = await fetch(`/api/channels/current?channelId=${channelId}`)
@@ -423,14 +530,45 @@ export default function BillsTable({ channelId }: { channelId: string }) {
       const response = await fetch(`/api/facturas?channelId=${channelId}`)
       if (response.ok) {
         const data = await response.json()
-        const items = Array.isArray(data.facturas) ? data.facturas : []
+        const items = Array.isArray(data.data) ? data.data : Array.isArray(data.facturas) ? data.facturas : []
         
-        const mapped = await Promise.all(items.map(async (it: any) => {
+        // Mostrar barra de progreso si hay archivos para procesar
+        if (items.length > 0) {
+          setProgressTitle("Cargando facturas desde la base de datos...")
+          setProgressTotal(items.length)
+          setProgressCurrent(0)
+          setShowProgress(true)
+        }
+        
+        // Procesar archivos uno por uno para mostrar progreso
+        const mapped = []
+        for (let i = 0; i < items.length; i++) {
+          const it = items[i]
+          
           // Decodificar XML de Base64 (datos de BD)
           const xmlString = it.xml ? fromBase64(it.xml) : ''
           
           // Procesar XML para extraer datos (SÍ necesita decodificación Base64)
           const xmlData = xmlString ? processXmlData(xmlString, channelData, true) : {}
+          
+          // Generar log para cada factura cargada desde la BD
+          if (it.path && it.clave) {
+            // Determinar el tipo de log basado en si es documento de respuesta
+            const logType = it.esRespuesta ? 'response' : 'success'
+            const logSummary = it.esRespuesta 
+              ? `Documento de respuesta cargado desde BD`
+              : `Factura cargada desde BD`
+            const logDetail = it.esRespuesta
+              ? `El documento de respuesta "${it.path}" con clave "${it.clave}" ha sido cargado exitosamente desde la base de datos.`
+              : `La factura "${it.path}" con clave "${it.clave}" ha sido cargada exitosamente desde la base de datos.`
+            
+            addFileLog(channelId, {
+              fileName: it.path,
+              summary: logSummary,
+              detail: logDetail,
+              type: logType
+            })
+          }
           
           // Procesar sucursal si es compra
           let sucursalNombre = xmlData.sucursal || ''
@@ -465,7 +603,7 @@ export default function BillsTable({ channelId }: { channelId: string }) {
             }
           }
           
-          return {
+          const processedItem = {
             ...it,
             clave: it.clave,
             path: it.path || '', // Campo path desde BD
@@ -482,28 +620,80 @@ export default function BillsTable({ channelId }: { channelId: string }) {
                 ? `20${it.emision.slice(0,2)}-${it.emision.slice(2,4)}-${it.emision.slice(4,6)}T${it.emision.slice(6,8)}:${it.emision.slice(8,10)}:${it.emision.slice(10,12)}`
                 : '-')
           }
-        }))
+          
+          mapped.push(processedItem)
+          
+          // Actualizar progreso
+          setProgressCurrent(i + 1)
+          
+          // Pequeña pausa para permitir que la UI se actualice
+          if (i % 10 === 0) {
+            await new Promise(resolve => setTimeout(resolve, 10))
+          }
+        }
         
-        // Ordenar por campo "emision" de forma descendente (más reciente primero)
+        // Ocultar barra de progreso
+        setShowProgress(false)
+        
+        // Ordenar por fecha de emisión de forma descendente (más reciente primero)
         const sorted = mapped.sort((a, b) => {
-          const emisionA = a.emision || '000000000000'
-          const emisionB = b.emision || '000000000000'
-          return emisionB.localeCompare(emisionA)
+          // Función para convertir fecha a timestamp para comparación
+          const getTimestamp = (item: any) => {
+            // Si tiene fechaEmisionCon del XML (formato ISO), usarla
+            if (item.fechaEmisionCon && item.fechaEmisionCon !== '-' && item.fechaEmisionCon.includes('T')) {
+              return new Date(item.fechaEmisionCon).getTime()
+            }
+            // Si tiene emision (formato YYMMDDHHMMSS), convertirla
+            if (item.emision && typeof item.emision === 'string' && item.emision.length === 12) {
+              const year = '20' + item.emision.slice(0, 2)
+              const month = item.emision.slice(2, 4)
+              const day = item.emision.slice(4, 6)
+              const hour = item.emision.slice(6, 8)
+              const minute = item.emision.slice(8, 10)
+              const second = item.emision.slice(10, 12)
+              return new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}`).getTime()
+            }
+            // Valor por defecto para documentos sin fecha
+            return 0
+          }
+          
+          const timestampA = getTimestamp(a)
+          const timestampB = getTimestamp(b)
+          
+          return timestampB - timestampA // Descendente (más reciente primero)
         })
         
         setBills(sorted)
+        
+        // Mostrar modal de logs después de cargar las facturas
+        setTimeout(() => {
+          setShowFileLogsModal(true)
+        }, 500) // Pequeño delay para que la carga se complete
+        
       } else {
         setBills([])
       }
     } catch (error) {
       console.error('Error loading bills:', error)
       setBills([])
+      setShowProgress(false) // Ocultar barra de progreso en caso de error
     } finally {
       setLoading(false)
     }
   }, [channelId, processXmlData])
 
   useEffect(() => {
+    console.log('useEffect ejecutándose...', { channelId, hasInitialized: hasInitialized.current })
+    
+    // Solo ejecutar la inicialización una vez por channelId
+    if (hasInitialized.current) {
+      console.log('Ya se inicializó para este channelId, saltando...')
+      return
+    }
+    
+    hasInitialized.current = true
+    console.log('Inicializando para channelId:', channelId)
+    
     // Cargar configuración de columnas desde localStorage
     const savedColumns = localStorage.getItem(`bills-columns-${channelId}`)
     if (savedColumns) {
@@ -515,10 +705,16 @@ export default function BillsTable({ channelId }: { channelId: string }) {
       }
     }
     
-    // Aquí cargarías los datos reales de facturas
-    // Por ahora simulamos datos vacíos
+    // Cargar facturas solo una vez al montar el componente
     loadBills()
-  }, [channelId, loadBills])
+  }, [channelId]) // Remover loadBills de las dependencias
+
+  const handleShowProgress = (show: boolean, current: number, total: number, title: string) => {
+    setShowProgress(show)
+    setProgressCurrent(current)
+    setProgressTotal(total)
+    setProgressTitle(title)
+  }
 
   const handleBillsAdded = async (rows: any[]) => {
     // Procesar archivos nuevos que vienen del BillsToolbar
@@ -610,17 +806,168 @@ export default function BillsTable({ channelId }: { channelId: string }) {
     localStorage.setItem(`bills-columns-${channelId}`, JSON.stringify(updatedColumns))
   }
 
-  const renderTableHeader = () => (
-    <thead>
-      <tr>
-        {visibleColumns.map((column) => (
-          <th key={column.systemName} className={styles.tableHeader}>
-            {column.header}
-          </th>
-        ))}
-      </tr>
-    </thead>
-  )
+  // Funciones para el sistema de filtros
+  const applyFilters = useCallback((bills: any[], filters: ColumnFilter[]) => {
+    if (filters.length === 0) {
+      return bills
+    }
+
+    return bills.filter(bill => {
+      return filters.every(filter => {
+        const value = bill[filter.systemName]
+        const stringValue = value !== null && value !== undefined ? String(value) : ''
+        const trimmedValue = stringValue.trim()
+        
+        // Si no hay valores seleccionados en el filtro, mostrar todo
+        if (filter.values.length === 0) return true
+        
+        // Verificar si el valor está en los valores seleccionados
+        const selectedValues = filter.values
+          .filter(v => v.checked)
+          .map(v => v.value)
+        
+        // Manejar la opción especial "Vacíos"
+        if (selectedValues.includes('__EMPTY__') && trimmedValue === '') {
+          return true
+        }
+        
+        // Para valores no vacíos, verificar si está en la lista de valores seleccionados
+        if (trimmedValue !== '') {
+          return selectedValues.includes(stringValue)
+        }
+        
+        // Si el valor está vacío pero "Vacíos" no está seleccionado, no mostrar
+        return false
+      })
+    })
+  }, [])
+
+  const handleColumnHeaderClick = (column: ColumnDefinition) => {
+    // No permitir filtrar columnas de acción
+    const actionColumns = ['opcionElim', 'opcionDesc', 'opcionDescartar', 'anadirCabysDes', 'obtenerDoc', 'verdoc', 'anularDoc']
+    if (actionColumns.includes(column.systemName)) {
+      return
+    }
+
+    setSelectedColumn({
+      name: column.header,
+      systemName: column.systemName
+    })
+    setShowColumnFilterModal(true)
+  }
+
+  const handleApplyFilter = (systemName: string, selectedValues: string[]) => {
+    setColumnFilters(prev => {
+      // Remover filtro existente para esta columna
+      const filteredPrev = prev.filter(f => f.systemName !== systemName)
+      
+      // Marcar todos los filtros como no siendo el último
+      const updatedPrev = filteredPrev.map(f => ({ ...f, isLastFiltered: false }))
+      
+      // Obtener el filtro existente para esta columna
+      const existingFilter = prev.find(f => f.systemName === systemName)
+      
+      // Lógica corregida para crear el nuevo filtro:
+      let newFilterValues: { value: string; checked: boolean }[] = []
+      
+      if (existingFilter && existingFilter.isLastFiltered) {
+        // Era la última columna filtrada: mantener todos los valores originales del filtro
+        newFilterValues = existingFilter.values.map(v => ({
+          value: v.value,
+          checked: selectedValues.includes(v.value)
+        }))
+      } else {
+        // NO era la última columna filtrada o es nuevo filtro: usar solo valores visibles
+        const dataToUse = filteredBills.length > 0 ? filteredBills : bills
+        const uniqueValues = new Set<string>()
+        
+        dataToUse.forEach(bill => {
+          const value = bill[systemName]
+          if (value !== null && value !== undefined && value !== '') {
+            uniqueValues.add(String(value))
+          }
+        })
+
+        newFilterValues = Array.from(uniqueValues).map(value => ({
+          value,
+          checked: selectedValues.includes(value)
+        }))
+      }
+
+      const newFilter: ColumnFilter = {
+        columnName: selectedColumn?.name || '',
+        systemName,
+        values: newFilterValues,
+        isLastFiltered: true
+      }
+
+      return [...updatedPrev, newFilter]
+    })
+  }
+
+  const handleRemoveFilter = (systemName: string) => {
+    setColumnFilters(prev => {
+      const filtered = prev.filter(f => f.systemName !== systemName)
+      
+      // Si hay filtros restantes, marcar el último como isLastFiltered
+      if (filtered.length > 0) {
+        const updated = [...filtered]
+        updated[updated.length - 1].isLastFiltered = true
+        return updated
+      }
+      
+      return filtered
+    })
+  }
+
+  const handleRemoveAllFilters = () => {
+    setColumnFilters([])
+  }
+
+  // Aplicar filtros cuando cambien los bills o los filtros
+  useEffect(() => {
+    const filtered = applyFilters(bills, columnFilters)
+    setFilteredBills(filtered)
+  }, [bills, columnFilters, applyFilters])
+
+  const renderTableHeader = () => {
+    const actionColumns = ['opcionElim', 'opcionDesc', 'opcionDescartar', 'anadirCabysDes', 'obtenerDoc', 'verdoc', 'anularDoc']
+    
+    return (
+      <thead>
+        <tr>
+          {visibleColumns.map((column) => {
+            const isFiltered = columnFilters.some(f => f.systemName === column.systemName)
+            const isLastFiltered = columnFilters.find(f => f.systemName === column.systemName)?.isLastFiltered
+            const isClickable = !actionColumns.includes(column.systemName)
+            
+            return (
+              <th 
+                key={column.systemName} 
+                className={`${styles.tableHeader} ${isClickable ? styles.clickableHeader : ''} ${isFiltered ? styles.filteredHeader : ''} ${isLastFiltered ? styles.lastFilteredHeader : ''}`}
+                onClick={() => isClickable && handleColumnHeaderClick(column)}
+                title={isClickable ? 'Haz clic para filtrar esta columna' : ''}
+              >
+                <div className={styles.headerContent}>
+                  <span>{column.header}</span>
+                  {isFiltered && (
+                    <span className={styles.filterIndicator}>
+                      🔽
+                    </span>
+                  )}
+                  {isLastFiltered && (
+                    <span className={styles.lastFilterIndicator}>
+                      ●
+                    </span>
+                  )}
+                </div>
+              </th>
+            )
+          })}
+        </tr>
+      </thead>
+    )
+  }
 
   const renderTableBody = () => {
     if (loading) {
@@ -638,14 +985,14 @@ export default function BillsTable({ channelId }: { channelId: string }) {
       )
     }
 
-    if (bills.length === 0) {
+    if (filteredBills.length === 0 && !loading) {
       return (
         <tbody>
           <tr>
             <td colSpan={visibleColumns.length} className={styles.emptyCell}>
               <div className={styles.emptyContent}>
                 <span>📄</span>
-                <p>No hay facturas registradas</p>
+                <p>{bills.length === 0 ? 'No hay facturas registradas' : 'No hay facturas que coincidan con los filtros aplicados'}</p>
               </div>
             </td>
           </tr>
@@ -655,7 +1002,7 @@ export default function BillsTable({ channelId }: { channelId: string }) {
 
     return (
       <tbody>
-        {bills.map((bill, index) => (
+        {filteredBills.map((bill, index) => (
           <tr key={bill._id || index} className={styles.tableRow}>
             {visibleColumns.map((column) => (
               <td key={column.systemName} className={styles.tableCell}>
@@ -697,16 +1044,134 @@ export default function BillsTable({ channelId }: { channelId: string }) {
         }
       }
 
+      const hasActiveFilters = columnFilters.length > 0
+      
       return (
-        <button className={styles.actionButton} title="Eliminar" onClick={handleDelete}>
+        <button 
+          className={`${styles.actionButton} ${hasActiveFilters ? styles.disabled : ''}`}
+          title={hasActiveFilters ? "No se puede eliminar mientras hay filtros activos" : "Eliminar"}
+          onClick={hasActiveFilters ? undefined : handleDelete}
+          disabled={hasActiveFilters}
+        >
           🗑️
+        </button>
+      )
+    }
+
+    if (column.systemName === 'opcionDesc') {
+      const handleDownload = async () => {
+        try {
+          if (!bill.clave) {
+            alert('No hay clave disponible para descargar')
+            return
+          }
+
+          // Hacer consulta a la base de datos para obtener el registro completo
+          const response = await fetch(`/api/facturas?channelId=${channelId}&clave=${encodeURIComponent(bill.clave)}`)
+          
+          if (!response.ok) {
+            throw new Error('Error al obtener el registro de la base de datos')
+          }
+
+          const data = await response.json()
+          
+          if (!data.success || !data.factura || !data.factura.xml) {
+            alert('No se encontró el XML en la base de datos')
+            return
+          }
+
+          // Decodificar XML de Base64
+          const decodedXML = decodeURIComponent(escape(window.atob(data.factura.xml)))
+          
+          // Crear blob y descargar
+          const blob = new Blob([decodedXML], { type: 'application/xml' })
+          const url = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = `${bill.clave || 'documento'}.xml`
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          URL.revokeObjectURL(url)
+        } catch (error) {
+          console.error('Error descargando archivo:', error)
+          alert('Error al descargar el archivo XML')
+        }
+      }
+
+      return (
+        <button className={styles.actionButton} title="Descargar XML" onClick={handleDownload}>
+          📥
         </button>
       )
     }
     
     if (column.systemName === 'opcionDescartar') {
+      const handleDiscard = async () => {
+        if (!bill.clave) return
+        
+        const confirmed = window.confirm(`¿Estás seguro de que deseas descartar la factura con clave: ${bill.clave}?`)
+        if (!confirmed) return
+
+        try {
+          // Extraer tipoDoc (dígitos 9-10 del numeroConsecutivoCon)
+          const numeroConsecutivo = bill.numeroConsecutivoCon || ''
+          const tipoDoc = numeroConsecutivo.length >= 10 ? 
+            numeroConsecutivo.substring(8, 10) : ''
+
+          // Preparar datos para guardar en facturas_descartadas
+          const discardData = {
+            clave: bill.clave || bill.claveCon || '',
+            nombre: bill.path || '',
+            tipoDoc: tipoDoc || '',
+            dia: bill.diaDoc || '',
+            mes: bill.mesDoc || '',
+            anno: bill.annoDoc || '',
+            nombreEmisor: bill.nombreCon || '',
+            cedulaEmisor: bill.numeroCon || '',
+            nombreReceptor: bill.nombre2Con || '',
+            cedulaReceptor: bill.numero2Con || '',
+            total: bill.totalComprobanteCon || '',
+            impuesto: bill.totalImpuestoCon || '',
+            xml: bill.xml || '', // XML en Base64 tal como está almacenado
+            channel_id: channelId
+          }
+
+          // Crear registro en facturas_descartadas
+          const response = await fetch('/api/facturas-descartadas', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(discardData)
+          })
+
+          const result = await response.json()
+
+          if (result.success) {
+            // Eliminar de la colección facturas
+            const deleteResponse = await fetch(`/api/facturas?channelId=${channelId}&clave=${encodeURIComponent(bill.clave || bill.claveCon)}`, {
+              method: 'DELETE'
+            })
+
+            if (deleteResponse.ok) {
+              // Remover de la tabla
+              setBills(prev => prev.filter(b => b !== bill))
+              alert('Factura descartada exitosamente')
+            } else {
+              alert('Error al eliminar la factura de la base de datos')
+            }
+          } else {
+            alert(result.error || 'Error al descartar la factura')
+          }
+        } catch (error) {
+          console.error('Error al descartar factura:', error)
+          alert('Error al descartar la factura')
+        }
+      }
+
       return (
-        <button className={styles.actionButton} title="Descartar">
+        <button className={styles.actionButton} title="Descartar" onClick={handleDiscard}>
           ❌
         </button>
       )
@@ -749,6 +1214,8 @@ export default function BillsTable({ channelId }: { channelId: string }) {
       const colorClass = 
         value === 'Venta' ? styles.venta :
         value === 'Compra' ? styles.compra :
+        value === 'Documento de importación' ? styles.importacion :
+        value === 'Documento MyCompaXML' ? styles.mycompaxmldoc :
         styles.indeterminable
       
       return (
@@ -756,6 +1223,12 @@ export default function BillsTable({ channelId }: { channelId: string }) {
           {value || '-'}
         </span>
       )
+    }
+
+    // Columna tipoDocNom - sin color especial para documentos de importación
+    if (column.systemName === 'tipoDocNom') {
+      // No aplicar color para "Documento de importación"
+      return value || '-'
     }
 
     // Valor por defecto
@@ -769,13 +1242,15 @@ export default function BillsTable({ channelId }: { channelId: string }) {
         onFilterColumns={() => setShowFilterModal(true)}
         onBillsAdded={handleBillsAdded}
         channelId={channelId}
+        hasActiveFilters={columnFilters.length > 0}
+        onShowProgress={handleShowProgress}
       />
 
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <h2>📊 Tabla de Facturas</h2>
           <span className={styles.recordCount}>
-            {loading ? 'Cargando...' : `${bills.length} registros`}
+            {loading ? 'Cargando...' : `${filteredBills.length} de ${bills.length} registros`}
           </span>
         </div>
       </div>
@@ -787,14 +1262,49 @@ export default function BillsTable({ channelId }: { channelId: string }) {
         </table>
       </div>
 
-      {/* Modal de filtrado de columnas */}
+      {/* Modal de visibilidad de columnas */}
       {showFilterModal && (
-        <ColumnFilterModal
+        <ColumnVisibilityModal
+          isOpen={showFilterModal}
           columns={columns}
           onApply={handleColumnVisibilityChange}
           onClose={() => setShowFilterModal(false)}
         />
       )}
+
+      {/* Modal de filtros por columna */}
+      {showColumnFilterModal && selectedColumn && (
+        <ColumnValueFilterModal
+          isOpen={showColumnFilterModal}
+          onClose={() => setShowColumnFilterModal(false)}
+          columnName={selectedColumn.name}
+          systemName={selectedColumn.systemName}
+          data={bills}
+          filteredData={filteredBills}
+          currentFilters={columnFilters}
+          onApplyFilter={handleApplyFilter}
+          onRemoveFilter={handleRemoveFilter}
+          onRemoveAllFilters={handleRemoveAllFilters}
+          isLastFiltered={columnFilters.find(f => f.systemName === selectedColumn.systemName)?.isLastFiltered || false}
+        />
+      )}
+
+      {/* Modal de logs de archivos */}
+      {showFileLogsModal && (
+        <FileLogsModal
+          isOpen={showFileLogsModal}
+          onClose={() => setShowFileLogsModal(false)}
+          channelId={channelId}
+        />
+      )}
+
+      {/* Barra de progreso */}
+      <ProgressBar
+        current={progressCurrent}
+        total={progressTotal}
+        isVisible={showProgress}
+        title={progressTitle}
+      />
     </div>
   )
 }

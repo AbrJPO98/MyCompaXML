@@ -1,6 +1,6 @@
 'use client'
 import React, { useState, useEffect } from 'react'
-import styles from './ColumnFilterModal.module.css'
+import styles from './ColumnValueFilterModal.module.css'
 
 export interface FilterValue {
   value: string
@@ -20,6 +20,7 @@ interface ColumnFilterModalProps {
   columnName: string
   systemName: string
   data: any[]
+  filteredData: any[]
   currentFilters: ColumnFilter[]
   onApplyFilter: (systemName: string, selectedValues: string[]) => void
   onRemoveFilter: (systemName: string) => void
@@ -33,6 +34,7 @@ const ColumnValueFilterModal: React.FC<ColumnFilterModalProps> = ({
   columnName,
   systemName,
   data,
+  filteredData,
   currentFilters,
   onApplyFilter,
   onRemoveFilter,
@@ -45,40 +47,90 @@ const ColumnValueFilterModal: React.FC<ColumnFilterModalProps> = ({
   useEffect(() => {
     if (!isOpen || !data.length) return
 
-    // Obtener todos los valores únicos de la columna
-    const uniqueValues = new Set<string>()
-    
-    data.forEach(row => {
-      const value = row[systemName]
-      if (value !== null && value !== undefined && value !== '') {
-        uniqueValues.add(String(value))
-      }
-    })
-
-    // Obtener el filtro actual para esta columna si existe
     const existingFilter = currentFilters.find(filter => filter.systemName === systemName)
     
-    // Crear array de FilterValue
-    const values: FilterValue[] = Array.from(uniqueValues)
-      .sort()
-      .map(value => {
-        // Si hay un filtro existente, usar sus valores checked
-        if (existingFilter) {
-          const existingValue = existingFilter.values.find(v => v.value === value)
-          return {
-            value,
-            checked: existingValue ? existingValue.checked : true
-          }
-        }
-        // Si no hay filtro existente, todos están marcados por defecto
-        return {
-          value,
-          checked: true
+    // Lógica corregida:
+    // - Si es la última columna filtrada: mostrar todos los valores de esa columna (seleccionados y deseleccionados del filtro)
+    // - Si NO es la última columna filtrada: mostrar solo los valores que están actualmente visibles
+    let dataToUse
+    let valuesToShow: FilterValue[] = []
+
+    if (isLastFiltered && existingFilter) {
+      // Es la última columna filtrada: reconstruir completamente la lista de valores
+      // pero manteniendo el estado de selección del filtro existente
+      dataToUse = data // Usar TODOS los datos originales para mostrar todos los valores posibles
+      
+      const uniqueValues = new Set<string>()
+      let hasEmptyValues = false
+      
+      // Recorrer TODOS los datos para obtener todos los valores únicos
+      dataToUse.forEach(row => {
+        const value = row[systemName]
+        const stringValue = value !== null && value !== undefined ? String(value).trim() : ''
+        
+        if (stringValue === '') {
+          hasEmptyValues = true
+        } else {
+          uniqueValues.add(String(value))
         }
       })
 
-    setFilterValues(values)
-  }, [isOpen, data, systemName, currentFilters])
+      // Crear la lista completa de valores
+      valuesToShow = Array.from(uniqueValues)
+        .sort()
+        .map(value => {
+          // Buscar si este valor estaba en el filtro existente
+          const existingValue = existingFilter.values.find(v => v.value === value)
+          return {
+            value,
+            checked: existingValue ? existingValue.checked : false
+          }
+        })
+      
+      // Agregar opción "Vacíos" si hay valores vacíos
+      if (hasEmptyValues) {
+        const existingEmptyValue = existingFilter.values.find(v => v.value === '__EMPTY__')
+        valuesToShow.unshift({
+          value: '__EMPTY__',
+          checked: existingEmptyValue ? existingEmptyValue.checked : false
+        })
+      }
+    } else {
+      // NO es la última columna filtrada: mostrar solo valores visibles
+      dataToUse = filteredData.length > 0 ? filteredData : data
+      
+      const uniqueValues = new Set<string>()
+      let hasEmptyValues = false
+      
+      dataToUse.forEach(row => {
+        const value = row[systemName]
+        const stringValue = value !== null && value !== undefined ? String(value).trim() : ''
+        
+        if (stringValue === '') {
+          hasEmptyValues = true
+        } else {
+          uniqueValues.add(String(value))
+        }
+      })
+
+      valuesToShow = Array.from(uniqueValues)
+        .sort()
+        .map(value => ({
+          value,
+          checked: true // Por defecto todos los valores visibles están seleccionados
+        }))
+      
+      // Agregar opción "Vacíos" si hay valores vacíos
+      if (hasEmptyValues) {
+        valuesToShow.unshift({
+          value: '__EMPTY__',
+          checked: true
+        })
+      }
+    }
+
+    setFilterValues(valuesToShow)
+  }, [isOpen, data, filteredData, systemName, currentFilters, isLastFiltered])
 
   const handleCheckboxChange = (value: string, checked: boolean) => {
     setFilterValues(prev => 
@@ -101,7 +153,21 @@ const ColumnValueFilterModal: React.FC<ColumnFilterModalProps> = ({
       .filter(item => item.checked)
       .map(item => item.value)
     
-    onApplyFilter(systemName, selectedValues)
+    // Verificar si todas las casillas están seleccionadas
+    const allSelected = filterValues.length > 0 && filterValues.every(item => item.checked)
+    
+    if (allSelected) {
+      if (isLastFiltered) {
+        // Si es la última columna filtrada y todas están seleccionadas, eliminar el filtro
+        onRemoveFilter(systemName)
+      }
+      // Si no es la última columna filtrada y todas están seleccionadas, no agregar filtro
+      // (simplemente no llamamos onApplyFilter)
+    } else {
+      // Si no todas están seleccionadas, aplicar el filtro normalmente
+      onApplyFilter(systemName, selectedValues)
+    }
+    
     onClose()
   }
 
@@ -115,9 +181,10 @@ const ColumnValueFilterModal: React.FC<ColumnFilterModalProps> = ({
     onClose()
   }
 
-  const filteredValues = filterValues.filter(item =>
-    item.value.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredValues = filterValues.filter(item => {
+    const displayValue = item.value === '__EMPTY__' ? 'Vacíos' : item.value
+    return displayValue.toLowerCase().includes(searchTerm.toLowerCase())
+  })
 
   const checkedCount = filterValues.filter(item => item.checked).length
   const totalCount = filterValues.length
@@ -187,7 +254,9 @@ const ColumnValueFilterModal: React.FC<ColumnFilterModalProps> = ({
                   onChange={(e) => handleCheckboxChange(item.value, e.target.checked)}
                   className={styles.checkbox}
                 />
-                <span className={styles.valueText}>{item.value}</span>
+                <span className={item.value === '__EMPTY__' ? styles.emptyValueText : styles.valueText}>
+                  {item.value === '__EMPTY__' ? '(Vacíos)' : item.value}
+                </span>
               </label>
             ))}
           </div>

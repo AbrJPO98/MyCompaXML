@@ -168,6 +168,20 @@
   word-break: break-word;
 }
 
+/* Estilo especial para la opción "Vacíos" */
+.valueItem:has(input[type="checkbox"]) .valueText:contains("(Vacíos)") {
+  font-style: italic;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+/* Alternativa más compatible para navegadores que no soportan :has() */
+.emptyValueText {
+  font-style: italic;
+  color: #6c757d;
+  font-weight: 500;
+}
+
 .noResults {
   text-align: center;
   padding: 40px 20px;

@@ -72,7 +72,12 @@ ActividadSchema.methods.getPublicProfile = function() {
   return this.toObject()
 }
 
-// Verificar si el modelo ya existe antes de crear uno nuevo
-const Actividad: Model<IActividad> = mongoose.models.Actividad || mongoose.model<IActividad>('Actividad', ActividadSchema)
+// Limpiar el modelo existente si existe para evitar conflictos
+if (mongoose.models.Actividad) {
+  delete mongoose.models.Actividad
+}
+
+// Crear el modelo
+const Actividad: Model<IActividad> = mongoose.model<IActividad>('Actividad', ActividadSchema)
 
 export default Actividad 

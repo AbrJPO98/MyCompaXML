@@ -31,6 +31,22 @@
   border-radius: 4px;
 }
 
+.importacion {
+  color: #f97316;
+  font-weight: 600;
+  background: rgba(249, 115, 22, 0.1);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.exportacion {
+  color: #f97316;
+  font-weight: 600;
+  background: rgba(249, 115, 22, 0.1);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
 /* Header de la tabla */
 .header {
   display: flex;
@@ -91,6 +107,48 @@
   font-size: 0.8rem;
 }
 
+/* Estilos para headers clickeables y filtros */
+.clickableHeader {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  user-select: none;
+}
+
+.clickableHeader:hover {
+  background-color: #e9ecef !important;
+}
+
+.filteredHeader {
+  background-color: #e3f2fd !important;
+  color: #1976d2 !important;
+  border-bottom-color: #1976d2 !important;
+}
+
+.lastFilteredHeader {
+  background-color: #fff3e0 !important;
+  color: #f57c00 !important;
+  border-bottom-color: #f57c00 !important;
+}
+
+.headerContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.filterIndicator {
+  font-size: 0.8rem;
+  color: #1976d2;
+  opacity: 0.8;
+}
+
+.lastFilterIndicator {
+  font-size: 0.6rem;
+  color: #f57c00;
+  margin-left: 0.25rem;
+}
+
 .tableRow {
   transition: background-color 0.2s ease;
 }
@@ -137,6 +195,17 @@
 .actionButton:hover {
   background: #0056b3;
   transform: translateY(-1px);
+}
+
+.actionButton.disabled {
+  opacity: 0.5;
+  cursor: not-allowed !important;
+  pointer-events: none;
+}
+
+.actionButton.disabled:hover {
+  background: #007bff !important;
+  transform: none !important;
 }
 
 /* Estados especiales */
@@ -221,4 +290,13 @@
   .tableCell {
     max-width: 100px;
   }
+}
+
+/* Estilo para Documento MyCompaXML */
+.mycompaxmldoc {
+  color: #f97316;
+  font-weight: 600;
+  background: rgba(249, 115, 22, 0.1);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
 }

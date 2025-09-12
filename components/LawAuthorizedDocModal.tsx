@@ -226,15 +226,31 @@ const LawAuthorizedDocModal: React.FC<LawAuthorizedDocModalProps> = ({ channelId
     return clave
   }
 
+  // Generar fecha y hora actual en formato ISO con zona horaria Costa Rica
+  const generateFechaEmision = (): string => {
+    const now = new Date()
+    // Formatear como yyyy-mm-ddThh:mm:ss-06:00
+    const year = now.getFullYear()
+    const month = (now.getMonth() + 1).toString().padStart(2, '0')
+    const day = now.getDate().toString().padStart(2, '0')
+    const hours = now.getHours().toString().padStart(2, '0')
+    const minutes = now.getMinutes().toString().padStart(2, '0')
+    const seconds = now.getSeconds().toString().padStart(2, '0')
+    
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}-06:00`
+  }
+
   const generateXML = (): string => {
     const selectedActividad = actividades.find(act => act._id === formData.actividadEconomica)
     
     // Generar clave
     const clave = generateClave()
+    const fechaEmision = generateFechaEmision()
     
     return `<MyCompaXMLDOC>
 <CodigoActividad>${selectedActividad?.codigo || ''}</CodigoActividad>
 <Clave>${clave}</Clave>
+<FechaEmision>${fechaEmision}</FechaEmision>
 <Emisor>
 <Nombre>${formData.nombreInstitucion}</Nombre>
 <Identificacion>

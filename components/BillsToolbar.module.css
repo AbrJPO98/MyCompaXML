@@ -143,6 +143,17 @@
   color: #721c24;
 }
 
+.disabled {
+  opacity: 0.5;
+  cursor: not-allowed !important;
+  pointer-events: none;
+}
+
+.disabled:hover {
+  background: none !important;
+  color: #495057 !important;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .toolbar {
@@ -195,3 +206,5 @@
     font-size: 0.7rem;
   }
 }
+
+

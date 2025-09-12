@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Sucursal from '@/lib/models/Sucursal'
+import Actividad from '@/lib/models/Actividad' // Importar para registrar el modelo
 import { withDB, sanitizeInput, isValidObjectId } from '@/lib/dbUtils'
 import mongoose from 'mongoose'
+
+// Asegurar que el modelo Actividad esté registrado
+if (!mongoose.models.Actividad) {
+  mongoose.model('Actividad', Actividad.schema)
+}
 
 // GET /api/sucursales - Obtener sucursales de una actividad o por código
 export async function GET(request: NextRequest) {
