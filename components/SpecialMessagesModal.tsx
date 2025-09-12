@@ -154,7 +154,7 @@ const SpecialMessagesModal: React.FC<SpecialMessagesModalProps> = ({ isOpen, onC
     if (isOpen) {
       loadMessages()
     }
-  }, [isOpen, channelId, loadMessages])
+  }, [isOpen, channelId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!isOpen) return null
 
