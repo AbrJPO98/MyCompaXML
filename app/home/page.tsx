@@ -7,6 +7,7 @@ export const revalidate = 0
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/contexts/AuthContext'
 import EditUserModal from '@/components/EditUserModal'
+import AddChannelModal from '@/components/AddChannelModal'
 import styles from './home.module.css'
 
 interface UserChannel {
@@ -36,6 +37,7 @@ export default function HomePage() {
   const [userChannels, setUserChannels] = useState<UserChannel[]>([])
   const [channelsLoading, setChannelsLoading] = useState(true)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showAddChannelModal, setShowAddChannelModal] = useState(false)
 
   const loadUserChannels = useCallback(async () => {
     if (!user?._id) return
@@ -105,6 +107,12 @@ export default function HomePage() {
       '##': 'Pasaporte'
     }
     return types[typeIdent] || typeIdent
+  }
+
+  // Manejar cuando se solicita acceso a un canal
+  const handleChannelRequested = () => {
+    // Recargar los canales del usuario para mostrar la nueva solicitud
+    loadUserChannels()
   }
 
   const handleChannelAccess = (channelCode: string) => {
@@ -194,7 +202,16 @@ export default function HomePage() {
           {/* Sección 2: Canales del Usuario */}
           <section className={styles.section}>
             <div className={styles.card}>
-              <h2 className={styles.sectionTitle}>🏢 Canales del Usuario ({userChannels.length})</h2>
+              <div className={styles.sectionHeader}>
+                <h2 className={styles.sectionTitle}>🏢 Canales del Usuario ({userChannels.length})</h2>
+                <button
+                  onClick={() => setShowAddChannelModal(true)}
+                  className={styles.addChannelButton}
+                  title="Solicitar acceso a nuevos canales"
+                >
+                  ➕ Añadir canal
+                </button>
+              </div>
               
               {userChannels.length > 0 ? (
                 <div className={styles.tableContainer}>
@@ -269,6 +286,16 @@ export default function HomePage() {
         <EditUserModal
           user={user}
           onClose={handleEditModalClose}
+        />
+      )}
+
+      {/* Modal de Añadir Canal */}
+      {showAddChannelModal && user && (
+        <AddChannelModal
+          isOpen={showAddChannelModal}
+          onClose={() => setShowAddChannelModal(false)}
+          userId={user._id}
+          onChannelRequested={handleChannelRequested}
         />
       )}
     </main>

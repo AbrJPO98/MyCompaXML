@@ -46,7 +46,10 @@ export default function Home() {
           >
             Ingresar
           </button>
-          <button className={styles.signupButton}>
+          <button 
+            className={styles.signupButton}
+            onClick={() => router.push('/register')}
+          >
             ¿No tienes cuenta? ¡Crea una ya!
           </button>
         </div>

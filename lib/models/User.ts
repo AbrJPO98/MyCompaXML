@@ -75,7 +75,7 @@ const UserSchema: Schema<IUser> = new Schema({
   },
   isActive: {
     type: Boolean,
-    default: true
+    default: false // Nuevos usuarios inactivos por defecto
   }
 }, {
   timestamps: true, // Agrega createdAt y updatedAt automáticamente

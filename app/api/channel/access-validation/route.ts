@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
       
       console.log('API: Found channel:', channel._id, channel.name)
 
-      // Verificar si el usuario tiene acceso a este canal
+      // Verificar si el usuario tiene acceso a este canal e incluir todos los campos
       const userChannelAccess = await UserChannel.findOne({
         user: userId,
         channel: channel._id
@@ -78,6 +78,12 @@ export async function POST(request: NextRequest) {
 
       if (!userChannelAccess) {
         throw new Error('No tienes acceso a este canal')
+      }
+
+      const copyUserChannelAccess = userChannelAccess.toObject()
+      
+      if (!copyUserChannelAccess.isActive) {
+        throw new Error('Tu solicitud de acceso a este canal está inactiva o no ha sido aprobada')
       }
 
       // Retornar información del canal y acceso del usuario

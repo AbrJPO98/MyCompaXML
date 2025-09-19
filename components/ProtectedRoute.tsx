@@ -17,7 +17,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const pathname = usePathname()
 
   // Lista de rutas públicas que no requieren autenticación
-  const publicRoutes = ['/', '/login']
+  const publicRoutes = ['/', '/login', '/register']
   const isPublicRoute = pathname ? publicRoutes.includes(pathname) : false
 
   useEffect(() => {

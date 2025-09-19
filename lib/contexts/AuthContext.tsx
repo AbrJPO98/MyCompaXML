@@ -55,11 +55,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const storedUser = localStorage.getItem('user')
         if (storedUser) {
           const userData = JSON.parse(storedUser)
-          setUser(userData)
+          // Verificar que el usuario esté activo
+          if (userData.isActive === true) {
+            setUser(userData)
+          } else {
+            // Si el usuario no está activo, limpiar localStorage
+            console.log('Usuario inactivo encontrado en localStorage, limpiando...')
+            localStorage.removeItem('user')
+            setUser(null)
+          }
         }
       } catch (error) {
         console.error('Error al cargar usuario desde localStorage:', error)
         localStorage.removeItem('user')
+        setUser(null)
       } finally {
         setIsLoading(false)
       }
@@ -84,9 +93,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const data = await response.json()
 
       if (data.success && data.user) {
-        setUser(data.user)
-        localStorage.setItem('user', JSON.stringify(data.user))
-        return true
+        // Verificar que el usuario esté activo
+        if (data.user.isActive === true) {
+          setUser(data.user)
+          localStorage.setItem('user', JSON.stringify(data.user))
+          return true
+        } else {
+          console.error('Usuario inactivo, no se puede iniciar sesión')
+          return false
+        }
       } else {
         console.error('Error en login:', data.message)
         return false
@@ -126,7 +141,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     router.push('/')
   }
 
-  const isAuthenticated = user !== null
+  const isAuthenticated = user !== null && user.isActive === true
 
   const value: AuthContextType = {
     user,

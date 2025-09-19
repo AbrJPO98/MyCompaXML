@@ -113,6 +113,28 @@
   transform: translateY(0);
 }
 
+/* Botón de añadir canal */
+.addChannelButton {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.addChannelButton:hover {
+  background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+}
+
 /* Botón de acceso al canal */
 .accessButton {
   background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);

@@ -1,0 +1,299 @@
+.main {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 112, 243, 0.1) 0%,
+    rgba(0, 112, 243, 0.05) 50%,
+    transparent 100%
+  );
+}
+
+.container {
+  background: white;
+  border-radius: 16px;
+  padding: 2.5rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 700px; /* Más ancho que login para acomodar más campos */
+  border: 1px solid rgba(0, 112, 243, 0.1);
+}
+
+.formContainer {
+  width: 100%;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.title {
+  color: #1e40af;
+  font-size: 1.875rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+}
+
+.subtitle {
+  color: #64748b;
+  font-size: 1rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Mensajes de estado */
+.successMessage {
+  background-color: #dcfce7;
+  border: 1px solid #16a34a;
+  color: #15803d;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  font-weight: 500;
+}
+
+.errorMessage {
+  background-color: #fef2f2;
+  border: 1px solid #ef4444;
+  color: #dc2626;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  font-weight: 500;
+}
+
+/* Formulario */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.formRow {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  margin-bottom: 1.5rem;
+}
+
+.formRow .formGroup {
+  margin-bottom: 0;
+}
+
+.label {
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+/* Inputs y selects */
+.input,
+.select {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  background-color: white;
+  box-sizing: border-box;
+}
+
+.input:focus,
+.select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.inputError {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+}
+
+/* Container para contraseñas */
+.passwordContainer {
+  position: relative;
+  width: 100%;
+}
+
+.passwordContainer .input {
+  padding-right: 3rem;
+}
+
+.passwordToggle {
+  position: absolute;
+  right: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.passwordToggle:hover {
+  background-color: #f3f4f6;
+}
+
+/* Mensajes de error de campo */
+.fieldError {
+  color: #ef4444;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  font-weight: 500;
+}
+
+/* Botones de acción */
+.formActions {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.backButton,
+.submitButton {
+  padding: 0.875rem 1.5rem;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  min-width: 140px;
+  text-align: center;
+}
+
+.backButton {
+  background-color: #f8fafc;
+  color: #64748b;
+  border: 2px solid #e2e8f0;
+}
+
+.backButton:hover:not(:disabled) {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.submitButton {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.submitButton:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  box-shadow: 0 6px 8px -1px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.backButton:disabled,
+.submitButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Link de login */
+.loginLink {
+  text-align: center;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.loginLink p {
+  color: #64748b;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.linkButton {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: inherit;
+  padding: 0;
+}
+
+.linkButton:hover {
+  color: #2563eb;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .main {
+    padding: 1rem;
+  }
+  
+  .container {
+    padding: 2rem;
+    max-width: 100%;
+    border-radius: 12px;
+  }
+  
+  .title {
+    font-size: 1.5rem;
+  }
+  
+  .formRow {
+    flex-direction: column;
+    gap: 0;
+  }
+  
+  .formRow .formGroup {
+    margin-bottom: 1.5rem;
+  }
+  
+  .formActions {
+    flex-direction: column-reverse;
+    gap: 1rem;
+  }
+  
+  .backButton,
+  .submitButton {
+    width: 100%;
+    min-width: unset;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 1.5rem;
+  }
+  
+  .title {
+    font-size: 1.25rem;
+  }
+  
+  .input,
+  .select {
+    padding: 0.75rem;
+    font-size: 0.875rem;
+  }
+}

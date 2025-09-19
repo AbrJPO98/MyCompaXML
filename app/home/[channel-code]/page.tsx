@@ -138,6 +138,20 @@ export default function ChannelHomePage() {
     }
   }
 
+  const handleGoToElectronicBilling = () => {
+    if (channelAccess?.channel?.code) {
+      const encodedChannelCode = btoa(channelAccess.channel.code)
+      router.push(`/electronic-billing/${encodedChannelCode}`)
+    }
+  }
+
+  const handleGoToChannelMembers = () => {
+    if (channelAccess?.channel?.code) {
+      const encodedChannelCode = btoa(channelAccess.channel.code)
+      router.push(`/channel-members/${encodedChannelCode}`)
+    }
+  }
+
   const handleBackToHome = () => {
     router.push('/home')
   }
@@ -269,26 +283,44 @@ export default function ChannelHomePage() {
               <h2 className={styles.sectionTitle}>⚙️ Acciones del Canal</h2>
               
               <div className={styles.actions}>
-                <button 
-                  onClick={handleGoToChannelEdit} 
-                  className={styles.actionButton}
-                >
-                  ✏️ Gestionar Canal y Actividades
-                </button>
-                
-                <button 
-                  onClick={handleGoToInventory} 
-                  className={styles.actionButton}
-                >
-                  📦 Gestionar Inventario
-                </button>
-                
-                <button 
-                  onClick={handleGoToBillsManagement} 
-                  className={styles.actionButton}
-                >
-                  📄 Gestionar Facturas
-                </button>
+                <div className={channelAccess?.isAdmin ? styles.actionsGridAdmin : styles.actionsGrid}>
+                  {channelAccess?.isAdmin && (
+                    <button 
+                      onClick={handleGoToChannelMembers} 
+                      className={styles.actionButton}
+                    >
+                      👥 Miembros del Canal
+                    </button>
+                  )}
+                  <button 
+                    onClick={handleGoToChannelEdit} 
+                    className={styles.actionButton}
+                  >
+                    ✏️ Gestionar Canal y Actividades
+                  </button>
+                  
+                  <button 
+                    onClick={handleGoToInventory} 
+                    className={styles.actionButton}
+                  >
+                    📦 Gestionar Inventario
+                  </button>
+                </div>
+                <div className={ styles.actionsGrid}>
+                  <button 
+                    onClick={handleGoToBillsManagement} 
+                    className={styles.actionButton}
+                  >
+                    📄 Gestionar Facturas
+                  </button>
+                  
+                  <button 
+                    onClick={handleGoToElectronicBilling} 
+                    className={styles.actionButton}
+                  >
+                    ⚡ Facturación Electrónica
+                  </button>
+                </div>
                 
                 <div className={styles.actionDescription}>
                   <p>Desde aquí puedes acceder a la gestión completa del canal, incluyendo:</p>
@@ -299,6 +331,10 @@ export default function ChannelHomePage() {
                     <li>📋 Ver y administrar datos</li>
                     <li>📦 Gestionar inventario de productos</li>
                     <li>📄 Administrar facturas y comprobantes</li>
+                    <li>⚡ Gestionar facturación electrónica</li>
+                    {channelAccess?.isAdmin && (
+                      <li>👥 Gestionar miembros del canal</li>
+                    )}
                   </ul>
                 </div>
               </div>

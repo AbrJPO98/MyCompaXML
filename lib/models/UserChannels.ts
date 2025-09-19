@@ -9,6 +9,7 @@ export interface IUserChannel extends Document {
   user: mongoose.Types.ObjectId // ID del usuario
   channel: mongoose.Types.ObjectId // ID del canal
   is_admin: boolean // Si el usuario es admin en este canal
+  isActive: boolean // Si la relación usuario-canal está activa
   createdAt?: Date
   updatedAt?: Date
 }
@@ -29,6 +30,11 @@ const UserChannelSchema: Schema<IUserChannel> = new Schema({
     type: Boolean,
     default: false,
     required: [true, 'El estado de administrador es requerido']
+  },
+  isActive: {
+    type: Boolean,
+    default: false, // Cambiar a false para que las nuevas solicitudes estén pendientes por defecto
+    required: [true, 'El estado activo es requerido']
   }
 }, {
   timestamps: true, // Agrega createdAt y updatedAt automáticamente
@@ -40,6 +46,7 @@ UserChannelSchema.index({ user: 1 })
 UserChannelSchema.index({ channel: 1 })
 UserChannelSchema.index({ user: 1, channel: 1 }, { unique: true }) // Evitar duplicados
 UserChannelSchema.index({ is_admin: 1 })
+UserChannelSchema.index({ isActive: 1 })
 
 // Métodos del schema
 UserChannelSchema.methods.getPublicProfile = function() {
