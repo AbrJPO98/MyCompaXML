@@ -48,8 +48,8 @@ export default function HomePage() {
       const data = await response.json()
 
       if (response.ok && data.success) {
-        console.log('Loaded user channels:', data.channels.length)
-        setUserChannels(data.channels)
+        console.log('Loaded user channels:', data.data.length)
+        setUserChannels(data.data)
       } else {
         console.error('Error loading user channels:', data.message)
       }
