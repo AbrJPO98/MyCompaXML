@@ -8,20 +8,22 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
+    const channelId = searchParams.get('channelId')
+    const isActive = searchParams.get('isActive')
 
-    // Validar que se proporcione userId
-    if (!userId) {
+    // Validar que se proporcione al menos uno de los parámetros
+    if (!userId && !channelId) {
       return NextResponse.json(
         { 
           success: false,
-          message: 'ID de usuario es requerido' 
+          message: 'ID de usuario o ID de canal es requerido' 
         },
         { status: 400 }
       )
     }
 
-    // Validar formato del userId
-    if (!isValidObjectId(userId)) {
+    // Validar formato de los IDs si se proporcionan
+    if (userId && !isValidObjectId(userId)) {
       return NextResponse.json(
         { 
           success: false,
@@ -31,23 +33,40 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    if (channelId && !isValidObjectId(channelId)) {
+      return NextResponse.json(
+        { 
+          success: false,
+          message: 'Formato de ID de canal inválido' 
+        },
+        { status: 400 }
+      )
+    }
+
     const result = await withDB(async () => {
-      // Buscar todos los canales asociados al usuario
-      const userChannels = await UserChannel.find({ user: userId })
+      // Construir query según los parámetros proporcionados
+      let query: any = {}
+      if (userId) query.user = userId
+      if (channelId) query.channel = channelId
+      if (isActive !== null) query.isActive = isActive === 'true'
+
+      // Buscar user-channels según los criterios
+      const userChannels = await UserChannel.find(query)
         .populate('channel', 'code name ident ident_type phone phone_code registro_fiscal_IVA isActive createdAt')
-        .populate('user', 'first_name last_name email')
+        .populate('user', 'first_name last_name email ident type_ident phone phone_code')
         .sort({ createdAt: -1 })
 
       // Transformar los datos para la respuesta
       const channelsData = userChannels.map(userChannel => ({
         _id: userChannel._id,
-        user_id: userChannel.user,
-        channel_id: userChannel.channel,
+        user: userChannel.user,
+        channel: userChannel.channel,
         is_admin: userChannel.is_admin,
+        isActive: userChannel.isActive,
         createdAt: userChannel.createdAt,
         updatedAt: userChannel.updatedAt,
-        // Información del canal
-        channel: userChannel.channel ? {
+        // Información del canal (si existe)
+        channelInfo: userChannel.channel ? {
           _id: (userChannel.channel as any)?._id,
           code: (userChannel.channel as any)?.code,
           name: (userChannel.channel as any)?.name,
@@ -58,6 +77,16 @@ export async function GET(request: NextRequest) {
           registro_fiscal_IVA: (userChannel.channel as any)?.registro_fiscal_IVA,
           isActive: (userChannel.channel as any)?.isActive,
           createdAt: (userChannel.channel as any)?.createdAt
+        } : null,
+        // Información del usuario (si existe)
+        userInfo: userChannel.user ? {
+          _id: (userChannel.user as any)?._id,
+          name: `${(userChannel.user as any)?.first_name || ''} ${(userChannel.user as any)?.last_name || ''}`.trim(),
+          email: (userChannel.user as any)?.email,
+          ident: (userChannel.user as any)?.ident,
+          type_ident: (userChannel.user as any)?.type_ident,
+          phone: (userChannel.user as any)?.phone,
+          phone_code: (userChannel.user as any)?.phone_code
         } : null
       }))
 
@@ -76,12 +105,153 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      channels: result.data || [],
+      data: result.data || [],
       total: result.data?.length || 0
     })
 
   } catch (error: any) {
     console.error('Error en user-channels API:', error)
+    
+    return NextResponse.json(
+      { 
+        success: false,
+        message: 'Error interno del servidor',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const userChannelId = searchParams.get('id')
+    const body = await request.json()
+
+    // Validar que se proporcione userChannelId
+    if (!userChannelId) {
+      return NextResponse.json(
+        { 
+          success: false,
+          message: 'ID de user-channel es requerido' 
+        },
+        { status: 400 }
+      )
+    }
+
+    // Validar formato del userChannelId
+    if (!isValidObjectId(userChannelId)) {
+      return NextResponse.json(
+        { 
+          success: false,
+          message: 'Formato de ID de user-channel inválido' 
+        },
+        { status: 400 }
+      )
+    }
+
+    const result = await withDB(async () => {
+      // Actualizar el user-channel
+      const updatedUserChannel = await UserChannel.findByIdAndUpdate(
+        userChannelId,
+        { $set: body },
+        { new: true }
+      )
+      
+      if (!updatedUserChannel) {
+        throw new Error('User-channel no encontrado')
+      }
+
+      return updatedUserChannel
+    })
+
+    if (!result.success) {
+      return NextResponse.json(
+        { 
+          success: false,
+          message: result.error 
+        },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'User-channel actualizado exitosamente',
+      data: result.data
+    })
+
+  } catch (error: any) {
+    console.error('Error en user-channels PUT API:', error)
+    
+    return NextResponse.json(
+      { 
+        success: false,
+        message: 'Error interno del servidor',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const userChannelId = searchParams.get('id')
+
+    // Validar que se proporcione userChannelId
+    if (!userChannelId) {
+      return NextResponse.json(
+        { 
+          success: false,
+          message: 'ID de user-channel es requerido' 
+        },
+        { status: 400 }
+      )
+    }
+
+    // Validar formato del userChannelId
+    if (!isValidObjectId(userChannelId)) {
+      return NextResponse.json(
+        { 
+          success: false,
+          message: 'Formato de ID de user-channel inválido' 
+        },
+        { status: 400 }
+      )
+    }
+
+    const result = await withDB(async () => {
+      // Buscar y eliminar el user-channel
+      const deletedUserChannel = await UserChannel.findByIdAndDelete(userChannelId)
+      
+      if (!deletedUserChannel) {
+        throw new Error('User-channel no encontrado')
+      }
+
+      return { deleted: true, id: userChannelId }
+    })
+
+    if (!result.success) {
+      return NextResponse.json(
+        { 
+          success: false,
+          message: result.error 
+        },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Miembro eliminado del canal exitosamente',
+      data: result.data
+    })
+
+  } catch (error: any) {
+    console.error('Error en user-channels DELETE API:', error)
     
     return NextResponse.json(
       { 
@@ -102,7 +272,7 @@ export async function OPTIONS() {
       status: 200,
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, PUT, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
       }
     }
