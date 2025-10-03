@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/contexts/AuthContext'
+import ClientesModal from '@/components/ClientesModal'
 import styles from './electronic-billing.module.css'
 
 interface Channel {
@@ -28,6 +29,7 @@ const ElectronicBillingPage: React.FC = () => {
   const [showFacturasMenu, setShowFacturasMenu] = useState(false)
   const [showFirmaMenu, setShowFirmaMenu] = useState(false)
   const [showClientesMenu, setShowClientesMenu] = useState(false)
+  const [showClientesModal, setShowClientesModal] = useState(false)
 
   const validateChannelAccess = useCallback(async () => {
     if (!user?._id) return
@@ -203,8 +205,7 @@ const ElectronicBillingPage: React.FC = () => {
 
   const handleListaClientes = () => {
     setShowClientesMenu(false)
-    // TODO: Implement clients list functionality
-    console.log('Lista de clientes clicked')
+    setShowClientesModal(true)
   }
 
   if (authLoading || loading) {
@@ -405,6 +406,12 @@ const ElectronicBillingPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal de Clientes */}
+      <ClientesModal
+        isOpen={showClientesModal}
+        onClose={() => setShowClientesModal(false)}
+      />
     </div>
   )
 }

@@ -39,7 +39,7 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
   const [tiposDisponibles, setTiposDisponibles] = useState<string[]>([])
   const [showCabysModal, setShowCabysModal] = useState(false)
   const [showCabysEditModal, setShowCabysEditModal] = useState(false)
-  const [selectedCabysForEdit, setSelectedCabysForEdit] = useState<any>(null)
+  const [selectedCabysCodigo, setSelectedCabysCodigo] = useState<string | null>(null)
   const [selectedCabysInfo, setSelectedCabysInfo] = useState<string>('')
 
   // Initialize form data for editing
@@ -118,8 +118,8 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
     }
   }
 
-  const handleCabysEdit = (cabysItem: any) => {
-    setSelectedCabysForEdit(cabysItem)
+  const handleCabysEdit = (codigo: string) => {
+    setSelectedCabysCodigo(codigo)
     setShowCabysModal(false)
     setShowCabysEditModal(true)
   }
@@ -148,7 +148,7 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
 
   const handleCabysEditClose = () => {
     setShowCabysEditModal(false)
-    setSelectedCabysForEdit(null)
+    setSelectedCabysCodigo(null)
     setShowCabysModal(true) // Return to selection modal
   }
 
@@ -422,9 +422,9 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
       )}
 
       {/* Modal de edición de CABYS */}
-      {showCabysEditModal && selectedCabysForEdit && (
+      {showCabysEditModal && selectedCabysCodigo && (
         <CabysEditModal
-          cabysItem={selectedCabysForEdit}
+          codigo={selectedCabysCodigo}
           channelId={channelId}
           onSave={handleCabysEditSave}
           onClose={handleCabysEditClose}

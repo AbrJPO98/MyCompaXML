@@ -35,7 +35,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
   const [showFileSetsMenuModal, setShowFileSetsMenuModal] = useState(false)
   const [showCabysModal, setShowCabysModal] = useState(false)
   const [showCabysEditModal, setShowCabysEditModal] = useState(false)
-  const [selectedCabysForEdit, setSelectedCabysForEdit] = useState<any>(null)
+  const [selectedCabysCodigo, setSelectedCabysCodigo] = useState<string | null>(null)
   const [showLawDocModal, setShowLawDocModal] = useState(false)
   const [showDiscardedBillsModal, setShowDiscardedBillsModal] = useState(false)
   const [showCreateFileSetModal, setShowCreateFileSetModal] = useState(false)
@@ -104,8 +104,8 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
     console.log('CABYS consultado:', cabysItem)
   }
 
-  const handleCabysEdit = (cabysItem: any) => {
-    setSelectedCabysForEdit(cabysItem)
+  const handleCabysEdit = (codigo: string) => {
+    setSelectedCabysCodigo(codigo)
     setShowCabysModal(false)
     setShowCabysEditModal(true)
   }
@@ -117,7 +117,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
 
   const handleCabysEditClose = () => {
     setShowCabysEditModal(false)
-    setSelectedCabysForEdit(null)
+    setSelectedCabysCodigo(null)
     setShowCabysModal(true) // Return to selection modal
   }
 
@@ -998,9 +998,9 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
       )}
 
       {/* Modal de edición de CABYS */}
-      {showCabysEditModal && selectedCabysForEdit && (
+      {showCabysEditModal && selectedCabysCodigo && (
         <CabysEditModal
-          cabysItem={selectedCabysForEdit}
+          codigo={selectedCabysCodigo}
           channelId={channelId}
           onSave={handleCabysEditSave}
           onClose={handleCabysEditClose}

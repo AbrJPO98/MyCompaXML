@@ -5,6 +5,7 @@ import ColumnValueFilterModal, { ColumnFilter } from './ColumnValueFilterModal'
 import ColumnVisibilityModal from './ColumnVisibilityModal'
 import ProgressBar from './ProgressBar'
 import FileLogsModal, { addFileLog } from './FileLogsModal'
+import CabysEditModal from './CabysEditModal'
 import styles from './BillsTable.module.css'
 
 // Definición de columnas con sus propiedades
@@ -12,6 +13,19 @@ export interface ColumnDefinition {
   header: string
   systemName: string
   visible: boolean
+}
+
+// Interfaz para CABYS Item
+interface CabysItem {
+  codigo: string
+  descripOf: string
+  bienoserv: string
+  descripPer: string
+  descripGasInv: string
+  categoria: string
+  actEconomica: string
+  vidaUtil: string | number
+  importado: string
 }
 
 export const COLUMN_DEFINITIONS: ColumnDefinition[] = [
@@ -81,12 +95,13 @@ export const COLUMN_DEFINITIONS: ColumnDefinition[] = [
   { header: "Medio de pago", systemName: "medioPagoCon", visible: true },
   { header: "Tipo medio de pago", systemName: "tipoMedioPagoCon", visible: true },
   { header: "Medio de pago OTROS", systemName: "medioPagoOtroCon", visible: true },
+  { header: "Total medio de pago", systemName: "totalMedioPago", visible: true },
   { header: "Tipo de moneda", systemName: "tipoMonedaLinea", visible: false },
   { header: "Número de línea", systemName: "numeroLineaCon", visible: true },
   { header: "Partida arancelaria", systemName: "partidaArancelariaCon", visible: true },
   { header: "CABYS", systemName: "codigoCon", visible: true },
   { header: "Añadir cabys", systemName: "anadirCabysDes", visible: true },
-  { header: "Descripción", systemName: "descripcion", visible: true },
+  { header: "Descripción personalizada", systemName: "descripcion", visible: true },
   { header: "Gasto o inventario", systemName: "descGasInv", visible: true },
   { header: "Bien o servicio", systemName: "bienoserv", visible: true },
   { header: "Categoría", systemName: "categ", visible: true },
@@ -94,7 +109,7 @@ export const COLUMN_DEFINITIONS: ColumnDefinition[] = [
   { header: "Actividad económica (Compra)", systemName: "codActComp", visible: true },
   { header: "Actividad económica asociada", systemName: "claActCom", visible: true },
   { header: "Detalle de la mercancía", systemName: "detalleCon", visible: true },
-  { header: "Descripción personalizada", systemName: "agrDesc", visible: true },
+  { header: "Agregar descripción", systemName: "agrDesc", visible: true },
   { header: "Tipo (Código comercial)", systemName: "tipo3Con", visible: true },
   { header: "Código (Código comercial)", systemName: "codigo2Con", visible: true },
   { header: "Cantidad", systemName: "cantidadCon", visible: true },
@@ -191,6 +206,10 @@ export default function BillsTable({ channelId }: { channelId: string }) {
   const [filteredBills, setFilteredBills] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showFileLogsModal, setShowFileLogsModal] = useState(false)
+  
+  // Estados para el modal de CABYS
+  const [showCabysEditModal, setShowCabysEditModal] = useState(false)
+  const [selectedCabysCodigo, setSelectedCabysCodigo] = useState<string | null>(null)
   
   // Estados para el sistema de filtros
   const [showColumnFilterModal, setShowColumnFilterModal] = useState(false)
@@ -290,6 +309,301 @@ export default function BillsTable({ channelId }: { channelId: string }) {
     return tipos[codigo] || codigo
   }
 
+  // Función para extraer nodos MedioPago de un documento XML
+  const extractMedioPagoNodes = (xmlDoc: Document) => {
+    const medioPagoNodes: Array<{
+      medioPagoCon?: string
+      tipoMedioPagoCon?: string  
+      medioPagoOtroCon?: string
+      totalMedioPago?: string
+    }> = []
+
+    const rootElement = xmlDoc.documentElement
+    console.log('🔍 Analizando documento XML para MedioPago:', rootElement.nodeName)
+
+    // Buscar [Nodo-Principal]->MedioPago (hijos directos del root, no descendientes)
+    const directMedioPagoElements = Array.from(rootElement.children).filter(child => child.nodeName === 'MedioPago')
+    console.log('📍 MedioPago directos encontrados:', directMedioPagoElements.length)
+    
+    directMedioPagoElements.forEach((medioPago, index) => {
+      if (medioPago.textContent?.trim()) {
+        console.log(`📍 MedioPago directo ${index + 1}:`, medioPago.textContent.trim())
+        medioPagoNodes.push({
+          medioPagoCon: medioPago.textContent.trim()
+        })
+      }
+    })
+
+    // Buscar [Nodo-Principal]->ResumenFactura->MedioPago
+    const resumenFactura = rootElement.querySelector('ResumenFactura')
+    console.log('📊 ResumenFactura encontrado:', !!resumenFactura)
+    
+    if (resumenFactura) {
+      const medioPagoElements = resumenFactura.querySelectorAll('MedioPago')
+      console.log('📊 MedioPago en ResumenFactura encontrados:', medioPagoElements.length)
+      
+      medioPagoElements.forEach((medioPagoElement, index) => {
+        console.log(`📊 Procesando MedioPago ${index + 1} en ResumenFactura`)
+        const medioPagoData: any = {}
+
+        // TipoMedioPago
+        const tipoMedioPago = medioPagoElement.querySelector('TipoMedioPago')
+        if (tipoMedioPago && tipoMedioPago.textContent?.trim()) {
+          console.log(`  - TipoMedioPago: ${tipoMedioPago.textContent.trim()}`)
+          medioPagoData.medioPagoCon = tipoMedioPago.textContent.trim()
+        }
+
+        // MedioPagoOtros  
+        const medioPagoOtros = medioPagoElement.querySelector('MedioPagoOtros')
+        if (medioPagoOtros && medioPagoOtros.textContent?.trim()) {
+          console.log(`  - MedioPagoOtros: ${medioPagoOtros.textContent.trim()}`)
+          medioPagoData.medioPagoOtroCon = medioPagoOtros.textContent.trim()
+        }
+
+        // TotalMedioPago -> va a tipoMedioPagoCon según las instrucciones
+        const totalMedioPago = medioPagoElement.querySelector('TotalMedioPago')
+        if (totalMedioPago && totalMedioPago.textContent?.trim()) {
+          console.log(`  - TotalMedioPago: ${totalMedioPago.textContent.trim()}`)
+          medioPagoData.tipoMedioPagoCon = totalMedioPago.textContent.trim()
+        }
+
+        // Solo agregar si tiene al menos un valor
+        if (Object.keys(medioPagoData).length > 0) {
+          console.log(`  ✅ Agregando MedioPago ${index + 1}:`, medioPagoData)
+          medioPagoNodes.push(medioPagoData)
+        } else {
+          console.log(`  ❌ MedioPago ${index + 1} vacío, no se agrega`)
+        }
+      })
+    }
+
+    console.log('🎯 Total de nodos MedioPago extraídos:', medioPagoNodes.length)
+    console.log('🎯 Nodos MedioPago:', medioPagoNodes)
+
+    // Si no se encontraron nodos MedioPago, crear un objeto vacío para mantener la fila
+    if (medioPagoNodes.length === 0) {
+      console.log('⚠️ No se encontraron nodos MedioPago, creando fila vacía')
+      medioPagoNodes.push({})
+    }
+
+    return medioPagoNodes
+  }
+
+  // Función para extraer nodos LineaDetalle de DetalleServicio de un documento XML
+  const extractLineaDetalleNodes = (xmlDoc: Document) => {
+    const lineaDetalleNodes: Array<{
+      codigoCon?: string
+      numeroLineaCon?: string
+      partidaArancelariaCon?: string
+      tipo3Con?: string
+      codigo2Con?: string
+      cantidadCon?: string
+      unidadMedidaCon?: string
+      tipoTransaccionCon?: string
+      unidadMedidaComercialCon?: string
+      detalleCon?: string
+      numeroVinOSerieCon?: string
+      registroMedicamento?: string
+      formaFarmaceutica?: string
+      precioUnitarioCon?: string
+      montoTotalCon?: string
+      subTotalCon?: string
+      ivaCobradoFabrica?: string
+      baseImponibleCon?: string
+      impuestoAsumidoEmisorFabrica?: string
+      impuestoNetoCon?: string
+      montoTotalLineaCon?: string
+    }> = []
+
+    const rootElement = xmlDoc.documentElement
+    console.log('🔍 Analizando documento XML para DetalleServicio->LineaDetalle:', rootElement.nodeName)
+
+    // Buscar [Nodo-Principal]->DetalleServicio->LineaDetalle
+    const detalleServicio = rootElement.querySelector('DetalleServicio')
+    console.log('📋 DetalleServicio encontrado:', !!detalleServicio)
+    
+    if (detalleServicio) {
+      const lineaDetalleElements = detalleServicio.querySelectorAll('LineaDetalle')
+      console.log('📋 LineaDetalle en DetalleServicio encontrados:', lineaDetalleElements.length)
+      
+      lineaDetalleElements.forEach((lineaDetalleElement, index) => {
+        
+        console.log(`📋 Procesando LineaDetalle ${index + 1} en DetalleServicio`)
+        const lineaDetalleData: any = {}
+
+        // Codigo (prioridad 1)
+        const codigo = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'Codigo')
+        if (codigo && codigo.textContent?.trim()) {
+          console.log(`  - Codigo: ${codigo.textContent.trim()}`)
+          lineaDetalleData.codigoCon = codigo.textContent.trim()
+        }
+        // CodigoCABYS (prioridad 2, solo si no hay Codigo)
+        else {
+          const codigoCABYS = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'CodigoCABYS')
+          if (codigoCABYS && codigoCABYS.textContent?.trim()) {
+            console.log(`  - CodigoCABYS: ${codigoCABYS.textContent.trim()}`)
+            lineaDetalleData.codigoCon = codigoCABYS.textContent.trim()
+          }
+        }
+
+        // NumeroLinea
+        const numeroLinea = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'NumeroLinea')
+        if (numeroLinea && numeroLinea.textContent?.trim()) {
+          console.log(`  - NumeroLinea: ${numeroLinea.textContent.trim()}`)
+          lineaDetalleData.numeroLineaCon = numeroLinea.textContent.trim()
+        }
+
+        // PartidaArancelaria
+        const partidaArancelaria = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'PartidaArancelaria')
+        if (partidaArancelaria && partidaArancelaria.textContent?.trim()) {
+          console.log(`  - PartidaArancelaria: ${partidaArancelaria.textContent.trim()}`)
+          lineaDetalleData.partidaArancelariaCon = partidaArancelaria.textContent.trim()
+        }
+
+        // CodigoComercial (tomar solo el primero)
+        const codigoComercial = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'CodigoComercial')
+        if (codigoComercial) {
+          const tipo = Array.from(codigoComercial.children).find((child: any) => child.nodeName === 'Tipo')
+          if (tipo && tipo.textContent?.trim()) {
+            console.log(`  - CodigoComercial->Tipo: ${tipo.textContent.trim()}`)
+            lineaDetalleData.tipo3Con = tipo.textContent.trim()
+          }
+          
+          const codigoComercialCodigo = Array.from(codigoComercial.children).find((child: any) => child.nodeName === 'Codigo')
+          if (codigoComercialCodigo && codigoComercialCodigo.textContent?.trim()) {
+            console.log(`  - CodigoComercial->Codigo: ${codigoComercialCodigo.textContent.trim()}`)
+            lineaDetalleData.codigo2Con = codigoComercialCodigo.textContent.trim()
+          }
+        }
+
+        // Cantidad
+        const cantidad = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'Cantidad')
+        if (cantidad && cantidad.textContent?.trim()) {
+          console.log(`  - Cantidad: ${cantidad.textContent.trim()}`)
+          lineaDetalleData.cantidadCon = cantidad.textContent.trim()
+        }
+
+        // UnidadMedida
+        const unidadMedida = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'UnidadMedida')
+        if (unidadMedida && unidadMedida.textContent?.trim()) {
+          console.log(`  - UnidadMedida: ${unidadMedida.textContent.trim()}`)
+          lineaDetalleData.unidadMedidaCon = unidadMedida.textContent.trim()
+        }
+
+        // TipoTransaccion
+        const tipoTransaccion = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'TipoTransaccion')
+        if (tipoTransaccion && tipoTransaccion.textContent?.trim()) {
+          console.log(`  - TipoTransaccion: ${tipoTransaccion.textContent.trim()}`)
+          lineaDetalleData.tipoTransaccionCon = tipoTransaccion.textContent.trim()
+        }
+
+        // UnidadMedidaComercial
+        const unidadMedidaComercial = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'UnidadMedidaComercial')
+        if (unidadMedidaComercial && unidadMedidaComercial.textContent?.trim()) {
+          console.log(`  - UnidadMedidaComercial: ${unidadMedidaComercial.textContent.trim()}`)
+          lineaDetalleData.unidadMedidaComercialCon = unidadMedidaComercial.textContent.trim()
+        }
+
+        // Detalle
+        const detalle = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'Detalle')
+        if (detalle && detalle.textContent?.trim()) {
+          console.log(`  - Detalle: ${detalle.textContent.trim()}`)
+          lineaDetalleData.detalleCon = detalle.textContent.trim()
+        }
+
+        // NumeroVINoSerie (tomar solo el primero)
+        const numeroVINoSerie = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'NumeroVINoSerie')
+        if (numeroVINoSerie && numeroVINoSerie.textContent?.trim()) {
+          console.log(`  - NumeroVINoSerie: ${numeroVINoSerie.textContent.trim()}`)
+          lineaDetalleData.numeroVinOSerieCon = numeroVINoSerie.textContent.trim()
+        }
+
+        // RegistroMedicamento
+        const registroMedicamento = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'RegistroMedicamento')
+        if (registroMedicamento && registroMedicamento.textContent?.trim()) {
+          console.log(`  - RegistroMedicamento: ${registroMedicamento.textContent.trim()}`)
+          lineaDetalleData.registroMedicamento = registroMedicamento.textContent.trim()
+        }
+
+        // FormaFarmaceutica
+        const formaFarmaceutica = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'FormaFarmaceutica')
+        if (formaFarmaceutica && formaFarmaceutica.textContent?.trim()) {
+          console.log(`  - FormaFarmaceutica: ${formaFarmaceutica.textContent.trim()}`)
+          lineaDetalleData.formaFarmaceutica = formaFarmaceutica.textContent.trim()
+        }
+
+        // PrecioUnitario
+        const precioUnitario = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'PrecioUnitario')
+        if (precioUnitario && precioUnitario.textContent?.trim()) {
+          console.log(`  - PrecioUnitario: ${precioUnitario.textContent.trim()}`)
+          lineaDetalleData.precioUnitarioCon = precioUnitario.textContent.trim()
+        }
+
+        // MontoTotal
+        const montoTotal = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'MontoTotal')
+        if (montoTotal && montoTotal.textContent?.trim()) {
+          console.log(`  - MontoTotal: ${montoTotal.textContent.trim()}`)
+          lineaDetalleData.montoTotalCon = montoTotal.textContent.trim()
+        }
+
+        // SubTotal
+        const subTotal = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'SubTotal')
+        if (subTotal && subTotal.textContent?.trim()) {
+          console.log(`  - SubTotal: ${subTotal.textContent.trim()}`)
+          lineaDetalleData.subTotalCon = subTotal.textContent.trim()
+        }
+
+        // IVACobradoFabrica
+        const ivaCobradoFabrica = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'IVACobradoFabrica')
+        if (ivaCobradoFabrica && ivaCobradoFabrica.textContent?.trim()) {
+          console.log(`  - IVACobradoFabrica: ${ivaCobradoFabrica.textContent.trim()}`)
+          lineaDetalleData.ivaCobradoFabrica = ivaCobradoFabrica.textContent.trim()
+        }
+
+        // BaseImponible
+        const baseImponible = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'BaseImponible')
+        if (baseImponible && baseImponible.textContent?.trim()) {
+          console.log(`  - BaseImponible: ${baseImponible.textContent.trim()}`)
+          lineaDetalleData.baseImponibleCon = baseImponible.textContent.trim()
+        }
+
+        // ImpuestoAsumidoEmisorFabrica
+        const impuestoAsumidoEmisorFabrica = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'ImpuestoAsumidoEmisorFabrica')
+        if (impuestoAsumidoEmisorFabrica && impuestoAsumidoEmisorFabrica.textContent?.trim()) {
+          console.log(`  - ImpuestoAsumidoEmisorFabrica: ${impuestoAsumidoEmisorFabrica.textContent.trim()}`)
+          lineaDetalleData.impuestoAsumidoEmisorFabrica = impuestoAsumidoEmisorFabrica.textContent.trim()
+        }
+
+        // ImpuestoNeto
+        const impuestoNeto = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'ImpuestoNeto')
+        if (impuestoNeto && impuestoNeto.textContent?.trim()) {
+          console.log(`  - ImpuestoNeto: ${impuestoNeto.textContent.trim()}`)
+          lineaDetalleData.impuestoNetoCon = impuestoNeto.textContent.trim()
+        }
+
+        // MontoTotalLinea
+        const montoTotalLinea = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'MontoTotalLinea')
+        if (montoTotalLinea && montoTotalLinea.textContent?.trim()) {
+          console.log(`  - MontoTotalLinea: ${montoTotalLinea.textContent.trim()}`)
+          lineaDetalleData.montoTotalLineaCon = montoTotalLinea.textContent.trim()
+        }
+
+        // Solo agregar si tiene al menos un valor
+        if (Object.keys(lineaDetalleData).length > 0) {
+          console.log(`  ✅ Agregando LineaDetalle ${index + 1}:`, lineaDetalleData)
+          lineaDetalleNodes.push(lineaDetalleData)
+        } else {
+          console.log(`  ❌ LineaDetalle ${index + 1} vacío, no se agrega`)
+        }
+      })
+    }
+
+    console.log('🎯 Total de nodos LineaDetalle extraídos:', lineaDetalleNodes.length)
+    console.log('🎯 Nodos LineaDetalle:', lineaDetalleNodes)
+
+    return lineaDetalleNodes
+  }
+
   // Función para procesar XML y extraer datos para la tabla
   const processXmlData = useCallback((xmlString: string, channelData?: any, needsBase64Decode: boolean = true) => {
     try {
@@ -307,6 +621,7 @@ export default function BillsTable({ channelId }: { channelId: string }) {
       const rootNodeName = rootElement.nodeName
       const isImportDocument = rootNodeName === 'MyCompaXMLDOCIMP'
       const isMyCompaXMLDoc = rootNodeName === 'MyCompaXMLDOC'
+      const isCommonDocument = !isImportDocument && !isMyCompaXMLDoc
 
       // Extraer datos básicos
       const clave = extractTagValue(xmlDoc, 'Clave')
@@ -382,8 +697,8 @@ export default function BillsTable({ channelId }: { channelId: string }) {
       // Generar emision para documentos de importación y MyCompaXMLDOC si no existe
       const emision = (isImportDocument || isMyCompaXMLDoc) && fechaEmision ? emisionFromFecha(fechaEmision) : null
 
-      // Extraer todos los datos necesarios para las columnas de la tabla
-      return {
+      // Crear datos base del documento (común a todas las filas)
+      const baseDocumentData = {
         // Datos básicos procesados
         claveCon: clave,
         fechaEmisionCon: fechaEmision,
@@ -474,10 +789,38 @@ export default function BillsTable({ channelId }: { channelId: string }) {
         condicionVentaCon: extractTagValue(xmlDoc, 'CondicionVenta'),
         plazoCreditoCon: extractTagValue(xmlDoc, 'PlazoCredito'),
         medioPagoCon: extractTagValue(xmlDoc, 'MedioPago'),
+        tipoMedioPagoCon: extractTagValue(xmlDoc, 'TipoMedioPago'),
+        medioPagoOtroCon: extractTagValue(xmlDoc, 'MedioPagoOtros'),
+        totalMedioPago: extractTagValue(xmlDoc, 'TotalMedioPago'),
         
         // Moneda
         codigoMonedaCon: extractTagValue(xmlDoc, 'CodigoMoneda'),
         tipoCambioCon: extractTagValue(xmlDoc, 'TipoCambio'),
+        
+        // Código (CABYS)
+        codigoCon: extractTagValue(xmlDoc, 'Codigo') || extractTagValue(xmlDoc, 'CodigoCABYS'),
+        
+        // Campos de LineaDetalle (se llenarán desde la sección correspondiente)
+        numeroLineaCon: extractTagValue(xmlDoc, 'NumeroLinea'),
+        partidaArancelariaCon: extractTagValue(xmlDoc, 'PartidaArancelaria'),
+        tipo3Con: extractTagValue(xmlDoc, 'Tipo'),
+        codigo2Con: extractTagValue(xmlDoc, 'CodigoComercial'),
+        cantidadCon: extractTagValue(xmlDoc, 'Cantidad'),
+        unidadMedidaCon: extractTagValue(xmlDoc, 'UnidadMedida'),
+        tipoTransaccionCon: extractTagValue(xmlDoc, 'TipoTransaccion'),
+        unidadMedidaComercialCon: extractTagValue(xmlDoc, 'UnidadMedidaComercial'),
+        detalleCon: extractTagValue(xmlDoc, 'Detalle'),
+        numeroVinOSerieCon: extractTagValue(xmlDoc, 'NumeroVINoSerie'),
+        registroMedicamento: extractTagValue(xmlDoc, 'RegistroMedicamento'),
+        formaFarmaceutica: extractTagValue(xmlDoc, 'FormaFarmaceutica'),
+        precioUnitarioCon: extractTagValue(xmlDoc, 'PrecioUnitario'),
+        montoTotalCon: extractTagValue(xmlDoc, 'MontoTotal'),
+        subTotalCon: extractTagValue(xmlDoc, 'SubTotal'),
+        ivaCobradoFabrica: extractTagValue(xmlDoc, 'IVACobradoFabrica'),
+        baseImponibleCon: extractTagValue(xmlDoc, 'BaseImponible'),
+        impuestoAsumidoEmisorFabrica: extractTagValue(xmlDoc, 'ImpuestoAsumidoEmisorFabrica'),
+        impuestoNetoCon: extractTagValue(xmlDoc, 'ImpuestoNeto'),
+        montoTotalLineaCon: extractTagValue(xmlDoc, 'MontoTotalLinea'),
         
         // Fechas adicionales (adaptadas según tipo de documento)
         diaDoc: (isImportDocument || isMyCompaXMLDoc) ? 
@@ -497,9 +840,117 @@ export default function BillsTable({ channelId }: { channelId: string }) {
         montoALECon: isMyCompaXMLDoc ? extractTagValue(xmlDoc, 'Monto') : '',
         impuestoALECon: isMyCompaXMLDoc ? extractTagValue(xmlDoc, 'Impuesto') : '',
       }
+
+      // Para documentos comunes (no MyCompaXMLDOCIMP ni MyCompaXMLDOC), crear múltiples filas
+      if (isCommonDocument) {
+        console.log('🔄 Procesando documento común, extrayendo nodos...')
+        
+        // Extraer nodos MedioPago
+        const medioPagoNodes = extractMedioPagoNodes(xmlDoc)
+        console.log(`📊 Encontrados ${medioPagoNodes.length} nodos MedioPago`)
+        
+        // Extraer nodos LineaDetalle
+        const lineaDetalleNodes = extractLineaDetalleNodes(xmlDoc)
+        console.log(`📋 Encontrados ${lineaDetalleNodes.length} nodos LineaDetalle`)
+        
+        const result = []
+        
+        // SECCIÓN 1: Crear filas para MedioPago (con columnas de MedioPago llenas)
+        if (medioPagoNodes.length > 0) {
+          console.log('📊 Creando filas para sección MedioPago...')
+          for (let i = 0; i < medioPagoNodes.length; i++) {
+            const medioPagoData = medioPagoNodes[i]
+            console.log(`📊 Creando fila MedioPago ${i + 1}:`, medioPagoData)
+            
+            result.push({
+              ...baseDocumentData,
+              // Solo llenar columnas de MedioPago
+              medioPagoCon: medioPagoData.medioPagoCon || baseDocumentData.medioPagoCon || '',
+              tipoMedioPagoCon: medioPagoData.tipoMedioPagoCon || baseDocumentData.tipoMedioPagoCon || '',
+              medioPagoOtroCon: medioPagoData.medioPagoOtroCon || baseDocumentData.medioPagoOtroCon || '',
+              totalMedioPago: medioPagoData.totalMedioPago || baseDocumentData.totalMedioPago || '',
+              // Limpiar columnas de otras secciones (LineaDetalle)
+              codigoCon: '',
+              numeroLineaCon: '',
+              partidaArancelariaCon: '',
+              tipo3Con: '',
+              codigo2Con: '',
+              cantidadCon: '',
+              unidadMedidaCon: '',
+              tipoTransaccionCon: '',
+              unidadMedidaComercialCon: '',
+              detalleCon: '',
+              numeroVinOSerieCon: '',
+              registroMedicamento: '',
+              formaFarmaceutica: '',
+              precioUnitarioCon: '',
+              montoTotalCon: '',
+              subTotalCon: '',
+              ivaCobradoFabrica: '',
+              baseImponibleCon: '',
+              impuestoAsumidoEmisorFabrica: '',
+              impuestoNetoCon: '',
+              montoTotalLineaCon: '',
+            })
+          }
+        }
+        
+        // SECCIÓN 2: Crear filas para LineaDetalle (con columnas de MedioPago vacías)
+        if (lineaDetalleNodes.length > 0) {
+          console.log('📋 Creando filas para sección LineaDetalle...')
+          for (let i = 0; i < lineaDetalleNodes.length; i++) {
+            const lineaDetalleData = lineaDetalleNodes[i]
+            console.log(`📋 Creando fila LineaDetalle ${i + 1}:`, lineaDetalleData)
+            
+            result.push({
+              ...baseDocumentData,
+              // Limpiar columnas de MedioPago (deben estar vacías)
+              medioPagoCon: '',
+              tipoMedioPagoCon: '',
+              medioPagoOtroCon: '',
+              totalMedioPago: '',
+              // Solo llenar columnas de LineaDetalle
+              codigoCon: lineaDetalleData.codigoCon || '',
+              numeroLineaCon: lineaDetalleData.numeroLineaCon || '',
+              partidaArancelariaCon: lineaDetalleData.partidaArancelariaCon || '',
+              tipo3Con: lineaDetalleData.tipo3Con || '',
+              codigo2Con: lineaDetalleData.codigo2Con || '',
+              cantidadCon: lineaDetalleData.cantidadCon || '',
+              unidadMedidaCon: lineaDetalleData.unidadMedidaCon || '',
+              tipoTransaccionCon: lineaDetalleData.tipoTransaccionCon || '',
+              unidadMedidaComercialCon: lineaDetalleData.unidadMedidaComercialCon || '',
+              detalleCon: lineaDetalleData.detalleCon || '',
+              numeroVinOSerieCon: lineaDetalleData.numeroVinOSerieCon || '',
+              registroMedicamento: lineaDetalleData.registroMedicamento || '',
+              formaFarmaceutica: lineaDetalleData.formaFarmaceutica || '',
+              precioUnitarioCon: lineaDetalleData.precioUnitarioCon || '',
+              montoTotalCon: lineaDetalleData.montoTotalCon || '',
+              subTotalCon: lineaDetalleData.subTotalCon || '',
+              ivaCobradoFabrica: lineaDetalleData.ivaCobradoFabrica || '',
+              baseImponibleCon: lineaDetalleData.baseImponibleCon || '',
+              impuestoAsumidoEmisorFabrica: lineaDetalleData.impuestoAsumidoEmisorFabrica || '',
+              impuestoNetoCon: lineaDetalleData.impuestoNetoCon || '',
+              montoTotalLineaCon: lineaDetalleData.montoTotalLineaCon || '',
+            })
+          }
+        }
+        
+        // Si no hay ninguna sección, crear una fila base
+        if (result.length === 0) {
+          console.log('🔄 No hay nodos especiales, creando fila base...')
+          result.push(baseDocumentData)
+        }
+        
+        console.log(`✅ Retornando ${result.length} filas procesadas (${medioPagoNodes.length} MedioPago + ${lineaDetalleNodes.length} LineaDetalle)`)
+        return result
+      }
+
+      // Para documentos MyCompaXMLDOCIMP y MyCompaXMLDOC, retornar un solo objeto (comportamiento original)
+      console.log('🔄 Documento especial, retornando una sola fila')
+      return [baseDocumentData]
     } catch (error) {
       console.error('Error procesando XML:', error)
-      return {}
+      return [{}]
     }
   }, [])
 
@@ -545,8 +996,8 @@ export default function BillsTable({ channelId }: { channelId: string }) {
           // Decodificar XML de Base64 (datos de BD)
           const xmlString = it.xml ? fromBase64(it.xml) : ''
           
-          // Procesar XML para extraer datos (SÍ necesita decodificación Base64)
-          const xmlData = xmlString ? processXmlData(xmlString, channelData, true) : {}
+          // Procesar XML para extraer datos (ahora retorna array)
+          const xmlDataArray = xmlString ? processXmlData(xmlString, channelData, true) : [{}]
           
           // Generar log para cada factura cargada desde la BD
           if (it.path && it.clave) {
@@ -567,58 +1018,64 @@ export default function BillsTable({ channelId }: { channelId: string }) {
             })
           }
           
-          // Procesar sucursal si es compra
-          let sucursalNombre = xmlData.sucursal || ''
-          if (xmlData.compraVentaRevisar === 'Compra' && xmlData.sucursal) {
-            try {
-              const sucursalResponse = await fetch(`/api/sucursales?activityId=&codigo=${xmlData.sucursal}&channelId=${channelId}`)
-              if (sucursalResponse.ok) {
-                const sucursalData = await sucursalResponse.json()
-                if (sucursalData.sucursales && sucursalData.sucursales.length > 0) {
-                  sucursalNombre = sucursalData.sucursales[0].nombre
+          // Procesar cada fila generada por el XML
+          for (const xmlData of (xmlDataArray as any[])) {
+            // Procesar sucursal si es compra
+            let sucursalNombre = (xmlData as any).sucursal || ''
+            if ((xmlData as any).compraVentaRevisar === 'Compra' && (xmlData as any).sucursal) {
+              try {
+                const sucursalResponse = await fetch(`/api/sucursales?activityId=&codigo=${(xmlData as any).sucursal}&channelId=${channelId}`)
+                if (sucursalResponse.ok) {
+                  const sucursalData = await sucursalResponse.json()
+                  if (sucursalData.sucursales && sucursalData.sucursales.length > 0) {
+                    sucursalNombre = sucursalData.sucursales[0].nombre
+                  }
                 }
+              } catch (err) {
+                console.error('Error cargando sucursal:', err)
               }
-            } catch (err) {
-              console.error('Error cargando sucursal:', err)
             }
-          }
-          
-          // Procesar actividad económica si es compra
-          let actividadNombre = xmlData.codigoActividadEmisorCon || ''
-          if (xmlData.compraVentaRevisar === 'Compra' && xmlData.codigoActividadEmisorCon) {
-            try {
-              const actividadResponse = await fetch(`/api/actividades?channelId=${channelId}&codigo=${xmlData.codigoActividadEmisorCon}`)
-              if (actividadResponse.ok) {
-                const actividadData = await actividadResponse.json()
-                if (actividadData.actividades && actividadData.actividades.length > 0) {
-                  const actividad = actividadData.actividades[0]
-                  actividadNombre = actividad.nombre_personal || actividad.nombre_original || actividadNombre
+            
+            // Procesar actividad económica si es compra
+            let actividadNombre = (xmlData as any).codigoActividadEmisorCon || ''
+            if ((xmlData as any).compraVentaRevisar === 'Compra' && (xmlData as any).codigoActividadEmisorCon) {
+              try {
+                const actividadResponse = await fetch(`/api/actividades?channelId=${channelId}&codigo=${(xmlData as any).codigoActividadEmisorCon}`)
+                if (actividadResponse.ok) {
+                  const actividadData = await actividadResponse.json()
+                  if (actividadData.actividades && actividadData.actividades.length > 0) {
+                    const actividad = actividadData.actividades[0]
+                    actividadNombre = actividad.nombre_personal || actividad.nombre_original || actividadNombre
+                  }
                 }
+              } catch (err) {
+                console.error('Error cargando actividad:', err)
               }
-            } catch (err) {
-              console.error('Error cargando actividad:', err)
             }
+            
+            const processedItem = {
+              ...it,
+              clave: it.clave,
+              path: it.path || '', // Campo path desde BD
+              ...xmlData, // Combinar datos extraídos del XML
+              sucursal: sucursalNombre, // Nombre de sucursal procesado
+              codigoActividadEmisorCon: actividadNombre, // Nombre de actividad procesado
+              // Mantener el emision para ordenamiento
+              emision: it.emision,
+              // Asegurar que claveCon esté presente
+              claveCon: (xmlData as any).claveCon || it.clave,
+              // Convertir emision a fecha si no hay fechaEmisionCon del XML
+              fechaEmisionCon: (xmlData as any).fechaEmisionCon || 
+                (it.emision && typeof it.emision === 'string' && it.emision.length === 12
+                  ? `20${it.emision.slice(0,2)}-${it.emision.slice(2,4)}-${it.emision.slice(4,6)}T${it.emision.slice(6,8)}:${it.emision.slice(8,10)}:${it.emision.slice(10,12)}`
+                  : '-')
+            }
+            
+            // Enriquecer con datos de CABYS si codigoCon no está vacío
+            const enrichedItem = await enrichRowWithCabysData(processedItem)
+            
+            mapped.push(enrichedItem)
           }
-          
-          const processedItem = {
-            ...it,
-            clave: it.clave,
-            path: it.path || '', // Campo path desde BD
-            ...xmlData, // Combinar datos extraídos del XML
-            sucursal: sucursalNombre, // Nombre de sucursal procesado
-            codigoActividadEmisorCon: actividadNombre, // Nombre de actividad procesado
-            // Mantener el emision para ordenamiento
-            emision: it.emision,
-            // Asegurar que claveCon esté presente
-            claveCon: xmlData.claveCon || it.clave,
-            // Convertir emision a fecha si no hay fechaEmisionCon del XML
-            fechaEmisionCon: xmlData.fechaEmisionCon || 
-              (it.emision && typeof it.emision === 'string' && it.emision.length === 12
-                ? `20${it.emision.slice(0,2)}-${it.emision.slice(2,4)}-${it.emision.slice(4,6)}T${it.emision.slice(6,8)}:${it.emision.slice(8,10)}:${it.emision.slice(10,12)}`
-                : '-')
-          }
-          
-          mapped.push(processedItem)
           
           // Actualizar progreso
           setProgressCurrent(i + 1)
@@ -713,6 +1170,96 @@ export default function BillsTable({ channelId }: { channelId: string }) {
     setProgressTitle(title)
   }
 
+  // Función para enriquecer datos de CABYS
+  const enrichRowWithCabysData = async (row: any): Promise<any> => {
+    // Solo procesar si codigoCon no está vacío
+    if (!row.codigoCon || row.codigoCon.trim() === '') {
+      return row
+    }
+
+    try {
+      let cabysData = null
+
+      // 1. Buscar en la base de datos (cabys_personales)
+      try {
+        const dbResponse = await fetch(`/api/cabys-personales?codigo=${row.codigoCon}&channelId=${channelId}`)
+        if (dbResponse.ok) {
+          const result = await dbResponse.json()
+          if (result.success && result.cabys) {
+            cabysData = result.cabys
+          }
+        }
+      } catch (dbError) {
+        console.error('Error loading CABYS from DB:', dbError)
+      }
+
+      // 2. Buscar en el archivo JSON si no hay datos completos en DB
+      let jsonData = null
+      try {
+        const jsonResponse = await fetch('/cabys_data.json')
+        if (jsonResponse.ok) {
+          const cabysDataJson = await jsonResponse.json()
+          if (cabysDataJson.data && Array.isArray(cabysDataJson.data)) {
+            jsonData = cabysDataJson.data.find((item: any) => item.codigo === row.codigoCon)
+          }
+        }
+      } catch (jsonError) {
+        console.error('Error loading CABYS from JSON:', jsonError)
+      }
+
+      // 3. Combinar datos (prioridad a DB, rellenar con JSON si hay datos incompletos)
+      if (cabysData || jsonData) {
+        const enrichedRow = {
+          ...row,
+          // descripcion -> descripPer (prioridad DB, no hay en JSON)
+          descripcion: cabysData?.descripPer || row.descripcion || '',
+          // descripGasInv -> descGasInv
+          descGasInv: cabysData?.descripGasInv || jsonData?.descripGasInv || row.descripGasInv || '',
+          // bienoserv -> bienoserv
+          bienoserv: cabysData?.bienoserv || jsonData?.bienoserv || row.bienoserv || '',
+          // categ -> categoria
+          categ: cabysData?.categoria || jsonData?.categoria || row.categ || '',
+          // claActCom -> actEconomica (siempre)
+          claActCom: cabysData?.actEconomica || row.claActCom || ''
+        }
+
+        // codActVent -> actEconomica (solo si es Venta)
+        if (row.compraVentaRevisar === 'Venta') {
+          enrichedRow.codActVent = cabysData?.actEconomica || row.codActVent || ''
+        }
+
+        // codActComp -> actEconomica (solo si es Compra)
+        if (row.compraVentaRevisar === 'Compra') {
+          enrichedRow.codActComp = cabysData?.actEconomica || row.codActComp || ''
+        }
+
+        console.log('enrichedRow', enrichedRow.descripGasInv)
+
+        return enrichedRow
+      }
+
+      // ############################################################################################
+      // ############################################################################################
+      // ############################################################################################
+      // ############################################################################################
+      // ############################################################################################
+
+      // DEBO CONSEGUIR QUE TAMBIÉN SE ACTUALICE LOS VALORES DE LA TABLA CUANDO ACTUALIZO EL CABYS DESDE "CABYS->CONSULTAR CABYS REGISTRADOS"
+      
+      // ############################################################################################
+      // ############################################################################################
+      // ############################################################################################
+      // ############################################################################################
+      // ############################################################################################
+
+      // Si no se encontró información, devolver la fila sin modificar
+      return row
+    } catch (error) {
+      console.error('Error enriching row with CABYS data:', error)
+      return row
+    }
+  }
+
   const handleBillsAdded = async (rows: any[]) => {
     // Procesar archivos nuevos que vienen del BillsToolbar
     const processedRows = await Promise.all(rows.map(async (row) => {
@@ -730,58 +1277,72 @@ export default function BillsTable({ channelId }: { channelId: string }) {
           console.error('Error loading channel data:', error)
         }
 
-        // Procesar XML SIN decodificación Base64
-        const xmlData = processXmlData(row.xmlContent, channelData, false)
+        // Procesar XML SIN decodificación Base64 (ahora retorna array)
+        const xmlDataArray = processXmlData(row.xmlContent, channelData, false)
         
-        // Procesar sucursal si es compra
-        let sucursalNombre = xmlData.sucursal || ''
-        if (xmlData.compraVentaRevisar === 'Compra' && xmlData.sucursal) {
-          try {
-            const sucursalResponse = await fetch(`/api/sucursales?activityId=&codigo=${xmlData.sucursal}&channelId=${channelId}`)
-            if (sucursalResponse.ok) {
-              const sucursalData = await sucursalResponse.json()
-              if (sucursalData.sucursales && sucursalData.sucursales.length > 0) {
-                sucursalNombre = sucursalData.sucursales[0].nombre
-              }
-            }
-          } catch (err) {
-            console.error('Error cargando sucursal:', err)
-          }
-        }
-        
-        // Procesar actividad económica si es compra
-        let actividadNombre = xmlData.codigoActividadEmisorCon || ''
-        if (xmlData.compraVentaRevisar === 'Compra' && xmlData.codigoActividadEmisorCon) {
-          try {
-            const actividadResponse = await fetch(`/api/actividades?channelId=${channelId}`)
-            if (actividadResponse.ok) {
-              const actividadData = await actividadResponse.json()
-              if (actividadData.actividades) {
-                const actividad = actividadData.actividades.find((act: any) => act.codigo === xmlData.codigoActividadEmisorCon)
-                if (actividad) {
-                  actividadNombre = actividad.nombre_personal || actividad.nombre_original || xmlData.codigoActividadEmisorCon
+        // Procesar cada fila generada por el XML
+        const processedItems = []
+        for (const xmlData of (xmlDataArray as any[])) {
+          // Procesar sucursal si es compra
+          let sucursalNombre = (xmlData as any).sucursal || ''
+          if ((xmlData as any).compraVentaRevisar === 'Compra' && (xmlData as any).sucursal) {
+            try {
+              const sucursalResponse = await fetch(`/api/sucursales?activityId=&codigo=${(xmlData as any).sucursal}&channelId=${channelId}`)
+              if (sucursalResponse.ok) {
+                const sucursalData = await sucursalResponse.json()
+                if (sucursalData.sucursales && sucursalData.sucursales.length > 0) {
+                  sucursalNombre = sucursalData.sucursales[0].nombre
                 }
               }
+            } catch (err) {
+              console.error('Error cargando sucursal:', err)
             }
-          } catch (err) {
-            console.error('Error cargando actividad:', err)
           }
+          
+          // Procesar actividad económica si es compra
+          let actividadNombre = (xmlData as any).codigoActividadEmisorCon || ''
+          if ((xmlData as any).compraVentaRevisar === 'Compra' && (xmlData as any).codigoActividadEmisorCon) {
+            try {
+              const actividadResponse = await fetch(`/api/actividades?channelId=${channelId}`)
+              if (actividadResponse.ok) {
+                const actividadData = await actividadResponse.json()
+                if (actividadData.actividades) {
+                  const actividad = actividadData.actividades.find((act: any) => act.codigo === (xmlData as any).codigoActividadEmisorCon)
+                  if (actividad) {
+                    actividadNombre = actividad.nombre_personal || actividad.nombre_original || (xmlData as any).codigoActividadEmisorCon
+                  }
+                }
+              }
+            } catch (err) {
+              console.error('Error cargando actividad:', err)
+            }
+          }
+          
+          // Construir el objeto de la fila
+          const rowData = {
+            ...row,
+            ...xmlData,
+            sucursal: sucursalNombre,
+            codigoActividadEmisorCon: actividadNombre
+          }
+          
+          // Enriquecer con datos de CABYS si codigoCon no está vacío
+          const enrichedRow = await enrichRowWithCabysData(rowData)
+          
+          processedItems.push(enrichedRow)
         }
 
-        return {
-          ...row,
-          ...xmlData,
-          sucursal: sucursalNombre,
-          codigoActividadEmisorCon: actividadNombre
-        }
+        return processedItems
       }
       
       return row
     }))
 
     setBills(prev => {
+      // Aplanar el array en caso de que algunos elementos sean arrays (múltiples filas por XML)
+      const flattenedRows = processedRows.flat()
       // Combinar las filas existentes con las nuevas procesadas
-      const combined = [...prev, ...processedRows]
+      const combined = [...prev, ...flattenedRows]
       
       // Ordenar por campo "emision" de forma descendente (más reciente primero)
       const sorted = combined.sort((a, b) => {
@@ -838,6 +1399,64 @@ export default function BillsTable({ channelId }: { channelId: string }) {
       })
     })
   }, [])
+
+  const reloadRowsWithCabysCode = async (codigo: string) => {
+    if (!codigo || codigo.trim() === '') return
+
+    try {
+      // Obtener el estado actual de bills y actualizar las filas afectadas
+      setBills((prevBills) => {
+        // Crear una promesa para actualizar las filas de forma asíncrona
+        Promise.all(
+          prevBills.map(async (bill) => {
+            // Solo actualizar filas con el mismo codigoCon
+            if (bill.codigoCon === codigo) {
+              // Volver a enriquecer esta fila con los datos actualizados
+              const enrichedBill = await enrichRowWithCabysData(bill)
+              return enrichedBill
+            }
+            return bill
+          })
+        ).then((updatedBills) => {
+          // Actualizar el estado con los datos nuevos
+          setBills(updatedBills)
+          console.log(`Filas con código CABYS ${codigo} recargadas exitosamente`)
+        })
+        
+        // Retornar el estado sin cambios inmediatamente
+        // El estado se actualizará cuando las promesas se resuelvan
+        return prevBills
+      })
+    } catch (error) {
+      console.error('Error recargando filas con código CABYS:', error)
+    }
+  }
+
+  const handleCabysEditClick = (bill: any) => {
+    // Solo abrir modal si codigoCon tiene un valor
+    if (bill.codigoCon && bill.codigoCon.trim() !== '') {
+      // Solo enviamos el código, el modal se encargará de cargar los datos
+      setSelectedCabysCodigo(bill.codigoCon)
+      setShowCabysEditModal(true)
+    }
+  }
+
+  const handleCabysEditClose = () => {
+    setShowCabysEditModal(false)
+    setSelectedCabysCodigo(null)
+  }
+
+  const handleCabysEditSave = async (updatedCabys: CabysItem) => {
+    console.log('CABYS actualizado:', updatedCabys)
+    
+    // Cerrar el modal primero
+    setShowCabysEditModal(false)
+    setSelectedCabysCodigo(null)
+    
+    // Recargar las filas que tienen el mismo código CABYS
+    // para reflejar los cambios guardados
+    await reloadRowsWithCabysCode(updatedCabys.codigo)
+  }
 
   const handleColumnHeaderClick = (column: ColumnDefinition) => {
     // No permitir filtrar columnas de acción
@@ -1199,8 +1818,17 @@ export default function BillsTable({ channelId }: { channelId: string }) {
     }
     
     if (column.systemName === 'anadirCabysDes') {
+      // Solo mostrar el botón si codigoCon no está vacío
+      if (!bill.codigoCon || bill.codigoCon.trim() === '') {
+        return null
+      }
+      
       return (
-        <button className={styles.actionButton} title="Añadir CABYS">
+        <button 
+          className={styles.actionButton} 
+          title="Añadir CABYS" 
+          onClick={() => handleCabysEditClick(bill)}
+        >
           ➕
         </button>
       )
@@ -1302,6 +1930,16 @@ export default function BillsTable({ channelId }: { channelId: string }) {
         isVisible={showProgress}
         title={progressTitle}
       />
+
+      {/* Modal de edición de CABYS */}
+      {showCabysEditModal && selectedCabysCodigo && (
+        <CabysEditModal
+          codigo={selectedCabysCodigo}
+          channelId={channelId}
+          onSave={handleCabysEditSave}
+          onClose={handleCabysEditClose}
+        />
+      )}
     </div>
   )
 }

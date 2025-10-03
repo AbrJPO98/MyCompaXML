@@ -1,8 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    appDir: true,
-  },
   // Forzar renderizado dinámico para todas las páginas
   staticPageGenerationTimeout: 0,
   // Configurar para evitar problemas de generación estática

@@ -27,7 +27,7 @@ interface CabysSelectionModalProps {
   channelId: string
   onSelect: (cabys: CabysItem) => void
   onClose: () => void
-  onEdit?: (cabys: CabysItem) => void
+  onEdit?: (codigo: string) => void  // Ahora recibe solo el código
 }
 
 const CabysSelectionModal: React.FC<CabysSelectionModalProps> = ({ channelId, onSelect, onClose, onEdit }) => {
@@ -116,7 +116,7 @@ const CabysSelectionModal: React.FC<CabysSelectionModalProps> = ({ channelId, on
 
   const handleEdit = (item: CabysItem) => {
     if (onEdit) {
-      onEdit(item)
+      onEdit(item.codigo)  // Solo enviamos el código
     }
   }
 

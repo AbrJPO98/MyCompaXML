@@ -23,23 +23,23 @@ interface Actividad {
 }
 
 interface CabysEditModalProps {
-  cabysItem: CabysItem
+  codigo: string  // Ahora solo recibe el código
   channelId: string
   onSave: (updatedCabys: CabysItem) => void
   onClose: () => void
 }
 
-const CabysEditModal: React.FC<CabysEditModalProps> = ({ cabysItem, channelId, onSave, onClose }) => {
+const CabysEditModal: React.FC<CabysEditModalProps> = ({ codigo, channelId, onSave, onClose }) => {
   const [formData, setFormData] = useState<CabysItem>({
-    codigo: cabysItem.codigo,
-    descripOf: cabysItem.descripOf,
-    bienoserv: cabysItem.bienoserv,
-    descripPer: cabysItem.descripPer,
-    descripGasInv: cabysItem.descripGasInv,
-    categoria: cabysItem.categoria,
-    actEconomica: cabysItem.actEconomica,
-    vidaUtil: cabysItem.vidaUtil,
-    importado: cabysItem.importado
+    codigo: codigo,
+    descripOf: '',
+    bienoserv: '',
+    descripPer: '',
+    descripGasInv: '',
+    categoria: '',
+    actEconomica: '',
+    vidaUtil: '',
+    importado: ''
   })
 
   const [loading, setLoading] = useState(false)
@@ -61,29 +61,53 @@ const CabysEditModal: React.FC<CabysEditModalProps> = ({ cabysItem, channelId, o
 
   const loadExistingCabysData = useCallback(async () => {
     try {
-      const response = await fetch(`/api/cabys-personales?codigo=${cabysItem.codigo}&channelId=${channelId}`)
+      // 1. Buscar en la base de datos (cabys_personales)
+      const dbResponse = await fetch(`/api/cabys-personales?codigo=${codigo}&channelId=${channelId}`)
+      let dbData = null
       
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success && data.cabys) {
-          // Use database data if exists
-          setFormData({
-            codigo: data.cabys.codigo,
-            descripOf: data.cabys.descripOf,
-            bienoserv: data.cabys.bienoserv || cabysItem.bienoserv,
-            descripPer: data.cabys.descripPer || '',
-            descripGasInv: data.cabys.descripGasInv || cabysItem.descripGasInv,
-            categoria: data.cabys.categoria || cabysItem.categoria,
-            actEconomica: data.cabys.actEconomica || '',
-            vidaUtil: data.cabys.vidaUtil || cabysItem.vidaUtil,
-            importado: data.cabys.importado || cabysItem.importado
-          })
+      if (dbResponse.ok) {
+        const result = await dbResponse.json()
+        if (result.success && result.cabys) {
+          dbData = result.cabys
         }
+      }
+
+      // 2. Buscar en el archivo JSON (cabys_data.json)
+      let jsonData = null
+      try {
+        const jsonResponse = await fetch('/cabys_data.json')
+        if (jsonResponse.ok) {
+          const cabysDataJson = await jsonResponse.json()
+          // Buscar en la propiedad "data"
+          if (cabysDataJson.data && Array.isArray(cabysDataJson.data)) {
+            jsonData = cabysDataJson.data.find((item: any) => item.codigo === codigo)
+          }
+        }
+      } catch (jsonError) {
+        console.error('Error loading cabys_data.json:', jsonError)
+      }
+
+      // 3. Combinar datos: prioridad a DB, rellenar con JSON si hay datos incompletos
+      if (dbData || jsonData) {
+        setFormData({
+          codigo: codigo,
+          descripOf: dbData?.descripOf || jsonData?.descripOf || '',
+          bienoserv: dbData?.bienoserv || jsonData?.bienoserv || '',
+          descripPer: dbData?.descripPer || '',  // descripPer solo viene de DB (es personalizado)
+          descripGasInv: dbData?.descripGasInv || jsonData?.descripGasInv || '',
+          categoria: dbData?.categoria || jsonData?.categoria || '',
+          actEconomica: dbData?.actEconomica || '',  // actEconomica solo viene de DB
+          vidaUtil: dbData?.vidaUtil || jsonData?.vidaUtil || '',
+          importado: dbData?.importado || jsonData?.importado || ''
+        })
+      } else {
+        // Si no se encuentra en ninguno, usar valores por defecto
+        console.warn(`No se encontró información para el código CABYS: ${codigo}`)
       }
     } catch (error) {
       console.error('Error loading existing CABYS data:', error)
     }
-  }, [cabysItem.codigo, channelId, cabysItem.bienoserv, cabysItem.descripGasInv, cabysItem.categoria, cabysItem.vidaUtil, cabysItem.importado])
+  }, [codigo, channelId])
 
   const loadDescripGasInvOptions = useCallback(async () => {
     try {
@@ -155,7 +179,7 @@ const CabysEditModal: React.FC<CabysEditModalProps> = ({ cabysItem, channelId, o
 
   useEffect(() => {
     loadInitialData()
-  }, [cabysItem.codigo, channelId, loadInitialData])
+  }, [codigo, channelId, loadInitialData])
 
   const handleInputChange = (field: keyof CabysItem, value: string | number) => {
     setFormData(prev => ({
