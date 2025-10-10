@@ -26,8 +26,9 @@ export async function GET(req: NextRequest) {
 
     const actividades = await Actividad.find(
       { channel_id: channelId },
-      { _id: 1, codigo: 1, nombre_personal: 1, nombre_original: 1, channel_id: 1 }
     ).sort({ codigo: 1 }).lean()
+
+    console.log('Actividades encontradas:', actividades)
 
     return NextResponse.json({
       success: true,

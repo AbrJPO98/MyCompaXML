@@ -17,6 +17,12 @@ interface ActividadHacienda {
   descripcion: string
   tipo: string
   estado: string
+  ciiu3: Ciiu3[]
+}
+
+interface Ciiu3 {
+  codigo: string
+  descripcion: string
 }
 
 interface HaciendaResponse {
@@ -110,14 +116,14 @@ export async function POST(request: NextRequest) {
       for (const actividadHacienda of actividadesHacienda) {
         try {
           // Validar datos requeridos
-          if (!actividadHacienda.codigo || !actividadHacienda.descripcion) {
+          if (!actividadHacienda.ciiu3[0].codigo || !actividadHacienda.ciiu3[0].descripcion) {
             console.log(`⚠️ Actividad sin datos requeridos:`, actividadHacienda)
             continue
           }
 
           // Buscar si ya existe una actividad con el mismo código en el canal
           const existingActividad = await Actividad.findOne({
-            codigo: actividadHacienda.codigo,
+            codigo: actividadHacienda.ciiu3[0].codigo,
             channel_id: new mongoose.Types.ObjectId(channelId)
           })
 
@@ -126,19 +132,19 @@ export async function POST(request: NextRequest) {
             await Actividad.findByIdAndUpdate(
               existingActividad._id,
               {
-                nombre_original: actividadHacienda.descripcion,
+                nombre_original: actividadHacienda.ciiu3[0].descripcion,
                 tipo: actividadHacienda.tipo || 'S',
                 estado: actividadHacienda.estado || 'A'
               },
               { runValidators: true }
             )
             updated++
-            console.log(`✅ Actividad actualizada: ${actividadHacienda.codigo}`)
+            console.log(`✅ Actividad actualizada: ${actividadHacienda.ciiu3[0].codigo}`)
           } else {
             // Crear nueva actividad
             const newActividad = new Actividad({
-              codigo: actividadHacienda.codigo,
-              nombre_personal: actividadHacienda.descripcion, // Inicialmente igual a la descripción
+              codigo: actividadHacienda.ciiu3[0].codigo,
+              nombre_personal: actividadHacienda.ciiu3[0].descripcion, // Inicialmente igual a la descripción
               nombre_original: actividadHacienda.descripcion,
               tipo: actividadHacienda.tipo || 'S',
               estado: actividadHacienda.estado || 'A',
@@ -147,10 +153,9 @@ export async function POST(request: NextRequest) {
 
             await newActividad.save()
             synchronized++
-            console.log(`✅ Actividad creada: ${actividadHacienda.codigo}`)
           }
         } catch (error) {
-          const errorMsg = `Error procesando actividad ${actividadHacienda.codigo}: ${error instanceof Error ? error.message : 'Error desconocido'}`
+          const errorMsg = `Error procesando actividad ${actividadHacienda.ciiu3[0].codigo}: ${error instanceof Error ? error.message : 'Error desconocido'}`
           console.error(`❌ ${errorMsg}`)
           errors.push(errorMsg)
         }

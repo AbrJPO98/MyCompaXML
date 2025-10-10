@@ -17,6 +17,7 @@ interface Cliente {
   district?: string
   address?: string
   address_extranjero?: string
+  act_ecos?: string[]  // Array de códigos de actividades económicas
 }
 
 interface ClienteFormModalProps {
@@ -49,6 +50,11 @@ interface Ubicaciones {
   }
 }
 
+interface ActividadEconomica {
+  name: number
+  description: string
+}
+
 const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ 
   isOpen, 
   onClose, 
@@ -77,14 +83,22 @@ const ClienteFormModal: React.FC<ClienteFormModalProps> = ({
   const [ubicaciones, setUbicaciones] = useState<Ubicaciones | null>(null)
   const [availableCantones, setAvailableCantones] = useState<{[key: string]: {nombre: string, distritos: {[key: string]: string}}}>({})
   const [availableDistritos, setAvailableDistritos] = useState<{[key: string]: string}>({})
+  
+  // Estados para actividades económicas
+  const [actividadesEconomicas, setActividadesEconomicas] = useState<ActividadEconomica[]>([])
+  const [selectedActividades, setSelectedActividades] = useState<ActividadEconomica[]>([])
+  const [actividadSearchTerm, setActividadSearchTerm] = useState('')
+  const [filteredActividades, setFilteredActividades] = useState<ActividadEconomica[]>([])
+  const [showActividadDropdown, setShowActividadDropdown] = useState(false)
 
-  // Cargar datos de ubicaciones y códigos de teléfono
+  // Cargar datos de ubicaciones, códigos de teléfono y actividades económicas
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [phoneCodesRes, ubicacionesRes] = await Promise.all([
+        const [phoneCodesRes, ubicacionesRes, actividadesRes] = await Promise.all([
           fetch('/phone_codes.json'),
-          fetch('/CR_ubicaciones.json')
+          fetch('/CR_ubicaciones.json'),
+          fetch('/actividades_economicas_CR.json')
         ])
 
         if (phoneCodesRes.ok) {
@@ -95,6 +109,11 @@ const ClienteFormModal: React.FC<ClienteFormModalProps> = ({
         if (ubicacionesRes.ok) {
           const ubicacionesData = await ubicacionesRes.json()
           setUbicaciones(ubicacionesData)
+        }
+
+        if (actividadesRes.ok) {
+          const actividadesData = await actividadesRes.json()
+          setActividadesEconomicas(actividadesData)
         }
       } catch (error) {
         console.error('Error loading data:', error)
@@ -118,8 +137,19 @@ const ClienteFormModal: React.FC<ClienteFormModalProps> = ({
         canton: cliente.canton || '',
         district: cliente.district || '',
         address: cliente.address || '',
-        address_extranjero: cliente.address_extranjero || ''
+        address_extranjero: cliente.address_extranjero || '',
+        act_ecos: cliente.act_ecos || []
       })
+      
+      // Cargar actividades económicas seleccionadas
+      if (cliente.act_ecos && cliente.act_ecos.length > 0 && actividadesEconomicas.length > 0) {
+        const selectedActs = actividadesEconomicas.filter(act => 
+          cliente.act_ecos!.includes(act.name.toString())
+        )
+        setSelectedActividades(selectedActs)
+      } else {
+        setSelectedActividades([])
+      }
     } else {
       setFormData({
         ident: '',
@@ -134,10 +164,12 @@ const ClienteFormModal: React.FC<ClienteFormModalProps> = ({
         canton: '',
         district: '',
         address: '',
-        address_extranjero: ''
+        address_extranjero: '',
+        act_ecos: []
       })
+      setSelectedActividades([])
     }
-  }, [cliente])
+  }, [cliente, actividadesEconomicas])
 
   // Actualizar cantones cuando cambia la provincia
   useEffect(() => {
@@ -175,12 +207,51 @@ const ClienteFormModal: React.FC<ClienteFormModalProps> = ({
     }
   }, [formData.province, formData.canton, ubicaciones])
 
+  // Filtrar actividades económicas basado en el término de búsqueda
+  useEffect(() => {
+    if (actividadSearchTerm.trim() === '') {
+      setFilteredActividades([])
+      setShowActividadDropdown(false)
+      return
+    }
+
+    const searchLower = actividadSearchTerm.toLowerCase()
+    const filtered = actividadesEconomicas.filter(act => {
+      // Filtrar las que ya están seleccionadas
+      const isAlreadySelected = selectedActividades.some(selected => selected.name === act.name)
+      if (isAlreadySelected) return false
+
+      // Buscar en name o description
+      const nameMatch = act.name.toString().includes(searchLower)
+      const descMatch = act.description.toLowerCase().includes(searchLower)
+      return nameMatch || descMatch
+    }).slice(0, 10) // Limitar a 10 resultados
+
+    setFilteredActividades(filtered)
+    setShowActividadDropdown(filtered.length > 0)
+  }, [actividadSearchTerm, actividadesEconomicas, selectedActividades])
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
       [name]: value
     }))
+  }
+
+  // Funciones para manejar actividades económicas
+  const handleActividadSelect = (actividad: ActividadEconomica) => {
+    setSelectedActividades(prev => [...prev, actividad])
+    setActividadSearchTerm('')
+    setShowActividadDropdown(false)
+  }
+
+  const handleActividadRemove = (actividadName: number) => {
+    setSelectedActividades(prev => prev.filter(act => act.name !== actividadName))
+  }
+
+  const handleActividadSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setActividadSearchTerm(e.target.value)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -200,12 +271,18 @@ const ClienteFormModal: React.FC<ClienteFormModalProps> = ({
       const url = cliente ? `/api/clientes?id=${cliente._id}` : '/api/clientes'
       const method = cliente ? 'PUT' : 'POST'
 
+      // Preparar datos para enviar, incluyendo las actividades económicas
+      const dataToSend = {
+        ...formData,
+        act_ecos: selectedActividades.map(act => act.name.toString())
+      }
+
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(dataToSend)
       })
 
       const data = await response.json()
@@ -461,6 +538,62 @@ const ClienteFormModal: React.FC<ClienteFormModalProps> = ({
                   rows={3}
                   disabled={loading}
                 />
+              </div>
+            </div>
+
+            {/* Actividades Económicas */}
+            <div className={styles.formRowFull}>
+              <div className={styles.formGroup}>
+                <label htmlFor="actividad_search">Actividades Económicas</label>
+                <div className={styles.autocompleteContainer}>
+                  <input
+                    type="text"
+                    id="actividad_search"
+                    value={actividadSearchTerm}
+                    onChange={handleActividadSearchChange}
+                    placeholder="Buscar por código o descripción..."
+                    disabled={loading}
+                    className={styles.autocompleteInput}
+                    autoComplete="off"
+                  />
+                  
+                  {/* Dropdown de resultados */}
+                  {showActividadDropdown && filteredActividades.length > 0 && (
+                    <div className={styles.autocompleteDropdown}>
+                      {filteredActividades.map((actividad) => (
+                        <div
+                          key={actividad.name}
+                          className={styles.autocompleteItem}
+                          onClick={() => handleActividadSelect(actividad)}
+                        >
+                          <span className={styles.actividadCode}>{actividad.name}</span>
+                          <span className={styles.actividadDescription}>{actividad.description}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Lista de actividades seleccionadas */}
+                {selectedActividades.length > 0 && (
+                  <div className={styles.selectedActividadesList}>
+                    {selectedActividades.map((actividad) => (
+                      <div key={actividad.name} className={styles.selectedActividadItem}>
+                        <span className={styles.selectedActividadCode}>{actividad.name}</span>
+                        <span className={styles.selectedActividadDescription}>{actividad.description}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleActividadRemove(actividad.name)}
+                          className={styles.removeActividadButton}
+                          disabled={loading}
+                          title="Eliminar"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </form>

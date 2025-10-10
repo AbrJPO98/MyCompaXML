@@ -126,6 +126,8 @@ export async function PUT(request: NextRequest) {
     const clienteId = searchParams.get('id')
     const body = await request.json()
 
+    console.log('body', body)
+
     if (!clienteId) {
       return NextResponse.json(
         { success: false, message: 'ID de cliente es requerido' },

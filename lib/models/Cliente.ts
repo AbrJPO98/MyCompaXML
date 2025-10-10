@@ -14,6 +14,7 @@ export interface ICliente extends Document {
   district?: string
   address?: string
   address_extranjero?: string
+  act_ecos?: string[]  // Array de códigos de actividades económicas
   createdAt: Date
   updatedAt: Date
 }
@@ -75,6 +76,10 @@ const ClienteSchema: Schema = new Schema({
   address_extranjero: {
     type: String,
     trim: true
+  },
+  act_ecos: {
+    type: [String],
+    default: []
   }
 }, {
   timestamps: true

@@ -82,11 +82,13 @@ export const COLUMN_DEFINITIONS: ColumnDefinition[] = [
   { header: "Codigo fax (Receptor)", systemName: "codigoPais4Con", visible: true },
   { header: "Número fax (Receptor)", systemName: "numTelefono4Con", visible: true },
   { header: "Correo electrónico (Receptor)", systemName: "correoElectronico2Con", visible: true },
+  /*
   { header: "Ley (Autorizado por ley especial)", systemName: "leyALECon", visible: true },
   { header: "Artículo (Autorizado por ley especial)", systemName: "articuloALECon", visible: true },
   { header: "Inciso (Autorizado por ley especial)", systemName: "incisoALECon", visible: true },
   { header: "Monto (Autorizado por ley especial)", systemName: "montoALECon", visible: true },
   { header: "Impuesto (Autorizado por ley especial)", systemName: "impuestoALECon", visible: true },
+   */
   { header: "Tipo (Mercancía importada)", systemName: "tipoMercImpor", visible: true },
   { header: "País importador", systemName: "paisImportador", visible: true },
   { header: "Condición de la venta", systemName: "condicionVentaCon", visible: true },
@@ -846,17 +848,18 @@ export default function BillsTable({ channelId }: { channelId: string }) {
         console.log('🔄 Procesando documento común, extrayendo nodos...')
         
         // Extraer nodos MedioPago
-        const medioPagoNodes = extractMedioPagoNodes(xmlDoc)
-        console.log(`📊 Encontrados ${medioPagoNodes.length} nodos MedioPago`)
+        // const medioPagoNodes = extractMedioPagoNodes(xmlDoc)
+        // console.log(`📊 Encontrados ${medioPagoNodes.length} nodos MedioPago`)
         
         // Extraer nodos LineaDetalle
-        const lineaDetalleNodes = extractLineaDetalleNodes(xmlDoc)
-        console.log(`📋 Encontrados ${lineaDetalleNodes.length} nodos LineaDetalle`)
+        // const lineaDetalleNodes = extractLineaDetalleNodes(xmlDoc)
+        // console.log(`📋 Encontrados ${lineaDetalleNodes.length} nodos LineaDetalle`)
         
         const result = []
         
         // SECCIÓN 1: Crear filas para MedioPago (con columnas de MedioPago llenas)
-        if (medioPagoNodes.length > 0) {
+        /*
+        if (false) {
           console.log('📊 Creando filas para sección MedioPago...')
           for (let i = 0; i < medioPagoNodes.length; i++) {
             const medioPagoData = medioPagoNodes[i]
@@ -896,7 +899,7 @@ export default function BillsTable({ channelId }: { channelId: string }) {
         }
         
         // SECCIÓN 2: Crear filas para LineaDetalle (con columnas de MedioPago vacías)
-        if (lineaDetalleNodes.length > 0) {
+        if (false) {
           console.log('📋 Creando filas para sección LineaDetalle...')
           for (let i = 0; i < lineaDetalleNodes.length; i++) {
             const lineaDetalleData = lineaDetalleNodes[i]
@@ -933,7 +936,7 @@ export default function BillsTable({ channelId }: { channelId: string }) {
               montoTotalLineaCon: lineaDetalleData.montoTotalLineaCon || '',
             })
           }
-        }
+        }*/
         
         // Si no hay ninguna sección, crear una fila base
         if (result.length === 0) {
@@ -941,7 +944,7 @@ export default function BillsTable({ channelId }: { channelId: string }) {
           result.push(baseDocumentData)
         }
         
-        console.log(`✅ Retornando ${result.length} filas procesadas (${medioPagoNodes.length} MedioPago + ${lineaDetalleNodes.length} LineaDetalle)`)
+        // console.log(`✅ Retornando ${result.length} filas procesadas (${medioPagoNodes.length} MedioPago + ${lineaDetalleNodes.length} LineaDetalle)`)
         return result
       }
 
