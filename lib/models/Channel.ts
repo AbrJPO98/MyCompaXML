@@ -1,5 +1,15 @@
 import mongoose, { Document, Model, Schema } from 'mongoose'
 
+// Interfaz para crypto_key
+interface ICryptoKey {
+  uuid: string
+  email: string
+  password: string
+  pin: string
+  status: 'prod' | 'sand'
+  file_name: string
+}
+
 // Interfaz para el documento de Channel basada en la estructura de la imagen
 export interface IChannel extends Document {
   _id: string
@@ -20,8 +30,19 @@ export interface IChannel extends Document {
     phone: string
     identification: string
     fiscal: string
-  }
+  },
+  crypto_key?: ICryptoKey | null
 }
+
+// Schema para crypto_key
+const CryptoKeySchema = new Schema({
+  uuid: { type: String, required: true },
+  email: { type: String, required: true },
+  password: { type: String, required: true },
+  pin: { type: String, required: true },
+  status: { type: String, required: true, enum: ['prod', 'sand'] },
+  file_name: { type: String, required: true }
+}, { _id: false })
 
 // Schema de Channel para la colección "Channels" en la base de datos "myCompaXML"
 const ChannelSchema: Schema<IChannel> = new Schema({
@@ -66,10 +87,16 @@ const ChannelSchema: Schema<IChannel> = new Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  crypto_key: {
+    type: CryptoKeySchema,
+    default: null
   }
 }, {
   timestamps: true, // Agrega createdAt y updatedAt automáticamente
-  collection: 'Channels' // Especificar explícitamente el nombre de la colección
+  collection: 'Channels', // Especificar explícitamente el nombre de la colección
+  strict: true,
+  minimize: false // Esto asegura que se guarden objetos vacíos
 })
 
 // Índices para optimizar consultas
@@ -94,6 +121,14 @@ ChannelSchema.methods.getContactInfo = function() {
 }
 
 // Verificar si el modelo ya existe antes de crear uno nuevo
-const Channel: Model<IChannel> = mongoose.models.Channel || mongoose.model<IChannel>('Channel', ChannelSchema)
+// Si existe, eliminarlo primero para usar la nueva definición
+if (mongoose.connection && mongoose.connection.models.Channel) {
+  delete (mongoose.connection.models as any).Channel;
+}
+if (mongoose.models.Channel) {
+  delete (mongoose.models as any).Channel;
+}
+
+const Channel: Model<IChannel> = mongoose.model<IChannel>('Channel', ChannelSchema)
 
 export default Channel 

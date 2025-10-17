@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/contexts/AuthContext'
 import ClientesModal from '@/components/ClientesModal'
+import AddCryptoKeyModal from '@/components/AddCryptoKeyModal'
 import styles from './electronic-billing.module.css'
 
 interface Channel {
@@ -30,6 +31,7 @@ const ElectronicBillingPage: React.FC = () => {
   const [showFirmaMenu, setShowFirmaMenu] = useState(false)
   const [showClientesMenu, setShowClientesMenu] = useState(false)
   const [showClientesModal, setShowClientesModal] = useState(false)
+  const [showAddCryptoKeyModal, setShowAddCryptoKeyModal] = useState(false)
 
   const validateChannelAccess = useCallback(async () => {
     if (!user?._id) return
@@ -199,8 +201,13 @@ const ElectronicBillingPage: React.FC = () => {
 
   const handleAnadirFirma = () => {
     setShowFirmaMenu(false)
-    // TODO: Implement add signature functionality
-    console.log('Añadir firma clicked')
+    setShowAddCryptoKeyModal(true)
+  }
+
+  const handleCryptoKeySuccess = () => {
+    console.log('Firma digital guardada exitosamente')
+    // Aquí puedes agregar lógica adicional después de guardar la firma
+    // Por ejemplo, mostrar una notificación, actualizar el estado, etc.
   }
 
   const handleListaClientes = () => {
@@ -412,6 +419,16 @@ const ElectronicBillingPage: React.FC = () => {
         isOpen={showClientesModal}
         onClose={() => setShowClientesModal(false)}
       />
+
+      {/* Modal de Añadir Firma Digital */}
+      {channel && (
+        <AddCryptoKeyModal
+          isOpen={showAddCryptoKeyModal}
+          onClose={() => setShowAddCryptoKeyModal(false)}
+          channelId={channel._id}
+          onSuccess={handleCryptoKeySuccess}
+        />
+      )}
     </div>
   )
 }

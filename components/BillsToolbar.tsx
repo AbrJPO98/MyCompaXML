@@ -2,6 +2,7 @@
 import React, { useRef, useState } from 'react'
 import CabysSelectionModal from './CabysSelectionModal'
 import CabysEditModal from './CabysEditModal'
+import DescripcionesPersonalizadasModal from './DescripcionesPersonalizadasModal'
 import LawAuthorizedDocModal from './LawAuthorizedDocModal'
 import DiscardedBillsModal from './DiscardedBillsModal'
 import CreateFileSetModal from './CreateFileSetModal'
@@ -35,6 +36,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
   const [showFileSetsMenuModal, setShowFileSetsMenuModal] = useState(false)
   const [showCabysModal, setShowCabysModal] = useState(false)
   const [showCabysEditModal, setShowCabysEditModal] = useState(false)
+  const [showDescripcionesPersonalizadasModal, setShowDescripcionesPersonalizadasModal] = useState(false)
   const [selectedCabysCodigo, setSelectedCabysCodigo] = useState<string | null>(null)
   const [showLawDocModal, setShowLawDocModal] = useState(false)
   const [showDiscardedBillsModal, setShowDiscardedBillsModal] = useState(false)
@@ -87,6 +89,11 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
   const handleConsultarCabys = () => {
     setShowCabysMenu(false)
     setShowCabysModal(true)
+  }
+
+  const handleDescripcionesPersonalizadas = () => {
+    setShowCabysMenu(false)
+    setShowDescripcionesPersonalizadasModal(true)
   }
 
   const handleCreateLawDoc = () => {
@@ -942,6 +949,12 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
                   >
                     📊 Consultar CABYS registrados
                   </button>
+                  <button
+                    onClick={handleDescripcionesPersonalizadas}
+                    className={styles.dropdownItem}
+                  >
+                    📝 Descripciones personalizadas de CABYS
+                  </button>
                 </div>
               </>
             )}
@@ -1078,6 +1091,14 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
           onClose={() => setShowFileSetsMenuModal(false)}
           onCreateFileSet={handleCreateFileSet}
           onManageFileSet={handleManageFileSet}
+        />
+      )}
+
+      {/* Modal de descripciones personalizadas */}
+      {showDescripcionesPersonalizadasModal && (
+        <DescripcionesPersonalizadasModal
+          channelId={channelId}
+          onClose={() => setShowDescripcionesPersonalizadasModal(false)}
         />
       )}
 

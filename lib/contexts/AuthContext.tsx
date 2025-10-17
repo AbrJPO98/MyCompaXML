@@ -90,7 +90,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         body: JSON.stringify({ email, password }),
       })
 
-      const data = await response.json()
+      // Verificar si la respuesta es válida
+      if (!response.ok) {
+        console.error('Error en la respuesta del servidor:', response.status, response.statusText)
+      }
+
+      // Intentar parsear la respuesta como JSON con manejo de errores
+      let data
+      try {
+        const text = await response.text()
+        if (!text) {
+          console.error('Respuesta vacía del servidor')
+          return false
+        }
+        data = JSON.parse(text)
+      } catch (parseError) {
+        console.error('Error al parsear la respuesta JSON:', parseError)
+        console.error('Respuesta recibida no es JSON válido')
+        return false
+      }
 
       if (data.success && data.user) {
         // Verificar que el usuario esté activo

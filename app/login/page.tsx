@@ -60,11 +60,18 @@ export default function LoginPage() {
         // Login exitoso - redirigir a la nueva página de inicio
         router.push('/home')
       } else {
-        setError('Email o contraseña incorrectos')
+        setError('Email o contraseña incorrectos. Por favor verifica tus credenciales.')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error en login:', error)
-      setError('Error de conexión. Por favor intenta de nuevo.')
+      // Mostrar un mensaje más descriptivo según el tipo de error
+      if (error?.message?.includes('JSON')) {
+        setError('Error del servidor. Por favor contacta al administrador.')
+      } else if (error?.message?.includes('fetch') || error?.message?.includes('network')) {
+        setError('Error de conexión. Verifica tu conexión a internet.')
+      } else {
+        setError('Error inesperado. Por favor intenta de nuevo.')
+      }
     } finally {
       setLoading(false)
     }

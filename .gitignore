@@ -36,3 +36,7 @@ next-env.d.ts
 
 # scripts
 /scripts
+
+# crypto keys - DO NOT COMMIT
+/protected/crypto-keys/*
+!/protected/crypto-keys/.gitkeep

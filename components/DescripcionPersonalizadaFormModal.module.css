@@ -8,7 +8,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1070;
+  z-index: 1060;
 }
 
 .modal {
@@ -97,6 +97,12 @@
   gap: 1rem;
 }
 
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
 .formGroup {
   display: flex;
   flex-direction: column;
@@ -127,15 +133,20 @@
   box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
 }
 
-.readOnlyInput {
-  background-color: #f8f9fa !important;
-  color: #6c757d !important;
-  cursor: not-allowed !important;
+.formGroup input:disabled,
+.formGroup select:disabled,
+.formGroup textarea:disabled {
+  background-color: #e9ecef;
+  cursor: not-allowed;
 }
 
-.textarea {
-  resize: vertical;
-  min-height: 80px;
+.inputError {
+  border-color: #dc3545 !important;
+}
+
+.error {
+  color: #dc3545;
+  font-size: 0.75rem;
 }
 
 .selectWithButton {
@@ -170,6 +181,11 @@
   background-color: #218838;
 }
 
+.addButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .newOptionForm {
   display: flex;
   gap: 0.5rem;
@@ -180,6 +196,10 @@
 .newOptionForm input {
   flex: 1;
   margin: 0;
+  padding: 0.5rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 0.875rem;
 }
 
 .confirmButton {
@@ -195,6 +215,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .confirmButton:hover {
@@ -214,10 +235,79 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .cancelButton:hover {
   background-color: #c82333;
+}
+
+/* CABYS Selector */
+.cabysSelector {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.cabysButton {
+  flex: 1;
+  padding: 0.75rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.875rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.cabysButton:hover:not(:disabled) {
+  border-color: #007bff;
+}
+
+.cabysButton:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.cabysButton:disabled {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+}
+
+.cabysPlaceholder {
+  color: #6c757d;
+}
+
+.cabysSelected {
+  color: #495057;
+  font-weight: 500;
+}
+
+.clearButton {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  width: 35px;
+  height: 42px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.clearButton:hover {
+  background-color: #c82333;
+}
+
+.clearButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .formButtons {
@@ -249,7 +339,7 @@
   cursor: not-allowed;
 }
 
-.saveButton {
+.submitButton {
   background-color: #007bff;
   color: white;
   border: none;
@@ -258,15 +348,24 @@
   cursor: pointer;
   font-size: 0.875rem;
   transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.saveButton:hover {
+.submitButton:hover {
   background-color: #0056b3;
 }
 
-.saveButton:disabled {
+.submitButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.submitButton .spinner {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
 }
 
 /* Responsive */
@@ -282,6 +381,10 @@
 
   .modalBody {
     padding: 1rem;
+  }
+
+  .formRow {
+    grid-template-columns: 1fr;
   }
 
   .formButtons {
@@ -315,4 +418,14 @@
     width: 100%;
     height: 40px;
   }
+
+  .cabysSelector {
+    flex-direction: column;
+  }
+
+  .clearButton {
+    width: 100%;
+    height: 40px;
+  }
 }
+
