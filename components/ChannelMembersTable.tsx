@@ -39,6 +39,7 @@ export default function ChannelMembersTable({ channelId }: ChannelMembersTablePr
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showPendingModal, setShowPendingModal] = useState(false)
+  const [pendingCount, setPendingCount] = useState<number>(0)
 
   // Obtener columnas visibles
   const visibleColumns = columns.filter(col => col.visible)
@@ -105,10 +106,27 @@ export default function ChannelMembersTable({ channelId }: ChannelMembersTablePr
     }
   }, [channelId])
 
+  const loadPendingCount = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/user-channels/pending-count?channelId=${channelId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setPendingCount(data.count || 0)
+      } else {
+        console.error('Error loading pending count')
+        setPendingCount(0)
+      }
+    } catch (error: any) {
+      console.error('Error loading pending count:', error)
+      setPendingCount(0)
+    }
+  }, [channelId])
+
 
   useEffect(() => {
     loadMembers()
-  }, [loadMembers])
+    loadPendingCount()
+  }, [loadMembers, loadPendingCount])
 
   const renderTableHeader = () => {
     return (
@@ -254,8 +272,9 @@ export default function ChannelMembersTable({ channelId }: ChannelMembersTablePr
 
   const handleClosePendingModal = () => {
     setShowPendingModal(false)
-    // Recargar la tabla principal
+    // Recargar la tabla principal y el contador de pendientes
     loadMembers()
+    loadPendingCount()
   }
 
 
@@ -273,7 +292,7 @@ export default function ChannelMembersTable({ channelId }: ChannelMembersTablePr
             className={styles.pendingButton}
             onClick={() => setShowPendingModal(true)}
           >
-            ⏳ Pendientes
+            ⏳ Pendientes {pendingCount > 0 && `(${pendingCount})`}
           </button>
         </div>
       </div>

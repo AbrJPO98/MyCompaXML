@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/contexts/AuthContext'
 import ClientesModal from '@/components/ClientesModal'
 import AddCryptoKeyModal from '@/components/AddCryptoKeyModal'
+import DocumentoFacturaModal from '@/components/DocumentoFacturaModal'
 import styles from './electronic-billing.module.css'
 
 interface Channel {
@@ -32,6 +33,7 @@ const ElectronicBillingPage: React.FC = () => {
   const [showClientesMenu, setShowClientesMenu] = useState(false)
   const [showClientesModal, setShowClientesModal] = useState(false)
   const [showAddCryptoKeyModal, setShowAddCryptoKeyModal] = useState(false)
+  const [showDocumentoFacturaModal, setShowDocumentoFacturaModal] = useState(false)
 
   const validateChannelAccess = useCallback(async () => {
     if (!user?._id) return
@@ -195,8 +197,11 @@ const ElectronicBillingPage: React.FC = () => {
 
   const handleDocumentoFactura = () => {
     setShowFacturasMenu(false)
-    // TODO: Implement invoice document functionality
-    console.log('Documento de la factura clicked')
+    setShowDocumentoFacturaModal(true)
+  }
+
+  const handleDocumentoFacturaSuccess = () => {
+    console.log('Configuración de factura guardada exitosamente')
   }
 
   const handleAnadirFirma = () => {
@@ -427,6 +432,16 @@ const ElectronicBillingPage: React.FC = () => {
           onClose={() => setShowAddCryptoKeyModal(false)}
           channelId={channel._id}
           onSuccess={handleCryptoKeySuccess}
+        />
+      )}
+
+      {/* Modal de Documento de Factura */}
+      {channel && (
+        <DocumentoFacturaModal
+          isOpen={showDocumentoFacturaModal}
+          onClose={() => setShowDocumentoFacturaModal(false)}
+          channelId={channel._id}
+          onSuccess={handleDocumentoFacturaSuccess}
         />
       )}
     </div>

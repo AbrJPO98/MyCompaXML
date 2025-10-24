@@ -6,6 +6,7 @@ import ColumnVisibilityModal from './ColumnVisibilityModal'
 import ProgressBar from './ProgressBar'
 import FileLogsModal, { addFileLog } from './FileLogsModal'
 import CabysEditModal from './CabysEditModal'
+import CategorizarFacturaModal from './CategorizarFacturaModal'
 import styles from './BillsTable.module.css'
 
 // Definición de columnas con sus propiedades
@@ -31,6 +32,7 @@ interface CabysItem {
 export const COLUMN_DEFINITIONS: ColumnDefinition[] = [
   { header: "Eliminar", systemName: "opcionElim", visible: true },
   { header: "Descargar", systemName: "opcionDesc", visible: true },
+  { header: "Categorizar", systemName: "opcionCategorizar", visible: true },
   { header: "Nombre original del archivo", systemName: "path", visible: true },
   { header: "Propiedad", systemName: "compraVentaRevisar", visible: true },
   { header: "Descartar", systemName: "opcionDescartar", visible: true },
@@ -212,6 +214,10 @@ export default function BillsTable({ channelId }: { channelId: string }) {
   // Estados para el modal de CABYS
   const [showCabysEditModal, setShowCabysEditModal] = useState(false)
   const [selectedCabysCodigo, setSelectedCabysCodigo] = useState<string | null>(null)
+  
+  // Estados para el modal de categorización
+  const [showCategorizarModal, setShowCategorizarModal] = useState(false)
+  const [selectedFacturaClave, setSelectedFacturaClave] = useState<string | null>(null)
   
   // Estados para el sistema de filtros
   const [showColumnFilterModal, setShowColumnFilterModal] = useState(false)
@@ -1156,10 +1162,23 @@ export default function BillsTable({ channelId }: { channelId: string }) {
     if (savedColumns) {
       try {
         const parsedColumns = JSON.parse(savedColumns)
-        setColumns(parsedColumns)
+        
+        // Fusionar columnas guardadas con las definiciones actuales
+        // para incluir nuevas columnas que puedan haberse agregado
+        const mergedColumns = COLUMN_DEFINITIONS.map(defaultCol => {
+          const savedCol = parsedColumns.find((col: ColumnDefinition) => col.systemName === defaultCol.systemName)
+          return savedCol ? { ...defaultCol, visible: savedCol.visible } : defaultCol
+        })
+        
+        setColumns(mergedColumns)
       } catch (error) {
         console.error('Error parsing saved columns:', error)
+        // Si hay error, usar las definiciones por defecto
+        setColumns(COLUMN_DEFINITIONS)
       }
+    } else {
+      // Si no hay columnas guardadas, usar las definiciones por defecto
+      setColumns(COLUMN_DEFINITIONS)
     }
     
     // Cargar facturas solo una vez al montar el componente
@@ -1461,9 +1480,21 @@ export default function BillsTable({ channelId }: { channelId: string }) {
     await reloadRowsWithCabysCode(updatedCabys.codigo)
   }
 
+  const handleCategorizarClick = (bill: any) => {
+    if (bill.claveCon) {
+      setSelectedFacturaClave(bill.claveCon)
+      setShowCategorizarModal(true)
+    }
+  }
+
+  const handleCategorizarClose = () => {
+    setShowCategorizarModal(false)
+    setSelectedFacturaClave(null)
+  }
+
   const handleColumnHeaderClick = (column: ColumnDefinition) => {
     // No permitir filtrar columnas de acción
-    const actionColumns = ['opcionElim', 'opcionDesc', 'opcionDescartar', 'anadirCabysDes', 'obtenerDoc', 'verdoc', 'anularDoc']
+    const actionColumns = ['opcionElim', 'opcionDesc', 'opcionCategorizar', 'opcionDescartar', 'anadirCabysDes', 'obtenerDoc', 'verdoc', 'anularDoc']
     if (actionColumns.includes(column.systemName)) {
       return
     }
@@ -1724,6 +1755,18 @@ export default function BillsTable({ channelId }: { channelId: string }) {
         </button>
       )
     }
+
+    if (column.systemName === 'opcionCategorizar') {
+      return (
+        <button 
+          className={styles.actionButton} 
+          title="Categorizar factura" 
+          onClick={() => handleCategorizarClick(bill)}
+        >
+          🏷️
+        </button>
+      )
+    }
     
     if (column.systemName === 'opcionDescartar') {
       const handleDiscard = async () => {
@@ -1941,6 +1984,15 @@ export default function BillsTable({ channelId }: { channelId: string }) {
           channelId={channelId}
           onSave={handleCabysEditSave}
           onClose={handleCabysEditClose}
+        />
+      )}
+
+      {/* Modal de categorización */}
+      {showCategorizarModal && selectedFacturaClave && (
+        <CategorizarFacturaModal
+          clave={selectedFacturaClave}
+          channelId={channelId}
+          onClose={handleCategorizarClose}
         />
       )}
     </div>
