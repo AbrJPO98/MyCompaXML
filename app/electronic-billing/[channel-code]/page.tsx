@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/contexts/AuthContext'
 import ClientesModal from '@/components/ClientesModal'
 import AddCryptoKeyModal from '@/components/AddCryptoKeyModal'
 import DocumentoFacturaModal from '@/components/DocumentoFacturaModal'
+import NuevaFacturaModal from '@/components/NuevaFacturaModal'
 import styles from './electronic-billing.module.css'
 
 interface Channel {
@@ -34,6 +35,7 @@ const ElectronicBillingPage: React.FC = () => {
   const [showClientesModal, setShowClientesModal] = useState(false)
   const [showAddCryptoKeyModal, setShowAddCryptoKeyModal] = useState(false)
   const [showDocumentoFacturaModal, setShowDocumentoFacturaModal] = useState(false)
+  const [showNuevaFacturaModal, setShowNuevaFacturaModal] = useState(false)
 
   const validateChannelAccess = useCallback(async () => {
     if (!user?._id) return
@@ -185,8 +187,7 @@ const ElectronicBillingPage: React.FC = () => {
 
   const handleNuevaFactura = () => {
     setShowFacturasMenu(false)
-    // TODO: Implement new invoice functionality
-    console.log('Nueva factura clicked')
+    setShowNuevaFacturaModal(true)
   }
 
   const handleConsultarFactura = () => {
@@ -442,6 +443,16 @@ const ElectronicBillingPage: React.FC = () => {
           onClose={() => setShowDocumentoFacturaModal(false)}
           channelId={channel._id}
           onSuccess={handleDocumentoFacturaSuccess}
+        />
+      )}
+
+      {/* Modal de Nueva Factura */}
+      {channel && user && (
+        <NuevaFacturaModal
+          isOpen={showNuevaFacturaModal}
+          onClose={() => setShowNuevaFacturaModal(false)}
+          channelId={channel._id}
+          userId={user._id}
         />
       )}
     </div>

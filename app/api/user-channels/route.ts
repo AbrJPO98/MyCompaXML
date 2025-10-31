@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import UserChannel from '@/lib/models/UserChannels'
 import Channel from '@/lib/models/Channel'
 import User from '@/lib/models/User'
+import Actividad from '@/lib/models/Actividad'
+import Sucursal from '@/lib/models/Sucursal'
+import Caja from '@/lib/models/Caja'
 import { withDB, sanitizeInput, isValidObjectId } from '@/lib/dbUtils'
 
 export async function GET(request: NextRequest) {
@@ -54,6 +57,9 @@ export async function GET(request: NextRequest) {
       const userChannels = await UserChannel.find(query)
         .populate('channel', 'code name ident ident_type phone phone_code registro_fiscal_IVA isActive createdAt')
         .populate('user', 'first_name last_name email ident type_ident phone phone_code')
+        .populate('act_eco', 'codigo nombre_personal')
+        .populate('sucursal', 'codigo nombre')
+        .populate('caja', 'numero')
         .sort({ createdAt: -1 })
 
       // Transformar los datos para la respuesta
@@ -65,6 +71,10 @@ export async function GET(request: NextRequest) {
         isActive: userChannel.isActive,
         createdAt: userChannel.createdAt,
         updatedAt: userChannel.updatedAt,
+        // Campos de posición
+        act_eco: userChannel.act_eco,
+        sucursal: userChannel.sucursal,
+        caja: userChannel.caja,
         // Información del canal (si existe)
         channelInfo: userChannel.channel ? {
           _id: (userChannel.channel as any)?._id,
@@ -87,7 +97,24 @@ export async function GET(request: NextRequest) {
           type_ident: (userChannel.user as any)?.type_ident,
           phone: (userChannel.user as any)?.phone,
           phone_code: (userChannel.user as any)?.phone_code
-        } : null
+        } : null,
+        // Información de posición (si existe)
+        positionInfo: {
+          actividad: userChannel.act_eco ? {
+            _id: (userChannel.act_eco as any)?._id,
+            codigo: (userChannel.act_eco as any)?.codigo,
+            nombre: (userChannel.act_eco as any)?.nombre_personal
+          } : null,
+          sucursal: userChannel.sucursal ? {
+            _id: (userChannel.sucursal as any)?._id,
+            codigo: (userChannel.sucursal as any)?.codigo,
+            nombre: (userChannel.sucursal as any)?.nombre
+          } : null,
+          caja: userChannel.caja ? {
+            _id: (userChannel.caja as any)?._id,
+            numero: (userChannel.caja as any)?.numero
+          } : null
+        }
       }))
 
       return channelsData

@@ -196,6 +196,79 @@
   transform: translateY(-1px);
 }
 
+.positionButton {
+  background: #17a2b8;
+  color: white;
+  border: none;
+  padding: 0.375rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-width: 80px;
+  height: 28px;
+}
+
+.positionButton:hover {
+  background: #138496;
+  transform: translateY(-1px);
+}
+
+/* Estilos para información de posición */
+.positionInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+  min-width: 200px;
+}
+
+.positionItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.positionLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.positionValue {
+  font-size: 0.75rem;
+  color: #495057;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.editPositionButton {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  transition: all 0.2s ease;
+  margin-top: 0.25rem;
+  align-self: flex-start;
+}
+
+.editPositionButton:hover {
+  background: #5a6268;
+  transform: translateY(-1px);
+}
+
 /* Estados especiales */
 .loadingCell,
 .errorCell,

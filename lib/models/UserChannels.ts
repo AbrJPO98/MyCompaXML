@@ -2,6 +2,9 @@ import mongoose, { Document, Model, Schema } from 'mongoose'
 // Importar modelos relacionados para asegurar que estén registrados
 import './User'
 import './Channel'
+import './Actividad'
+import './Sucursal'
+import './Caja'
 
 // Interfaz para el documento de Users_channels
 export interface IUserChannel extends Document {
@@ -10,6 +13,9 @@ export interface IUserChannel extends Document {
   channel: mongoose.Types.ObjectId // ID del canal
   is_admin: boolean // Si el usuario es admin en este canal
   isActive: boolean // Si la relación usuario-canal está activa
+  act_eco?: mongoose.Types.ObjectId // ID de la actividad económica (opcional)
+  sucursal?: mongoose.Types.ObjectId // ID de la sucursal (opcional)
+  caja?: mongoose.Types.ObjectId // ID de la caja (opcional)
   createdAt?: Date
   updatedAt?: Date
 }
@@ -35,6 +41,21 @@ const UserChannelSchema: Schema<IUserChannel> = new Schema({
     type: Boolean,
     default: false, // Cambiar a false para que las nuevas solicitudes estén pendientes por defecto
     required: [true, 'El estado activo es requerido']
+  },
+  act_eco: {
+    type: Schema.Types.ObjectId,
+    ref: 'Actividad',
+    required: false
+  },
+  sucursal: {
+    type: Schema.Types.ObjectId,
+    ref: 'Sucursal',
+    required: false
+  },
+  caja: {
+    type: Schema.Types.ObjectId,
+    ref: 'Caja',
+    required: false
   }
 }, {
   timestamps: true, // Agrega createdAt y updatedAt automáticamente
@@ -54,7 +75,12 @@ UserChannelSchema.methods.getPublicProfile = function() {
   return userChannelObject
 }
 
-// Verificar si el modelo ya existe antes de crear uno nuevo
-const UserChannel: Model<IUserChannel> = mongoose.models.UserChannel || mongoose.model<IUserChannel>('UserChannel', UserChannelSchema)
+// Limpiar el modelo existente si existe para evitar conflictos
+if (mongoose.models.UserChannel) {
+  delete mongoose.models.UserChannel
+}
+
+// Crear el modelo
+const UserChannel: Model<IUserChannel> = mongoose.model<IUserChannel>('UserChannel', UserChannelSchema)
 
 export default UserChannel 

@@ -1,45 +1,59 @@
 import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '@/lib/mongodb'
 import Actividad from '@/lib/models/Actividad'
-import { isValidObjectId } from '@/lib/dbUtils'
+import { withDB, sanitizeInput } from '@/lib/dbUtils'
 
-export async function GET(req: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url)
+    const { searchParams } = new URL(request.url)
     const channelId = searchParams.get('channelId')
 
     if (!channelId) {
-      return NextResponse.json({ 
-        success: false, 
-        message: 'channelId es requerido' 
-      }, { status: 400 })
+      return NextResponse.json(
+        { 
+          success: false,
+          message: 'Channel ID es requerido' 
+        },
+        { status: 400 }
+      )
     }
 
-    if (!isValidObjectId(channelId)) {
-      return NextResponse.json({ 
-        success: false, 
-        message: 'channelId inválido' 
-      }, { status: 400 })
-    }
+    const result = await withDB(async () => {
+      const actividades = await Actividad.find({ 
+        channel_id: channelId 
+      })
+      .select('_id codigo nombre_personal nombre_original tipo estado')
+      .sort({ codigo: 1 })
 
-    await connectDB()
-
-    const actividades = await Actividad.find(
-      { channel_id: channelId },
-    ).sort({ codigo: 1 }).lean()
-
-    console.log('Actividades encontradas:', actividades)
-
-    return NextResponse.json({
-      success: true,
-      actividades: actividades
+      return actividades
     })
 
-  } catch (error) {
-    console.error('Error fetching actividades:', error)
-    return NextResponse.json({ 
-      success: false, 
-      message: 'Error interno del servidor' 
-    }, { status: 500 })
+    if (!result.success) {
+      return NextResponse.json(
+        { 
+          success: false,
+          message: result.error || 'Error al cargar las actividades'
+        },
+        { status: 500 }
+      )
+    }
+
+    // Devolver estructura compatible con ambos usos
+    return NextResponse.json({
+      success: true,
+      data: result.data,        // Para PosicionModal
+      actividades: result.data  // Para channels/[channel-code]
+    })
+
+  } catch (error: any) {
+    console.error('Error en GET /api/actividades:', error)
+    
+    return NextResponse.json(
+      { 
+        success: false,
+        message: 'Error interno del servidor',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
+      { status: 500 }
+    )
   }
 }

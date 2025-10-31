@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import styles from './ChannelMembersTable.module.css'
 import PendingMembersModal from './PendingMembersModal'
+import PosicionModal from './PosicionModal'
 
 // Definición de columnas para la tabla de miembros
 export interface MemberColumnDefinition {
@@ -17,6 +18,7 @@ export const MEMBER_COLUMN_DEFINITIONS: MemberColumnDefinition[] = [
   { header: "Correo electrónico", systemName: "email", visible: true },
   { header: "Número de teléfono", systemName: "telefono", visible: true },
   { header: "¿Es admin?", systemName: "esAdmin", visible: true },
+  { header: "Posición", systemName: "posicion", visible: true },
   { header: "Eliminar", systemName: "eliminar", visible: true }
 ]
 
@@ -40,6 +42,8 @@ export default function ChannelMembersTable({ channelId }: ChannelMembersTablePr
   const [error, setError] = useState<string | null>(null)
   const [showPendingModal, setShowPendingModal] = useState(false)
   const [pendingCount, setPendingCount] = useState<number>(0)
+  const [showPosicionModal, setShowPosicionModal] = useState(false)
+  const [selectedMember, setSelectedMember] = useState<any>(null)
 
   // Obtener columnas visibles
   const visibleColumns = columns.filter(col => col.visible)
@@ -82,7 +86,7 @@ export default function ChannelMembersTable({ channelId }: ChannelMembersTablePr
             return {
               _id: userChannel._id,
               userChannelId: userChannel._id,
-              userId: userChannel.user,
+              userId: typeof userChannel.user === 'object' ? userChannel.user._id : userChannel.user,
               nombre: userInfo?.name || 'Sin nombre',
               tipoCedula: tipoCedula,
               cedula: userInfo?.ident || '',
@@ -90,7 +94,9 @@ export default function ChannelMembersTable({ channelId }: ChannelMembersTablePr
               telefono: userInfo?.phone_code && userInfo?.phone ? `+${userInfo.phone_code} ${userInfo.phone}` : '',
               esAdmin: userChannel.is_admin || false,
               isActive: userChannel.isActive,
-              createdAt: userChannel.createdAt
+              createdAt: userChannel.createdAt,
+              // Información de posición
+              positionInfo: userChannel.positionInfo || null
             }
           })
         
@@ -219,6 +225,21 @@ export default function ChannelMembersTable({ channelId }: ChannelMembersTablePr
       )
     }
 
+    // Columna de posición
+    if (column.systemName === 'posicion') {
+      const positionInfo = member.positionInfo
+    
+        return (
+          <button 
+            className={styles.positionButton} 
+            title="Asignar posición"
+            onClick={() => handleAssignPosition(member)}
+          >
+            📍 Asignar Posición
+          </button>
+        )
+    }
+
     // Columna de es admin con colores
     if (column.systemName === 'esAdmin') {
       const adminClass = value ? styles.roleAdmin : styles.roleMember
@@ -277,6 +298,21 @@ export default function ChannelMembersTable({ channelId }: ChannelMembersTablePr
     loadPendingCount()
   }
 
+  const handleAssignPosition = (member: any) => {
+    setSelectedMember(member)
+    setShowPosicionModal(true)
+  }
+
+  const handleClosePosicionModal = () => {
+    setShowPosicionModal(false)
+    setSelectedMember(null)
+  }
+
+  const handlePositionUpdate = () => {
+    // Recargar la tabla después de actualizar la posición
+    loadMembers()
+  }
+
 
   return (
     <div className={styles.container}>
@@ -310,6 +346,18 @@ export default function ChannelMembersTable({ channelId }: ChannelMembersTablePr
         onClose={handleClosePendingModal}
         channelId={channelId}
       />
+
+      {/* Modal para asignar posición */}
+      {selectedMember && (
+        <PosicionModal
+          isOpen={showPosicionModal}
+          onClose={handleClosePosicionModal}
+          channelId={channelId}
+          userId={selectedMember.userId}
+          userName={selectedMember.nombre}
+          onUpdate={handlePositionUpdate}
+        />
+      )}
     </div>
   )
 }
