@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       const actividad = await Actividad.findById(userChannel.act_eco)
       if (actividad) {
         actividadEconomica = {
-          _id: actividad._id.toString(),
+          _id: String(actividad._id),
           nombre_personal: actividad.nombre_personal
         }
       }
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
       const sucursalData = await Sucursal.findById(userChannel.sucursal)
       if (sucursalData) {
         sucursal = {
-          _id: sucursalData._id.toString(),
+          _id: String(sucursalData._id),
           nombre: sucursalData.nombre,
           codigo: sucursalData.codigo
         }
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
       const cajaData = await Caja.findById(userChannel.caja)
       if (cajaData) {
         caja = {
-          _id: cajaData._id.toString(),
+          _id: String(cajaData._id),
           numero: cajaData.numero,
           numeracion_facturas: cajaData.numeracion_facturas || {}
         }
