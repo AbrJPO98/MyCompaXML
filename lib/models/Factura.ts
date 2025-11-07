@@ -32,6 +32,10 @@ const FacturaSchema = new mongoose.Schema({
     ref: 'Channel',
     required: true,
     index: true
+  },
+  categorizacion: {
+    type: String,
+    required: false
   }
 }, {
   timestamps: true,

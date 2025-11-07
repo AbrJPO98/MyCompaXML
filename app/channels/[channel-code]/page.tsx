@@ -20,6 +20,8 @@ interface Channel {
   phone: string
   phone_code: string
   registro_fiscal_IVA: string
+  email?: string
+  commercial_name?: string
   isActive: boolean
 }
 
@@ -72,7 +74,9 @@ export default function ChannelManagementPage() {
     ident_type: '01',
     phone: '',
     phone_code: '506',
-    registro_fiscal_IVA: ''
+    registro_fiscal_IVA: '',
+    email: '',
+    commercial_name: ''
   })
   const [formLoading, setFormLoading] = useState(false)
 
@@ -181,7 +185,9 @@ export default function ChannelManagementPage() {
       ident_type: channel.ident_type || '01',
       phone: channel.phone || '',
       phone_code: channel.phone_code || '506',
-      registro_fiscal_IVA: channel.registro_fiscal_IVA || ''
+      registro_fiscal_IVA: channel.registro_fiscal_IVA || '',
+      email: channel.email || '',
+      commercial_name: channel.commercial_name || ''
     })
   }, [channelAccess?.channel])
 
@@ -258,20 +264,31 @@ export default function ChannelManagementPage() {
 
       const data = await response.json()
 
-      if (response.ok && data.success) {
+      if (response.ok && data.channel) {
         alert('Canal actualizado exitosamente')
-        // Actualizar los datos del canal en el estado
+        // Actualizar los datos del canal en el estado con los datos actualizados de la API
         if (channelAccess.channel) {
           setChannelAccess({
             ...channelAccess,
             channel: {
               ...channelAccess.channel,
-              ...formData
+              ...data.channel
             }
           })
         }
+        // Actualizar también el formData con los datos actualizados
+        setFormData({
+          name: data.channel.name || '',
+          ident: data.channel.ident || '',
+          ident_type: data.channel.ident_type || '01',
+          phone: data.channel.phone || '',
+          phone_code: data.channel.phone_code || '506',
+          registro_fiscal_IVA: data.channel.registro_fiscal_IVA || '',
+          email: data.channel.email || '',
+          commercial_name: data.channel.commercial_name || ''
+        })
       } else {
-        alert(`Error: ${data.message || 'Error actualizando canal'}`)
+        alert(`Error: ${data.error || data.message || 'Error actualizando canal'}`)
       }
     } catch (error) {
       console.error('Error updating channel:', error)
@@ -657,6 +674,31 @@ export default function ChannelManagementPage() {
                   </div>
                 </div>
 
+                <div className={styles.formRow}>
+                  <div className={styles.formGroup}>
+                    <label htmlFor="email">Email</label>
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      disabled={formLoading}
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label htmlFor="commercial_name">Nombre Comercial</label>
+                    <input
+                      type="text"
+                      id="commercial_name"
+                      name="commercial_name"
+                      value={formData.commercial_name}
+                      onChange={handleChange}
+                      disabled={formLoading}
+                    />
+                  </div>
+                </div>
+                
                 <div className={styles.formGroup}>
                   <label htmlFor="registro_fiscal_IVA">Registro Fiscal IVA</label>
                   <input

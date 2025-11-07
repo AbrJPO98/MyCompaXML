@@ -109,6 +109,11 @@ export async function POST(request: NextRequest) {
           facturaObject.emision = facturaData.emision
         }
 
+        // Agregar categorizacion si existe
+        if (facturaData.categorizacion) {
+          facturaObject.categorizacion = facturaData.categorizacion
+        }
+
         const nuevaFactura = new Factura(facturaObject)
         await nuevaFactura.save()
         resultados.push(nuevaFactura)

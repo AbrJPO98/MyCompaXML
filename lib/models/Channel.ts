@@ -20,6 +20,8 @@ export interface IChannel extends Document {
   phone: string // Teléfono como "84383245"
   phone_code: string // Código de teléfono como "506"
   registro_fiscal_IVA: string // Registro fiscal IVA como "112900000"
+  email?: string // Email del canal
+  commercial_name?: string // Nombre comercial del canal
   // Campos adicionales para funcionalidad del sistema
   isActive?: boolean
   createdAt?: Date
@@ -81,6 +83,16 @@ const ChannelSchema: Schema<IChannel> = new Schema({
   registro_fiscal_IVA: {
     type: String,
     required: [true, 'El registro fiscal IVA es requerido'],
+    trim: true
+  },
+  email: {
+    type: String,
+    required: false,
+    trim: true
+  },
+  commercial_name: {
+    type: String,
+    required: false,
     trim: true
   },
   // Campos adicionales para funcionalidad del sistema

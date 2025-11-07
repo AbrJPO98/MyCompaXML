@@ -99,6 +99,8 @@ export async function POST(request: NextRequest) {
           phone: channel.phone,
           phone_code: channel.phone_code,
           registro_fiscal_IVA: channel.registro_fiscal_IVA,
+          email: channel.email,
+          commercial_name: channel.commercial_name,
           isActive: channel.isActive,
           createdAt: channel.createdAt
         }

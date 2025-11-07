@@ -15,6 +15,8 @@ interface Channel {
   phone: string
   phone_code: string
   registro_fiscal_IVA: string
+  email?: string
+  commercial_name?: string
   isActive: boolean
   createdAt?: string
   updatedAt?: string
@@ -65,6 +67,8 @@ interface FormData {
   phone: string
   phone_code: string
   registro_fiscal_IVA: string
+  email: string
+  commercial_name: string
 }
 
 export default function ChannelsPage() {
@@ -84,7 +88,9 @@ export default function ChannelsPage() {
     ident_type: '01',
     phone: '',
     phone_code: '506',
-    registro_fiscal_IVA: ''
+    registro_fiscal_IVA: '',
+    email: '',
+    commercial_name: ''
   })
   const [loading, setLoading] = useState(false)
   const [phoneCodesList, setPhoneCodesList] = useState<PhoneCode[]>([])
@@ -163,7 +169,9 @@ export default function ChannelsPage() {
           ident_type: data.channel.ident_type || '01',
           phone: data.channel.phone || '',
           phone_code: data.channel.phone_code || '506',
-          registro_fiscal_IVA: data.channel.registro_fiscal_IVA || ''
+          registro_fiscal_IVA: data.channel.registro_fiscal_IVA || '',
+          email: data.channel.email || '',
+          commercial_name: data.channel.commercial_name || ''
         })
       } else {
         console.error('Error loading channel:', data)
@@ -307,12 +315,23 @@ export default function ChannelsPage() {
 
       const data = await response.json()
 
-      if (response.ok) {
+      if (response.ok && data.channel) {
         setChannel(data.channel)
+        // Actualizar formData con los datos devueltos por la API para mantener sincronización
+        setFormData({
+          name: data.channel.name || '',
+          ident: data.channel.ident || '',
+          ident_type: data.channel.ident_type || '01',
+          phone: data.channel.phone || '',
+          phone_code: data.channel.phone_code || '506',
+          registro_fiscal_IVA: data.channel.registro_fiscal_IVA || '',
+          email: data.channel.email || '',
+          commercial_name: data.channel.commercial_name || ''
+        })
         setSuccessMessage('Canal actualizado exitosamente')
         setTimeout(() => setSuccessMessage(''), 3000)
       } else {
-        alert(`Error: ${data.error}`)
+        alert(`Error: ${data.error || data.message || 'Error actualizando canal'}`)
       }
     } catch (error) {
       console.error('Error updating channel:', error)
@@ -561,6 +580,29 @@ export default function ChannelsPage() {
                   value={formData.registro_fiscal_IVA}
                   onChange={handleChange}
                 />
+              </div>
+
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label htmlFor="email">Email</label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label htmlFor="commercial_name">Nombre Comercial</label>
+                  <input
+                    type="text"
+                    id="commercial_name"
+                    name="commercial_name"
+                    value={formData.commercial_name}
+                    onChange={handleChange}
+                  />
+                </div>
               </div>
 
               <button type="submit" disabled={loading} className={styles.submitButton}>

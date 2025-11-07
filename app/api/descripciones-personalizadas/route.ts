@@ -3,6 +3,19 @@ import mongoose from 'mongoose'
 import DescripcionPersonalizada from '@/lib/models/DescripcionPersonalizada'
 import { withDB, sanitizeInput, isValidObjectId } from '@/lib/dbUtils'
 
+// Función para generar slug a partir de desc_pers
+function generateSlug(text: string): string {
+  if (!text) return ''
+  
+  return text
+    .toLowerCase() // Convertir a minúsculas
+    .normalize('NFD') // Normalizar caracteres Unicode
+    .replace(/[\u0300-\u036f]/g, '') // Remover diacríticos (acentos)
+    .replace(/[^\w\s]/g, '') // Remover signos de puntuación
+    .replace(/\s+/g, '') // Remover espacios
+    .trim()
+}
+
 // GET /api/descripciones-personalizadas - Obtener descripciones personalizadas por channel_id
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -106,9 +119,13 @@ export async function POST(request: NextRequest) {
         channel_id: new mongoose.Types.ObjectId(channel_id)
       })
 
+      // Generar slug automáticamente a partir de desc_fact
+      const slug = generateSlug(desc_fact || '')
+
       const descripcionData = {
         codigo,
         desc_pers: desc_pers || '',
+        slug: slug,
         desc_fact: desc_fact || '',
         descripGasInv: descripGasInv || '',
         bienoserv: bienoserv || '',

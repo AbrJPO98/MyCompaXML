@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 
       // Buscar user-channels según los criterios
       const userChannels = await UserChannel.find(query)
-        .populate('channel', 'code name ident ident_type phone phone_code registro_fiscal_IVA isActive createdAt')
+        .populate('channel', 'code name ident ident_type phone phone_code registro_fiscal_IVA email commercial_name isActive createdAt')
         .populate('user', 'first_name last_name email ident type_ident phone phone_code')
         .populate('act_eco', 'codigo nombre_personal')
         .populate('sucursal', 'codigo nombre')

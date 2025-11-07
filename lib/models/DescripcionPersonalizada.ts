@@ -9,6 +9,10 @@ const descripcionPersonalizadaSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  slug: {
+    type: String,
+    default: ''
+  },
   desc_fact: {
     type: String,
     default: ''

@@ -155,7 +155,32 @@
 
 .fieldGroup {
   margin-bottom: 1.5rem;
-  
+}
+.fieldGroupCategorizacion {
+  padding: 1.5rem;
+  background-color: #cce5ff;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.fieldGroupCategorizacion h5 {
+  margin: 0 0 0.75rem 0;
+  color: #495057;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-bottom: 1px solid #9bcdff;
+  padding-bottom: 0.4rem;
+}
+
+.fieldGroupCategorizacion h6 {
+  margin: 0 0 0.6rem 0;
+  color: #6c757d;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-bottom: 1px solid #9bcdff;
+  padding-bottom: 0.4rem;
 }
 
 .fieldGroup:last-child {

@@ -113,10 +113,35 @@ const CategorizarFacturaModal: React.FC<CategorizarFacturaModalProps> = ({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lineasDetalle, setLineasDetalle] = useState<LineaDetalle[]>([])
+  const [categorizacionArray, setCategorizacionArray] = useState<any[]>([])
 
   useEffect(() => {
     fetchFacturaData()
   }, [clave, channelId])
+
+  // Función para generar slug (normalizar texto: minúsculas, sin acentos, sin espacios y sin signos de puntuación)
+  const generateSlug = (text: string): string => {
+    if (!text) return ''
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, '')
+      .replace(/[^\w\s]/g, '')
+      .trim()
+  }
+
+  // Función para buscar en el array de categorización
+  const findCategorizacion = (cabys: string, detalle: string): any | null => {
+    if (!cabys || !detalle || categorizacionArray.length === 0) {
+      return null
+    }
+    
+    const desc_fact = generateSlug(detalle)
+    return categorizacionArray.find(
+      (item: any) => item.cabys === cabys && item.desc_fact === desc_fact
+    ) || null
+  }
 
   const fetchFacturaData = async () => {
     try {
@@ -133,6 +158,19 @@ const CategorizarFacturaModal: React.FC<CategorizarFacturaModalProps> = ({
       
       if (!data.success || !data.factura || !data.factura.xml) {
         throw new Error('No se encontró el XML de la factura')
+      }
+
+      // Cargar categorización si existe
+      if (data.factura.categorizacion) {
+        try {
+          const categorizacionParsed = JSON.parse(data.factura.categorizacion)
+          setCategorizacionArray(Array.isArray(categorizacionParsed) ? categorizacionParsed : [])
+        } catch (parseError) {
+          console.error('Error parseando categorización:', parseError)
+          setCategorizacionArray([])
+        }
+      } else {
+        setCategorizacionArray([])
       }
 
       // Decodificar XML de Base64
@@ -454,6 +492,49 @@ const CategorizarFacturaModal: React.FC<CategorizarFacturaModalProps> = ({
                       </div>
                     </div>
 
+                    {/* Información de Categorización */}
+                    {linea.codigoCABYS && linea.detalle && (() => {
+                      const categoriaData = findCategorizacion(linea.codigoCABYS, linea.detalle)
+                      if (categoriaData) {
+                        return (
+                          <div className={styles.fieldGroupCategorizacion}>
+                            <h5>📊 Información de Categorización</h5>
+                            <div className={styles.fieldGrid}>
+                              <div className={styles.field}>
+                                <label>📝 Descripción personalizada:</label>
+                                <span>{categoriaData.descripPer && categoriaData.descripPer.trim() !== '' ? categoriaData.descripPer : <em>No definido</em>}</span>
+                              </div>
+                              <div className={styles.field}>
+                                <label>🏷️ Bien o servicio:</label>
+                                <span>{categoriaData.bienoserv && categoriaData.bienoserv.trim() !== '' ? categoriaData.bienoserv : <em>No definido</em>}</span>
+                              </div>
+                              <div className={styles.field}>
+                                <label>📦 Descripción Gasto o Inventario:</label>
+                                <span>{categoriaData.descripGasInv && categoriaData.descripGasInv.trim() !== '' ? categoriaData.descripGasInv : <em>No definido</em>}</span>
+                              </div>
+                              <div className={styles.field}>
+                                <label>📁 Categoría:</label>
+                                <span>{categoriaData.categoria && categoriaData.categoria.trim() !== '' ? categoriaData.categoria : <em>No definido</em>}</span>
+                              </div>
+                              <div className={styles.field}>
+                                <label>💼 Actividad económica:</label>
+                                <span>{categoriaData.actEconomica && categoriaData.actEconomica.trim() !== '' ? categoriaData.actEconomica : <em>No definido</em>}</span>
+                              </div>
+                              <div className={styles.field}>
+                                <label>⏱️ Vida útil (Años):</label>
+                                <span>{categoriaData.vidaUtil && categoriaData.vidaUtil.trim() !== '' ? categoriaData.vidaUtil : <em>No definido</em>}</span>
+                              </div>
+                              <div className={styles.field}>
+                                <label>📥 Cantidad importada:</label>
+                                <span>{categoriaData.importado && categoriaData.importado.trim() !== '' ? categoriaData.importado : <em>No definido</em>}</span>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      }
+                      return null
+                    })()}
+
                     {/* CodigoComercial */}
                     {linea.codigoComercial && linea.codigoComercial.length > 0 && (
                       <div className={styles.fieldGroup}>
@@ -544,6 +625,49 @@ const CategorizarFacturaModal: React.FC<CategorizarFacturaModalProps> = ({
                                 )}
                               </div>
                             </div>
+
+                            {/* Información de Categorización Surtido */}
+                            {lineaSurtido.codigoCABYSSurtido && lineaSurtido.detalleSurtido && (() => {
+                              const categoriaSurtidoData = findCategorizacion(lineaSurtido.codigoCABYSSurtido, lineaSurtido.detalleSurtido)
+                              if (categoriaSurtidoData) {
+                                return (
+                                  <div className={styles.fieldGroupCategorizacion}>
+                                    <h6>📊 Información de Categorización Surtido</h6>
+                                    <div className={styles.fieldGrid}>
+                                      <div className={styles.field}>
+                                        <label>📝 Descripción personalizada:</label>
+                                        <span>{categoriaSurtidoData.descripPer && categoriaSurtidoData.descripPer.trim() !== '' ? categoriaSurtidoData.descripPer : <em>No definido</em>}</span>
+                                      </div>
+                                      <div className={styles.field}>
+                                        <label>🏷️ Bien o servicio:</label>
+                                        <span>{categoriaSurtidoData.bienoserv && categoriaSurtidoData.bienoserv.trim() !== '' ? categoriaSurtidoData.bienoserv : <em>No definido</em>}</span>
+                                      </div>
+                                      <div className={styles.field}>
+                                        <label>📦 Descripción Gasto o Inventario:</label>
+                                        <span>{categoriaSurtidoData.descripGasInv && categoriaSurtidoData.descripGasInv.trim() !== '' ? categoriaSurtidoData.descripGasInv : <em>No definido</em>}</span>
+                                      </div>
+                                      <div className={styles.field}>
+                                        <label>📁 Categoría:</label>
+                                        <span>{categoriaSurtidoData.categoria && categoriaSurtidoData.categoria.trim() !== '' ? categoriaSurtidoData.categoria : <em>No definido</em>}</span>
+                                      </div>
+                                      <div className={styles.field}>
+                                        <label>💼 Actividad económica:</label>
+                                        <span>{categoriaSurtidoData.actEconomica && categoriaSurtidoData.actEconomica.trim() !== '' ? categoriaSurtidoData.actEconomica : <em>No definido</em>}</span>
+                                      </div>
+                                      <div className={styles.field}>
+                                        <label>⏱️ Vida útil (Años):</label>
+                                        <span>{categoriaSurtidoData.vidaUtil && categoriaSurtidoData.vidaUtil.trim() !== '' ? categoriaSurtidoData.vidaUtil : <em>No definido</em>}</span>
+                                      </div>
+                                      <div className={styles.field}>
+                                        <label>📥 Cantidad importada:</label>
+                                        <span>{categoriaSurtidoData.importado && categoriaSurtidoData.importado.trim() !== '' ? categoriaSurtidoData.importado : <em>No definido</em>}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )
+                              }
+                              return null
+                            })()}
 
                             {/* CodigoComercialSurtido */}
                             {lineaSurtido.codigoComercialSurtido && lineaSurtido.codigoComercialSurtido.length > 0 && (
