@@ -11,6 +11,7 @@ import SpecialMessagesModal from './SpecialMessagesModal'
 import FileLogsModal, { addFileLog } from './FileLogsModal'
 import ImportDocModal from './ImportDocModal'
 import FileSetsMenuModal from './FileSetsMenuModal'
+import { generateCategorizacion } from '@/lib/categorization'
 import styles from './BillsToolbar.module.css'
 
 interface BillsToolbarProps {
@@ -19,9 +20,10 @@ interface BillsToolbarProps {
   channelId: string
   hasActiveFilters?: boolean
   onShowProgress?: (show: boolean, current: number, total: number, title: string) => void
+  onCancelProgress?: (callback: () => void) => void
 }
 
-const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdded, channelId, hasActiveFilters = false, onShowProgress }) => {
+const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdded, channelId, hasActiveFilters = false, onShowProgress, onCancelProgress }) => {
   // Función para validar formato de clave (50 dígitos numéricos)
   const isValidClave = (clave: string): boolean => {
     if (!clave) return false
@@ -47,6 +49,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
   const [showFileLogsModal, setShowFileLogsModal] = useState(false)
   const [showImportDocModal, setShowImportDocModal] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const cancelCategorizationRef = useRef(false)
 
   const handleWorkspaceClick = () => {
     setShowWorkspaceMenu(!showWorkspaceMenu)
@@ -106,6 +109,141 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
     setShowImportDocModal(true)
   }
 
+  const handleCategorizeAllBills = async () => {
+    setShowProcessesMenu(false)
+    
+    // Confirmación
+    const confirmed = window.confirm('¿Categorizar todas las facturas? Esto puede tardar unos minutos')
+    if (!confirmed) {
+      return
+    }
+
+    try {
+      // Obtener todas las facturas del canal
+      const response = await fetch(`/api/facturas?channelId=${channelId}`)
+      if (!response.ok) {
+        throw new Error('Error al obtener las facturas')
+      }
+
+      const data = await response.json()
+      const facturas = Array.isArray(data.data) ? data.data : Array.isArray(data.facturas) ? data.facturas : []
+
+      if (facturas.length === 0) {
+        alert('No hay facturas para categorizar')
+        return
+      }
+
+      // Resetear flag de cancelación
+      cancelCategorizationRef.current = false
+
+      // Registrar callback de cancelación
+      if (onCancelProgress) {
+        onCancelProgress(handleCancelCategorization)
+      }
+
+      // Mostrar barra de progreso
+      if (onShowProgress) {
+        onShowProgress(true, 0, facturas.length, 'Categorizando facturas...')
+      }
+
+      let processed = 0
+      let errors = 0
+
+      // Procesar cada factura
+      for (let i = 0; i < facturas.length; i++) {
+        // Verificar si se canceló
+        if (cancelCategorizationRef.current) {
+          break
+        }
+
+        const factura = facturas[i]
+        
+        try {
+          // Decodificar XML
+          const xmlString = factura.xml ? fromBase64(factura.xml) : ''
+          
+          if (!xmlString) {
+            console.warn(`⚠️ Factura ${factura.clave} no tiene XML válido`)
+            processed++
+            if (onShowProgress) {
+              onShowProgress(true, processed, facturas.length, 'Categorizando facturas...')
+            }
+            continue
+          }
+
+          // Generar categorización
+          const categorizacion = await generateCategorizacion(xmlString, channelId)
+
+          // Actualizar en la base de datos
+          if (categorizacion && Array.isArray(categorizacion) && categorizacion.length > 0) {
+            const updateResponse = await fetch('/api/facturas/categorizar', {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                clave: factura.clave,
+                channelId: channelId,
+                categorizacion: categorizacion
+              })
+            })
+
+            if (!updateResponse.ok) {
+              console.error(`❌ Error actualizando categorización para: ${factura.clave}`)
+              errors++
+            }
+          }
+
+          processed++
+          
+          // Actualizar progreso
+          if (onShowProgress) {
+            onShowProgress(true, processed, facturas.length, 'Categorizando facturas...')
+          }
+        } catch (error) {
+          console.error(`❌ Error procesando factura ${factura.clave}:`, error)
+          errors++
+          processed++
+          
+          // Actualizar progreso incluso si hay error
+          if (onShowProgress) {
+            onShowProgress(true, processed, facturas.length, 'Categorizando facturas...')
+          }
+        }
+      }
+
+      // Ocultar barra de progreso
+      if (onShowProgress) {
+        onShowProgress(false, 0, 0, '')
+      }
+
+      // Mostrar resultado
+      if (cancelCategorizationRef.current) {
+        alert(`Proceso cancelado. Se procesaron ${processed} de ${facturas.length} facturas.`)
+      } else {
+        const message = errors > 0
+          ? `Proceso completado. ${processed} facturas procesadas, ${errors} con errores.`
+          : `Proceso completado. ${processed} facturas categorizadas exitosamente.`
+        alert(message)
+      }
+    } catch (error) {
+      console.error('Error en categorización masiva:', error)
+      alert('Error al categorizar las facturas')
+      
+      // Ocultar barra de progreso en caso de error
+      if (onShowProgress) {
+        onShowProgress(false, 0, 0, '')
+      }
+    }
+  }
+
+  const handleCancelCategorization = () => {
+    cancelCategorizationRef.current = true
+    if (onShowProgress) {
+      onShowProgress(false, 0, 0, '')
+    }
+  }
+
   const handleCabysSelect = (cabysItem: any) => {
     // Para el modal de consulta, solo cerramos sin hacer nada
     console.log('CABYS consultado:', cabysItem)
@@ -117,9 +255,141 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
     setShowCabysEditModal(true)
   }
 
-  const handleCabysEditSave = (updatedCabys: any) => {
+  const handleCabysEditSave = async (updatedCabys: any) => {
     console.log('CABYS editado y guardado:', updatedCabys)
-    // No necesitamos hacer nada específico aquí, solo cerrar el modal
+    
+    // Buscar facturas que contengan este código CABYS en su categorización
+    try {
+      const codigo = updatedCabys.codigo
+      
+      // Buscar facturas con este código CABYS en la categorización
+      const response = await fetch(`/api/facturas?channelId=${channelId}`)
+      if (!response.ok) {
+        throw new Error('Error al obtener las facturas')
+      }
+
+      const data = await response.json()
+      const facturas = Array.isArray(data.data) ? data.data : Array.isArray(data.facturas) ? data.facturas : []
+
+      // Filtrar facturas que contengan el código CABYS en su categorización
+      const facturasConCabys = facturas.filter((factura: any) => {
+        if (!factura.categorizacion) return false
+        
+        // Si categorizacion es un array
+        if (Array.isArray(factura.categorizacion)) {
+          return factura.categorizacion.some((cat: any) => cat.cabys === codigo)
+        }
+        
+        // Si categorizacion es un string (compatibilidad con datos antiguos)
+        try {
+          const categorizacionParsed = typeof factura.categorizacion === 'string' 
+            ? JSON.parse(factura.categorizacion) 
+            : factura.categorizacion
+          if (Array.isArray(categorizacionParsed)) {
+            return categorizacionParsed.some((cat: any) => cat.cabys === codigo)
+          }
+        } catch (e) {
+          return false
+        }
+        
+        return false
+      })
+
+      if (facturasConCabys.length === 0) {
+        // No hay facturas para recategorizar
+        return
+      }
+
+      // Mostrar barra de progreso
+      if (onShowProgress) {
+        onShowProgress(true, 0, facturasConCabys.length, 'Recategorizando facturas...')
+      }
+
+      let processed = 0
+      let errors = 0
+
+      // Recategorizar cada factura
+      for (let i = 0; i < facturasConCabys.length; i++) {
+        const factura = facturasConCabys[i]
+        
+        try {
+          // Decodificar XML
+          const xmlString = factura.xml ? fromBase64(factura.xml) : ''
+          
+          if (!xmlString) {
+            console.warn(`⚠️ Factura ${factura.clave} no tiene XML válido`)
+            processed++
+            if (onShowProgress) {
+              onShowProgress(true, processed, facturasConCabys.length, 'Recategorizando facturas...')
+            }
+            continue
+          }
+
+          // Actualizar progreso
+          if (onShowProgress) {
+            onShowProgress(true, processed, facturasConCabys.length, `Recategorizando facturas... (${processed + 1}/${facturasConCabys.length})`)
+          }
+
+          // Generar categorización
+          const categorizacion = await generateCategorizacion(xmlString, channelId)
+
+          // Actualizar en la base de datos
+          if (categorizacion && Array.isArray(categorizacion) && categorizacion.length > 0) {
+            const updateResponse = await fetch('/api/facturas/categorizar', {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                clave: factura.clave,
+                channelId: channelId,
+                categorizacion: categorizacion
+              })
+            })
+
+            if (!updateResponse.ok) {
+              console.error(`❌ Error actualizando categorización para: ${factura.clave}`)
+              errors++
+            }
+          }
+
+          processed++
+          
+          // Actualizar progreso
+          if (onShowProgress) {
+            onShowProgress(true, processed, facturasConCabys.length, 'Recategorizando facturas...')
+          }
+        } catch (error) {
+          console.error(`❌ Error procesando factura ${factura.clave}:`, error)
+          errors++
+          processed++
+          
+          // Actualizar progreso incluso si hay error
+          if (onShowProgress) {
+            onShowProgress(true, processed, facturasConCabys.length, 'Recategorizando facturas...')
+          }
+        }
+      }
+
+      // Ocultar barra de progreso
+      if (onShowProgress) {
+        onShowProgress(false, 0, 0, '')
+      }
+
+      // Mostrar resultado
+      if (facturasConCabys.length > 0) {
+        const message = errors > 0
+          ? `Se recategorizaron ${processed} facturas, ${errors} con errores.`
+          : `Se recategorizaron ${processed} facturas exitosamente.`
+        console.log(message)
+      }
+    } catch (error) {
+      console.error('Error al recategorizar facturas:', error)
+      // Ocultar barra de progreso en caso de error
+      if (onShowProgress) {
+        onShowProgress(false, 0, 0, '')
+      }
+    }
   }
 
   const handleCabysEditClose = () => {
@@ -226,280 +496,6 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
     }
   }
 
-  // Función para generar slug (normalizar texto: minúsculas, sin acentos, sin espacios y sin signos de puntuación)
-  const generateSlug = (text: string): string => {
-    if (!text) return ''
-    return text
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/\s+/g, '')
-      .replace(/[^\w\s]/g, '')
-      .trim()
-  }
-
-  // Función para validar si un valor es válido (no null, no undefined, no string vacío)
-  const isValidValue = (value: any): boolean => {
-    return value !== null && value !== undefined && value !== '' && String(value).trim() !== ''
-  }
-
-  // Función para procesar una línea de detalle y obtener su categorización
-  const processLineaDetalle = async (
-    lineaNode: Element,
-    channelId: string,
-    cabysDataJson: any
-  ): Promise<any | null> => {
-    // Buscar Codigo o CodigoCABYS
-    const codigoNode = lineaNode.querySelector('Codigo') || lineaNode.querySelector('CodigoCABYS')
-    const detalleNode = lineaNode.querySelector('Detalle')
-    
-    if (!codigoNode || !detalleNode) {
-      return null
-    }
-
-    const codigo = codigoNode.textContent?.trim() || ''
-    const detalle = detalleNode.textContent?.trim() || ''
-    const desc_fact = generateSlug(detalle)
-
-    if (!codigo) {
-      return null
-    }
-
-    // Inicializar variables
-    let descripPer = ''
-    let bienoserv = ''
-    let descripGasInv = ''
-    let categoria = ''
-    let actEconomica = ''
-    let vidaUtil = ''
-    let importado = ''
-
-    // 1. Buscar en cabys_data.json
-    if (cabysDataJson && cabysDataJson.data && Array.isArray(cabysDataJson.data)) {
-      const cabysItem = cabysDataJson.data.find((item: any) => item.codigo === codigo)
-      if (cabysItem) {
-        if (isValidValue(cabysItem.bienoserv)) bienoserv = String(cabysItem.bienoserv).trim()
-        if (isValidValue(cabysItem.descripGasInv)) descripGasInv = String(cabysItem.descripGasInv).trim()
-        if (isValidValue(cabysItem.categoria)) categoria = String(cabysItem.categoria).trim()
-        if (isValidValue(cabysItem.vidaUtil)) vidaUtil = String(cabysItem.vidaUtil).trim()
-        if (isValidValue(cabysItem.importado)) importado = String(cabysItem.importado).trim()
-      }
-    }
-
-    // 2. Buscar en cabys_personales (colección)
-    try {
-      const cabysPersonalResponse = await fetch(`/api/cabys-personales?codigo=${codigo}&channelId=${channelId}`)
-      if (cabysPersonalResponse.ok) {
-        const cabysPersonalResult = await cabysPersonalResponse.json()
-        if (cabysPersonalResult.success && cabysPersonalResult.cabys) {
-          const cabysPersonal = cabysPersonalResult.cabys
-          if (isValidValue(cabysPersonal.descripPer)) descripPer = String(cabysPersonal.descripPer).trim()
-          if (isValidValue(cabysPersonal.bienoserv)) bienoserv = String(cabysPersonal.bienoserv).trim()
-          if (isValidValue(cabysPersonal.descripGasInv)) descripGasInv = String(cabysPersonal.descripGasInv).trim()
-          if (isValidValue(cabysPersonal.categoria)) categoria = String(cabysPersonal.categoria).trim()
-          if (isValidValue(cabysPersonal.actEconomica)) actEconomica = String(cabysPersonal.actEconomica).trim()
-          if (isValidValue(cabysPersonal.vidaUtil)) vidaUtil = String(cabysPersonal.vidaUtil).trim()
-          if (isValidValue(cabysPersonal.importado)) importado = String(cabysPersonal.importado).trim()
-        }
-      }
-    } catch (error) {
-      console.error('Error buscando en cabys_personales:', error)
-    }
-
-    // 3. Buscar en descripcionpersonalizadas (colección) por codigo y slug
-    try {
-      const descripcionesResponse = await fetch(`/api/descripciones-personalizadas?channelId=${channelId}`)
-      if (descripcionesResponse.ok) {
-        const descripcionesResult = await descripcionesResponse.json()
-        if (descripcionesResult.success && descripcionesResult.descripciones) {
-          const descripcion = descripcionesResult.descripciones.find(
-            (d: any) => d.codigo === codigo && d.slug === desc_fact
-          )
-          if (descripcion) {
-            if (isValidValue(descripcion.desc_pers)) descripPer = String(descripcion.desc_pers).trim()
-            if (isValidValue(descripcion.bienoserv)) bienoserv = String(descripcion.bienoserv).trim()
-            if (isValidValue(descripcion.descripGasInv)) descripGasInv = String(descripcion.descripGasInv).trim()
-            if (isValidValue(descripcion.categoria)) categoria = String(descripcion.categoria).trim()
-            if (isValidValue(descripcion.act_eco)) actEconomica = String(descripcion.act_eco).trim()
-            if (isValidValue(descripcion.vidaUtil)) vidaUtil = String(descripcion.vidaUtil).trim()
-            if (isValidValue(descripcion.importado)) importado = String(descripcion.importado).trim()
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error buscando en descripcionpersonalizadas:', error)
-    }
-
-    // Retornar objeto de categorización
-    return {
-      cabys: codigo,
-      desc_fact: desc_fact,
-      descripPer,
-      bienoserv,
-      descripGasInv,
-      categoria,
-      actEconomica,
-      vidaUtil,
-      importado
-    }
-  }
-
-  // Función principal para generar categorización de un XML
-  const generateCategorizacion = async (xmlText: string, channelId: string): Promise<string> => {
-    try {
-      // Cargar cabys_data.json una sola vez
-      let cabysDataJson = null
-      try {
-        const cabysResponse = await fetch('/cabys_data.json')
-        if (cabysResponse.ok) {
-          cabysDataJson = await cabysResponse.json()
-        }
-      } catch (error) {
-        console.error('Error cargando cabys_data.json:', error)
-      }
-
-      const parser = new DOMParser()
-      const xmlDoc = parser.parseFromString(xmlText, 'application/xml')
-
-      // Verificar errores de parseo
-      const parserError = xmlDoc.getElementsByTagName('parsererror')[0]
-      if (parserError) {
-        return ''
-      }
-
-      const categorizacionArray: any[] = []
-      const categorizacionSet = new Set<string>() // Para evitar duplicados
-
-      // Buscar DetalleServicio
-      const detalleServicioNode = xmlDoc.querySelector('DetalleServicio')
-      if (!detalleServicioNode) {
-        return ''
-      }
-
-      // Procesar cada LineaDetalle
-      const lineaDetalleNodes = detalleServicioNode.querySelectorAll('LineaDetalle')
-      for (const lineaNode of Array.from(lineaDetalleNodes)) {
-        const categoriaItem = await processLineaDetalle(lineaNode, channelId, cabysDataJson)
-        if (categoriaItem) {
-          const key = `${categoriaItem.cabys}_${categoriaItem.desc_fact}`
-          if (!categorizacionSet.has(key)) {
-            categorizacionSet.add(key)
-            categorizacionArray.push(categoriaItem)
-          }
-        }
-
-        // Procesar DetalleSurtido -> LineaDetalleSurtido
-        const detalleSurtidoContainerNode = lineaNode.querySelector('DetalleSurtido')
-        if (detalleSurtidoContainerNode) {
-          const lineaDetalleSurtidoNodes = detalleSurtidoContainerNode.querySelectorAll('LineaDetalleSurtido')
-          for (const lineaSurtidoNode of Array.from(lineaDetalleSurtidoNodes)) {
-            // Buscar CodigoCABYSSurtido y DetalleSurtido
-            const codigoSurtidoNode = lineaSurtidoNode.querySelector('CodigoCABYSSurtido')
-            const detalleSurtidoTextNode = lineaSurtidoNode.querySelector('DetalleSurtido')
-            
-            if (codigoSurtidoNode && detalleSurtidoTextNode) {
-              const codigoSurtido = codigoSurtidoNode.textContent?.trim() || ''
-              const detalleSurtido = detalleSurtidoTextNode.textContent?.trim() || ''
-              const desc_fact_surtido = generateSlug(detalleSurtido)
-
-              if (codigoSurtido) {
-                // Inicializar variables para surtido
-                let descripPer = ''
-                let bienoserv = ''
-                let descripGasInv = ''
-                let categoria = ''
-                let actEconomica = ''
-                let vidaUtil = ''
-                let importado = ''
-
-                // 1. Buscar en cabys_data.json
-                if (cabysDataJson && cabysDataJson.data && Array.isArray(cabysDataJson.data)) {
-                  const cabysItem = cabysDataJson.data.find((item: any) => item.codigo === codigoSurtido)
-                  if (cabysItem) {
-                    if (isValidValue(cabysItem.bienoserv)) bienoserv = String(cabysItem.bienoserv).trim()
-                    if (isValidValue(cabysItem.descripGasInv)) descripGasInv = String(cabysItem.descripGasInv).trim()
-                    if (isValidValue(cabysItem.categoria)) categoria = String(cabysItem.categoria).trim()
-                    if (isValidValue(cabysItem.vidaUtil)) vidaUtil = String(cabysItem.vidaUtil).trim()
-                    if (isValidValue(cabysItem.importado)) importado = String(cabysItem.importado).trim()
-                  }
-                }
-
-                // 2. Buscar en cabys_personales
-                try {
-                  const cabysPersonalResponse = await fetch(`/api/cabys-personales?codigo=${codigoSurtido}&channelId=${channelId}`)
-                  if (cabysPersonalResponse.ok) {
-                    const cabysPersonalResult = await cabysPersonalResponse.json()
-                    if (cabysPersonalResult.success && cabysPersonalResult.cabys) {
-                      const cabysPersonal = cabysPersonalResult.cabys
-                      if (isValidValue(cabysPersonal.descripPer)) descripPer = String(cabysPersonal.descripPer).trim()
-                      if (isValidValue(cabysPersonal.bienoserv)) bienoserv = String(cabysPersonal.bienoserv).trim()
-                      if (isValidValue(cabysPersonal.descripGasInv)) descripGasInv = String(cabysPersonal.descripGasInv).trim()
-                      if (isValidValue(cabysPersonal.categoria)) categoria = String(cabysPersonal.categoria).trim()
-                      if (isValidValue(cabysPersonal.actEconomica)) actEconomica = String(cabysPersonal.actEconomica).trim()
-                      if (isValidValue(cabysPersonal.vidaUtil)) vidaUtil = String(cabysPersonal.vidaUtil).trim()
-                      if (isValidValue(cabysPersonal.importado)) importado = String(cabysPersonal.importado).trim()
-                    }
-                  }
-                } catch (error) {
-                  console.error('Error buscando en cabys_personales (surtido):', error)
-                }
-
-                // 3. Buscar en descripcionpersonalizadas
-                try {
-                  const descripcionesResponse = await fetch(`/api/descripciones-personalizadas?channelId=${channelId}`)
-                  if (descripcionesResponse.ok) {
-                    const descripcionesResult = await descripcionesResponse.json()
-                    if (descripcionesResult.success && descripcionesResult.descripciones) {
-                      const descripcion = descripcionesResult.descripciones.find(
-                        (d: any) => d.codigo === codigoSurtido && d.slug === desc_fact_surtido
-                      )
-                      if (descripcion) {
-                        if (isValidValue(descripcion.desc_pers)) descripPer = String(descripcion.desc_pers).trim()
-                        if (isValidValue(descripcion.bienoserv)) bienoserv = String(descripcion.bienoserv).trim()
-                        if (isValidValue(descripcion.descripGasInv)) descripGasInv = String(descripcion.descripGasInv).trim()
-                        if (isValidValue(descripcion.categoria)) categoria = String(descripcion.categoria).trim()
-                        if (isValidValue(descripcion.act_eco)) actEconomica = String(descripcion.act_eco).trim()
-                        if (isValidValue(descripcion.vidaUtil)) vidaUtil = String(descripcion.vidaUtil).trim()
-                        if (isValidValue(descripcion.importado)) importado = String(descripcion.importado).trim()
-                      }
-                    }
-                  }
-                } catch (error) {
-                  console.error('Error buscando en descripcionpersonalizadas (surtido):', error)
-                }
-
-                // Agregar a categorización
-                const categoriaSurtidoItem = {
-                  cabys: codigoSurtido,
-                  desc_fact: desc_fact_surtido,
-                  descripPer,
-                  bienoserv,
-                  descripGasInv,
-                  categoria,
-                  actEconomica,
-                  vidaUtil,
-                  importado
-                }
-
-                const keySurtido = `${categoriaSurtidoItem.cabys}_${categoriaSurtidoItem.desc_fact}`
-                if (!categorizacionSet.has(keySurtido)) {
-                  categorizacionSet.add(keySurtido)
-                  categorizacionArray.push(categoriaSurtidoItem)
-                }
-              }
-            }
-          }
-        }
-      }
-
-      // Convertir array a string JSON
-      return JSON.stringify(categorizacionArray)
-    } catch (error) {
-      console.error('Error generando categorización:', error)
-      return ''
-    }
-  }
-
   const extractTagValue = (doc: Document, tagName: string): string => {
     // Buscar coincidencias con o sin namespace (ns:Tag)
     const elements = Array.from(doc.getElementsByTagName('*')) as Element[]
@@ -509,6 +505,14 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
       }
     }
     return ''
+  }
+
+  const fromBase64 = (str: string): string => {
+    try {
+      return decodeURIComponent(escape(window.atob(str)))
+    } catch {
+      return atob(str) // Fallback
+    }
   }
 
   const emisionFromFecha = (fechaIso: string): string => {
@@ -1279,6 +1283,12 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
                   >
                     📨 Mensajes especiales
                   </button>
+                  <button
+                    onClick={handleCategorizeAllBills}
+                    className={styles.dropdownItem}
+                  >
+                    🏷️ Categorizar todas las facturas
+                  </button>
                 </div>
               </>
             )}
@@ -1385,6 +1395,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
         <DescripcionesPersonalizadasModal
           channelId={channelId}
           onClose={() => setShowDescripcionesPersonalizadasModal(false)}
+          onShowProgress={onShowProgress}
         />
       )}
 

@@ -9,7 +9,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1055; /* Bootstrap modal z-index */
+  z-index: 9999; /* Por encima de todos los modales */
   backdrop-filter: blur(2px);
   animation: fadeIn 0.15s ease-out;
 }

@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import CabysSelectionModal from './CabysSelectionModal'
 import CabysEditModal from './CabysEditModal'
+import { generateCategorizacion, generateSlug } from '@/lib/categorization'
 import styles from './DescripcionPersonalizadaFormModal.module.css'
 
 // Types
@@ -31,12 +32,14 @@ interface DescripcionPersonalizadaFormModalProps {
   descripcion?: DescripcionPersonalizada | null
   channelId: string
   onClose: (saved?: boolean) => void
+  onShowProgress?: (show: boolean, current: number, total: number, title: string) => void
 }
 
 const DescripcionPersonalizadaFormModal: React.FC<DescripcionPersonalizadaFormModalProps> = ({ 
   descripcion, 
   channelId, 
-  onClose 
+  onClose,
+  onShowProgress
 }) => {
   const isEditing = !!descripcion
 
@@ -295,6 +298,14 @@ const DescripcionPersonalizadaFormModal: React.FC<DescripcionPersonalizadaFormMo
     return Object.keys(newErrors).length === 0
   }
 
+  const fromBase64 = (str: string): string => {
+    try {
+      return decodeURIComponent(escape(window.atob(str)))
+    } catch {
+      return atob(str) // Fallback
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -318,6 +329,141 @@ const DescripcionPersonalizadaFormModal: React.FC<DescripcionPersonalizadaFormMo
       const data = await response.json()
 
       if (response.ok) {
+        // Buscar y recategorizar facturas después de guardar
+        try {
+          const codigo = formData.codigo
+          const desc_fact_slug = generateSlug(formData.desc_fact || '')
+          
+          if (codigo && desc_fact_slug) {
+            // Buscar facturas con este código CABYS y desc_fact en la categorización
+            const facturasResponse = await fetch(`/api/facturas?channelId=${channelId}`)
+            if (facturasResponse.ok) {
+              const facturasData = await facturasResponse.json()
+              const facturas = Array.isArray(facturasData.data) ? facturasData.data : Array.isArray(facturasData.facturas) ? facturasData.facturas : []
+
+              // Filtrar facturas que contengan el código CABYS y desc_fact en su categorización
+              const facturasConDescripcion = facturas.filter((factura: any) => {
+                if (!factura.categorizacion) return false
+                
+                // Si categorizacion es un array
+                if (Array.isArray(factura.categorizacion)) {
+                  return factura.categorizacion.some((cat: any) => 
+                    cat.cabys === codigo && cat.desc_fact === desc_fact_slug
+                  )
+                }
+                
+                // Si categorizacion es un string (compatibilidad con datos antiguos)
+                try {
+                  const categorizacionParsed = typeof factura.categorizacion === 'string' 
+                    ? JSON.parse(factura.categorizacion) 
+                    : factura.categorizacion
+                  if (Array.isArray(categorizacionParsed)) {
+                    return categorizacionParsed.some((cat: any) => 
+                      cat.cabys === codigo && cat.desc_fact === desc_fact_slug
+                    )
+                  }
+                } catch (e) {
+                  return false
+                }
+                
+                return false
+              })
+
+              if (facturasConDescripcion.length > 0) {
+                // Mostrar barra de progreso
+                if (onShowProgress) {
+                  onShowProgress(true, 0, facturasConDescripcion.length, 'Recategorizando facturas...')
+                }
+
+                let processed = 0
+                let errors = 0
+
+                // Recategorizar cada factura
+                for (let i = 0; i < facturasConDescripcion.length; i++) {
+                  const factura = facturasConDescripcion[i]
+                  
+                  try {
+                    // Decodificar XML
+                    const xmlString = factura.xml ? fromBase64(factura.xml) : ''
+                    
+                    if (!xmlString) {
+                      console.warn(`⚠️ Factura ${factura.clave} no tiene XML válido`)
+                      processed++
+                      if (onShowProgress) {
+                        onShowProgress(true, processed, facturasConDescripcion.length, 'Recategorizando facturas...')
+                      }
+                      continue
+                    }
+
+                    // Actualizar progreso
+                    if (onShowProgress) {
+                      onShowProgress(true, processed, facturasConDescripcion.length, `Recategorizando facturas... (${processed + 1}/${facturasConDescripcion.length})`)
+                    }
+
+                    // Generar categorización
+                    const categorizacion = await generateCategorizacion(xmlString, channelId)
+
+                    // Actualizar en la base de datos
+                    if (categorizacion && Array.isArray(categorizacion) && categorizacion.length > 0) {
+                      const updateResponse = await fetch('/api/facturas/categorizar', {
+                        method: 'PUT',
+                        headers: {
+                          'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                          clave: factura.clave,
+                          channelId: channelId,
+                          categorizacion: categorizacion
+                        })
+                      })
+
+                      if (!updateResponse.ok) {
+                        console.error(`❌ Error actualizando categorización para: ${factura.clave}`)
+                        errors++
+                      }
+                    }
+
+                    processed++
+                    
+                    // Actualizar progreso
+                    if (onShowProgress) {
+                      onShowProgress(true, processed, facturasConDescripcion.length, 'Recategorizando facturas...')
+                    }
+                  } catch (error) {
+                    console.error(`❌ Error procesando factura ${factura.clave}:`, error)
+                    errors++
+                    processed++
+                    
+                    // Actualizar progreso incluso si hay error
+                    if (onShowProgress) {
+                      onShowProgress(true, processed, facturasConDescripcion.length, 'Recategorizando facturas...')
+                    }
+                  }
+                }
+
+                // Ocultar barra de progreso
+                if (onShowProgress) {
+                  onShowProgress(false, 0, 0, '')
+                }
+
+                // Mostrar resultado
+                if (facturasConDescripcion.length > 0) {
+                  const message = errors > 0
+                    ? `Se recategorizaron ${processed} facturas, ${errors} con errores.`
+                    : `Se recategorizaron ${processed} facturas exitosamente.`
+                  console.log(message)
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error al recategorizar facturas:', error)
+          // Ocultar barra de progreso en caso de error
+          if (onShowProgress) {
+            onShowProgress(false, 0, 0, '')
+          }
+        }
+
         onClose(true)
       } else {
         alert(`Error: ${data.error || 'Error procesando la descripción personalizada'}`)

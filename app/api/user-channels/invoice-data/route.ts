@@ -4,6 +4,7 @@ import UserChannel from '@/lib/models/UserChannels'
 import Actividad from '@/lib/models/Actividad'
 import Sucursal from '@/lib/models/Sucursal'
 import Caja from '@/lib/models/Caja'
+import Channel from '@/lib/models/Channel'
 import mongoose from 'mongoose'
 
 export async function GET(request: NextRequest) {
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Obtener datos de sucursal
+    // Obtener datos de sucursal (completos para ubicación)
     let sucursal = null
     if (userChannel.sucursal) {
       const sucursalData = await Sucursal.findById(userChannel.sucursal)
@@ -66,8 +67,29 @@ export async function GET(request: NextRequest) {
         sucursal = {
           _id: String(sucursalData._id),
           nombre: sucursalData.nombre,
-          codigo: sucursalData.codigo
+          codigo: sucursalData.codigo,
+          provincia: sucursalData.provincia,
+          canton: sucursalData.canton,
+          distrito: sucursalData.distrito,
+          direccion: sucursalData.direccion
         }
+      }
+    }
+
+    // Obtener datos del canal
+    let channel = null
+    const channelData = await Channel.findById(channelId)
+    if (channelData) {
+      channel = {
+        _id: String(channelData._id),
+        name: channelData.name,
+        ident_type: channelData.ident_type,
+        ident: channelData.ident,
+        commercial_name: channelData.commercial_name || '',
+        phone_code: channelData.phone_code,
+        phone: channelData.phone,
+        email: channelData.email || '',
+        registro_fiscal_IVA: channelData.registro_fiscal_IVA
       }
     }
 
@@ -89,7 +111,8 @@ export async function GET(request: NextRequest) {
       data: {
         actividadEconomica,
         sucursal,
-        caja
+        caja,
+        channel
       }
     })
 

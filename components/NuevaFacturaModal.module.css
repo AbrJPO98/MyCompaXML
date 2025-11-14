@@ -125,6 +125,17 @@
   margin-bottom: 0;
 }
 
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.formGroupFull {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+}
+
 .formGroup {
   margin-bottom: 0;
 }
@@ -237,6 +248,10 @@
   .formRow {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  .formGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 768px) {
@@ -259,6 +274,10 @@
   }
 
   .formRow {
+    grid-template-columns: 1fr;
+  }
+
+  .formGrid {
     grid-template-columns: 1fr;
   }
 }

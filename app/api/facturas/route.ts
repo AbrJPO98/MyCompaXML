@@ -7,13 +7,14 @@ function isValidObjectId(id: string): boolean {
   return mongoose.Types.ObjectId.isValid(id) && id.length === 24
 }
 
-// GET /api/facturas?channelId=...&esRespuesta=true&special=true&clave=...
+// GET /api/facturas?channelId=...&esRespuesta=true&special=true&clave=...&facturaId=...
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const channelId = searchParams.get('channelId')
   const esRespuesta = searchParams.get('esRespuesta')
   const special = searchParams.get('special') === 'true' // Mantener por compatibilidad
   const clave = searchParams.get('clave') // Nuevo parámetro para consulta por clave
+  const facturaId = searchParams.get('facturaId') // Nuevo parámetro para consulta por _id
 
   if (!channelId) {
     return NextResponse.json({ success: false, error: 'channelId es requerido' }, { status: 400 })
@@ -28,11 +29,17 @@ export async function GET(request: NextRequest) {
     
     let query: any = { channel_id: new mongoose.Types.ObjectId(channelId) }
     
-    // Si se especifica una clave, buscar solo esa factura
-    if (clave) {
+    // Si se especifica un facturaId (_id), buscar por _id (prioridad más alta)
+    if (facturaId) {
+      if (!isValidObjectId(facturaId)) {
+        return NextResponse.json({ success: false, error: 'facturaId inválido' }, { status: 400 })
+      }
+      query._id = new mongoose.Types.ObjectId(facturaId)
+    } else if (clave) {
+      // Si se especifica una clave, buscar solo esa factura
       query.clave = clave
     } else {
-      // Lógica de filtrado normal solo si no se especifica clave
+      // Lógica de filtrado normal solo si no se especifica clave ni facturaId
       if (esRespuesta !== null) {
         // Filtrar por el nuevo campo esRespuesta
         query.esRespuesta = esRespuesta === 'true'
@@ -45,15 +52,23 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    if (clave) {
-      // Consulta individual por clave
+    if (facturaId || clave) {
+      // Consulta individual por _id o clave
       const factura = await Factura.findOne(query).lean()
       
       if (!factura) {
         return NextResponse.json({ success: false, error: 'Factura no encontrada' }, { status: 404 })
       }
+
+      // Convertir _id a string para que sea serializable
+      // Asegurar que categorizacion siempre esté presente (puede ser null o array)
+      const facturaResponse = {
+        ...factura,
+        _id: factura._id.toString(),
+        categorizacion: factura.categorizacion !== undefined ? (Array.isArray(factura.categorizacion) ? factura.categorizacion : []) : []
+      }
       
-      return NextResponse.json({ success: true, factura: factura })
+      return NextResponse.json({ success: true, factura: facturaResponse })
     } else {
       // Consulta múltiple (comportamiento original)
       const facturas = await Factura.find(query)
@@ -109,9 +124,23 @@ export async function POST(request: NextRequest) {
           facturaObject.emision = facturaData.emision
         }
 
-        // Agregar categorizacion si existe
+        // Agregar categorizacion si existe (debe ser un array)
         if (facturaData.categorizacion) {
-          facturaObject.categorizacion = facturaData.categorizacion
+          if (Array.isArray(facturaData.categorizacion)) {
+            facturaObject.categorizacion = facturaData.categorizacion
+          } else {
+            // Compatibilidad: si viene como string, intentar parsear
+            try {
+              const parsed = typeof facturaData.categorizacion === 'string' 
+                ? JSON.parse(facturaData.categorizacion) 
+                : facturaData.categorizacion
+              if (Array.isArray(parsed)) {
+                facturaObject.categorizacion = parsed
+              }
+            } catch (e) {
+              console.warn('Error parseando categorizacion, se omite:', e)
+            }
+          }
         }
 
         const nuevaFactura = new Factura(facturaObject)

@@ -20,11 +20,13 @@ interface DescripcionPersonalizada {
 interface DescripcionesPersonalizadasModalProps {
   channelId: string
   onClose: () => void
+  onShowProgress?: (show: boolean, current: number, total: number, title: string) => void
 }
 
 const DescripcionesPersonalizadasModal: React.FC<DescripcionesPersonalizadasModalProps> = ({ 
   channelId, 
-  onClose 
+  onClose,
+  onShowProgress
 }) => {
   const [descripciones, setDescripciones] = useState<DescripcionPersonalizada[]>([])
   const [loading, setLoading] = useState(true)
@@ -224,6 +226,7 @@ const DescripcionesPersonalizadasModal: React.FC<DescripcionesPersonalizadasModa
           descripcion={editingDescripcion}
           channelId={channelId}
           onClose={handleFormClose}
+          onShowProgress={onShowProgress}
         />
       )}
     </>

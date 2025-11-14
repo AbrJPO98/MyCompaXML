@@ -34,8 +34,19 @@ const FacturaSchema = new mongoose.Schema({
     index: true
   },
   categorizacion: {
-    type: String,
-    required: false
+    type: [{
+      cabys: String,
+      desc_fact: String,
+      descripPer: String,
+      bienoserv: String,
+      descripGasInv: String,
+      categoria: String,
+      actEconomica: String,
+      vidaUtil: String,
+      importado: String
+    }],
+    required: false,
+    default: []
   }
 }, {
   timestamps: true,

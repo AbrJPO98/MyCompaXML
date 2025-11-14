@@ -1,5 +1,6 @@
 'use client'
 import React, { useState, useEffect } from 'react'
+import { generateSlug } from '@/lib/categorization'
 import styles from './CategorizarFacturaModal.module.css'
 
 interface LineaDetalle {
@@ -106,7 +107,7 @@ interface CategorizarFacturaModalProps {
 }
 
 const CategorizarFacturaModal: React.FC<CategorizarFacturaModalProps> = ({ 
-  clave, 
+  clave,
   channelId, 
   onClose 
 }) => {
@@ -118,18 +119,6 @@ const CategorizarFacturaModal: React.FC<CategorizarFacturaModalProps> = ({
   useEffect(() => {
     fetchFacturaData()
   }, [clave, channelId])
-
-  // Función para generar slug (normalizar texto: minúsculas, sin acentos, sin espacios y sin signos de puntuación)
-  const generateSlug = (text: string): string => {
-    if (!text) return ''
-    return text
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/\s+/g, '')
-      .replace(/[^\w\s]/g, '')
-      .trim()
-  }
 
   // Función para buscar en el array de categorización
   const findCategorizacion = (cabys: string, detalle: string): any | null => {
@@ -148,10 +137,19 @@ const CategorizarFacturaModal: React.FC<CategorizarFacturaModalProps> = ({
       setLoading(true)
       setError(null)
 
-      const response = await fetch(`/api/facturas?channelId=${channelId}&clave=${encodeURIComponent(clave)}`)
+      if (!clave) {
+        throw new Error('Se requiere la clave de la factura para buscarla')
+      }
+
+      // Buscar factura por clave y channelId
+      const url = `/api/facturas?channelId=${channelId}&clave=${encodeURIComponent(clave)}`
+      console.log('🔍 Buscando factura por clave y channelId:', { clave, channelId })
+
+      const response = await fetch(url)
       
       if (!response.ok) {
-        throw new Error('Error al obtener la factura')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Error al obtener la factura')
       }
 
       const data = await response.json()
@@ -162,14 +160,34 @@ const CategorizarFacturaModal: React.FC<CategorizarFacturaModalProps> = ({
 
       // Cargar categorización si existe
       if (data.factura.categorizacion) {
-        try {
-          const categorizacionParsed = JSON.parse(data.factura.categorizacion)
-          setCategorizacionArray(Array.isArray(categorizacionParsed) ? categorizacionParsed : [])
-        } catch (parseError) {
-          console.error('Error parseando categorización:', parseError)
-          setCategorizacionArray([])
+        // La categorización ahora es un array directamente
+        if (Array.isArray(data.factura.categorizacion)) {
+          setCategorizacionArray(data.factura.categorizacion)
+          console.log('✅ Categorización cargada desde BD:', data.factura.categorizacion.length, 'elementos')
+        } else {
+          // Compatibilidad: si viene como string (datos antiguos), intentar parsear
+          try {
+            const categorizacionStr = String(data.factura.categorizacion).trim()
+            if (categorizacionStr && categorizacionStr !== '[]' && categorizacionStr !== 'null') {
+              const categorizacionParsed = JSON.parse(categorizacionStr)
+              if (Array.isArray(categorizacionParsed)) {
+                setCategorizacionArray(categorizacionParsed)
+                console.log('✅ Categorización cargada desde BD (parseada desde string):', categorizacionParsed.length, 'elementos')
+              } else {
+                console.warn('⚠️ Categorización no es un array:', typeof categorizacionParsed)
+                setCategorizacionArray([])
+              }
+            } else {
+              console.log('⚠️ Categorización está vacía o es null')
+              setCategorizacionArray([])
+            }
+          } catch (parseError: any) {
+            console.error('❌ Error parseando categorización:', parseError)
+            setCategorizacionArray([])
+          }
         }
       } else {
+        console.log('⚠️ No se encontró categorización en la factura')
         setCategorizacionArray([])
       }
 

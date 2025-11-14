@@ -7,6 +7,7 @@ import ProgressBar from './ProgressBar'
 import FileLogsModal, { addFileLog } from './FileLogsModal'
 import CabysEditModal from './CabysEditModal'
 import CategorizarFacturaModal from './CategorizarFacturaModal'
+import { generateCategorizacion } from '@/lib/categorization'
 import styles from './BillsTable.module.css'
 
 // Definición de columnas con sus propiedades
@@ -327,15 +328,12 @@ export default function BillsTable({ channelId }: { channelId: string }) {
     }> = []
 
     const rootElement = xmlDoc.documentElement
-    console.log('🔍 Analizando documento XML para MedioPago:', rootElement.nodeName)
 
     // Buscar [Nodo-Principal]->MedioPago (hijos directos del root, no descendientes)
     const directMedioPagoElements = Array.from(rootElement.children).filter(child => child.nodeName === 'MedioPago')
-    console.log('📍 MedioPago directos encontrados:', directMedioPagoElements.length)
     
     directMedioPagoElements.forEach((medioPago, index) => {
       if (medioPago.textContent?.trim()) {
-        console.log(`📍 MedioPago directo ${index + 1}:`, medioPago.textContent.trim())
         medioPagoNodes.push({
           medioPagoCon: medioPago.textContent.trim()
         })
@@ -344,53 +342,41 @@ export default function BillsTable({ channelId }: { channelId: string }) {
 
     // Buscar [Nodo-Principal]->ResumenFactura->MedioPago
     const resumenFactura = rootElement.querySelector('ResumenFactura')
-    console.log('📊 ResumenFactura encontrado:', !!resumenFactura)
     
     if (resumenFactura) {
       const medioPagoElements = resumenFactura.querySelectorAll('MedioPago')
-      console.log('📊 MedioPago en ResumenFactura encontrados:', medioPagoElements.length)
       
       medioPagoElements.forEach((medioPagoElement, index) => {
-        console.log(`📊 Procesando MedioPago ${index + 1} en ResumenFactura`)
         const medioPagoData: any = {}
 
         // TipoMedioPago
         const tipoMedioPago = medioPagoElement.querySelector('TipoMedioPago')
         if (tipoMedioPago && tipoMedioPago.textContent?.trim()) {
-          console.log(`  - TipoMedioPago: ${tipoMedioPago.textContent.trim()}`)
           medioPagoData.medioPagoCon = tipoMedioPago.textContent.trim()
         }
 
         // MedioPagoOtros  
         const medioPagoOtros = medioPagoElement.querySelector('MedioPagoOtros')
         if (medioPagoOtros && medioPagoOtros.textContent?.trim()) {
-          console.log(`  - MedioPagoOtros: ${medioPagoOtros.textContent.trim()}`)
           medioPagoData.medioPagoOtroCon = medioPagoOtros.textContent.trim()
         }
 
         // TotalMedioPago -> va a tipoMedioPagoCon según las instrucciones
         const totalMedioPago = medioPagoElement.querySelector('TotalMedioPago')
         if (totalMedioPago && totalMedioPago.textContent?.trim()) {
-          console.log(`  - TotalMedioPago: ${totalMedioPago.textContent.trim()}`)
           medioPagoData.tipoMedioPagoCon = totalMedioPago.textContent.trim()
         }
 
         // Solo agregar si tiene al menos un valor
         if (Object.keys(medioPagoData).length > 0) {
-          console.log(`  ✅ Agregando MedioPago ${index + 1}:`, medioPagoData)
           medioPagoNodes.push(medioPagoData)
         } else {
-          console.log(`  ❌ MedioPago ${index + 1} vacío, no se agrega`)
         }
       })
     }
 
-    console.log('🎯 Total de nodos MedioPago extraídos:', medioPagoNodes.length)
-    console.log('🎯 Nodos MedioPago:', medioPagoNodes)
-
     // Si no se encontraron nodos MedioPago, crear un objeto vacío para mantener la fila
     if (medioPagoNodes.length === 0) {
-      console.log('⚠️ No se encontraron nodos MedioPago, creando fila vacía')
       medioPagoNodes.push({})
     }
 
@@ -424,32 +410,26 @@ export default function BillsTable({ channelId }: { channelId: string }) {
     }> = []
 
     const rootElement = xmlDoc.documentElement
-    console.log('🔍 Analizando documento XML para DetalleServicio->LineaDetalle:', rootElement.nodeName)
 
     // Buscar [Nodo-Principal]->DetalleServicio->LineaDetalle
     const detalleServicio = rootElement.querySelector('DetalleServicio')
-    console.log('📋 DetalleServicio encontrado:', !!detalleServicio)
     
     if (detalleServicio) {
       const lineaDetalleElements = detalleServicio.querySelectorAll('LineaDetalle')
-      console.log('📋 LineaDetalle en DetalleServicio encontrados:', lineaDetalleElements.length)
       
       lineaDetalleElements.forEach((lineaDetalleElement, index) => {
         
-        console.log(`📋 Procesando LineaDetalle ${index + 1} en DetalleServicio`)
         const lineaDetalleData: any = {}
 
         // Codigo (prioridad 1)
         const codigo = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'Codigo')
         if (codigo && codigo.textContent?.trim()) {
-          console.log(`  - Codigo: ${codigo.textContent.trim()}`)
           lineaDetalleData.codigoCon = codigo.textContent.trim()
         }
         // CodigoCABYS (prioridad 2, solo si no hay Codigo)
         else {
           const codigoCABYS = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'CodigoCABYS')
           if (codigoCABYS && codigoCABYS.textContent?.trim()) {
-            console.log(`  - CodigoCABYS: ${codigoCABYS.textContent.trim()}`)
             lineaDetalleData.codigoCon = codigoCABYS.textContent.trim()
           }
         }
@@ -457,14 +437,12 @@ export default function BillsTable({ channelId }: { channelId: string }) {
         // NumeroLinea
         const numeroLinea = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'NumeroLinea')
         if (numeroLinea && numeroLinea.textContent?.trim()) {
-          console.log(`  - NumeroLinea: ${numeroLinea.textContent.trim()}`)
           lineaDetalleData.numeroLineaCon = numeroLinea.textContent.trim()
         }
 
         // PartidaArancelaria
         const partidaArancelaria = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'PartidaArancelaria')
         if (partidaArancelaria && partidaArancelaria.textContent?.trim()) {
-          console.log(`  - PartidaArancelaria: ${partidaArancelaria.textContent.trim()}`)
           lineaDetalleData.partidaArancelariaCon = partidaArancelaria.textContent.trim()
         }
 
@@ -473,13 +451,11 @@ export default function BillsTable({ channelId }: { channelId: string }) {
         if (codigoComercial) {
           const tipo = Array.from(codigoComercial.children).find((child: any) => child.nodeName === 'Tipo')
           if (tipo && tipo.textContent?.trim()) {
-            console.log(`  - CodigoComercial->Tipo: ${tipo.textContent.trim()}`)
             lineaDetalleData.tipo3Con = tipo.textContent.trim()
           }
           
           const codigoComercialCodigo = Array.from(codigoComercial.children).find((child: any) => child.nodeName === 'Codigo')
           if (codigoComercialCodigo && codigoComercialCodigo.textContent?.trim()) {
-            console.log(`  - CodigoComercial->Codigo: ${codigoComercialCodigo.textContent.trim()}`)
             lineaDetalleData.codigo2Con = codigoComercialCodigo.textContent.trim()
           }
         }
@@ -487,127 +463,106 @@ export default function BillsTable({ channelId }: { channelId: string }) {
         // Cantidad
         const cantidad = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'Cantidad')
         if (cantidad && cantidad.textContent?.trim()) {
-          console.log(`  - Cantidad: ${cantidad.textContent.trim()}`)
           lineaDetalleData.cantidadCon = cantidad.textContent.trim()
         }
 
         // UnidadMedida
         const unidadMedida = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'UnidadMedida')
         if (unidadMedida && unidadMedida.textContent?.trim()) {
-          console.log(`  - UnidadMedida: ${unidadMedida.textContent.trim()}`)
           lineaDetalleData.unidadMedidaCon = unidadMedida.textContent.trim()
         }
 
         // TipoTransaccion
         const tipoTransaccion = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'TipoTransaccion')
         if (tipoTransaccion && tipoTransaccion.textContent?.trim()) {
-          console.log(`  - TipoTransaccion: ${tipoTransaccion.textContent.trim()}`)
           lineaDetalleData.tipoTransaccionCon = tipoTransaccion.textContent.trim()
         }
 
         // UnidadMedidaComercial
         const unidadMedidaComercial = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'UnidadMedidaComercial')
         if (unidadMedidaComercial && unidadMedidaComercial.textContent?.trim()) {
-          console.log(`  - UnidadMedidaComercial: ${unidadMedidaComercial.textContent.trim()}`)
           lineaDetalleData.unidadMedidaComercialCon = unidadMedidaComercial.textContent.trim()
         }
 
         // Detalle
         const detalle = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'Detalle')
         if (detalle && detalle.textContent?.trim()) {
-          console.log(`  - Detalle: ${detalle.textContent.trim()}`)
           lineaDetalleData.detalleCon = detalle.textContent.trim()
         }
 
         // NumeroVINoSerie (tomar solo el primero)
         const numeroVINoSerie = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'NumeroVINoSerie')
         if (numeroVINoSerie && numeroVINoSerie.textContent?.trim()) {
-          console.log(`  - NumeroVINoSerie: ${numeroVINoSerie.textContent.trim()}`)
           lineaDetalleData.numeroVinOSerieCon = numeroVINoSerie.textContent.trim()
         }
 
         // RegistroMedicamento
         const registroMedicamento = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'RegistroMedicamento')
         if (registroMedicamento && registroMedicamento.textContent?.trim()) {
-          console.log(`  - RegistroMedicamento: ${registroMedicamento.textContent.trim()}`)
           lineaDetalleData.registroMedicamento = registroMedicamento.textContent.trim()
         }
 
         // FormaFarmaceutica
         const formaFarmaceutica = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'FormaFarmaceutica')
         if (formaFarmaceutica && formaFarmaceutica.textContent?.trim()) {
-          console.log(`  - FormaFarmaceutica: ${formaFarmaceutica.textContent.trim()}`)
           lineaDetalleData.formaFarmaceutica = formaFarmaceutica.textContent.trim()
         }
 
         // PrecioUnitario
         const precioUnitario = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'PrecioUnitario')
         if (precioUnitario && precioUnitario.textContent?.trim()) {
-          console.log(`  - PrecioUnitario: ${precioUnitario.textContent.trim()}`)
           lineaDetalleData.precioUnitarioCon = precioUnitario.textContent.trim()
         }
 
         // MontoTotal
         const montoTotal = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'MontoTotal')
         if (montoTotal && montoTotal.textContent?.trim()) {
-          console.log(`  - MontoTotal: ${montoTotal.textContent.trim()}`)
           lineaDetalleData.montoTotalCon = montoTotal.textContent.trim()
         }
 
         // SubTotal
         const subTotal = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'SubTotal')
         if (subTotal && subTotal.textContent?.trim()) {
-          console.log(`  - SubTotal: ${subTotal.textContent.trim()}`)
           lineaDetalleData.subTotalCon = subTotal.textContent.trim()
         }
 
         // IVACobradoFabrica
         const ivaCobradoFabrica = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'IVACobradoFabrica')
         if (ivaCobradoFabrica && ivaCobradoFabrica.textContent?.trim()) {
-          console.log(`  - IVACobradoFabrica: ${ivaCobradoFabrica.textContent.trim()}`)
           lineaDetalleData.ivaCobradoFabrica = ivaCobradoFabrica.textContent.trim()
         }
 
         // BaseImponible
         const baseImponible = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'BaseImponible')
         if (baseImponible && baseImponible.textContent?.trim()) {
-          console.log(`  - BaseImponible: ${baseImponible.textContent.trim()}`)
           lineaDetalleData.baseImponibleCon = baseImponible.textContent.trim()
         }
 
         // ImpuestoAsumidoEmisorFabrica
         const impuestoAsumidoEmisorFabrica = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'ImpuestoAsumidoEmisorFabrica')
         if (impuestoAsumidoEmisorFabrica && impuestoAsumidoEmisorFabrica.textContent?.trim()) {
-          console.log(`  - ImpuestoAsumidoEmisorFabrica: ${impuestoAsumidoEmisorFabrica.textContent.trim()}`)
           lineaDetalleData.impuestoAsumidoEmisorFabrica = impuestoAsumidoEmisorFabrica.textContent.trim()
         }
 
         // ImpuestoNeto
         const impuestoNeto = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'ImpuestoNeto')
         if (impuestoNeto && impuestoNeto.textContent?.trim()) {
-          console.log(`  - ImpuestoNeto: ${impuestoNeto.textContent.trim()}`)
           lineaDetalleData.impuestoNetoCon = impuestoNeto.textContent.trim()
         }
 
         // MontoTotalLinea
         const montoTotalLinea = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'MontoTotalLinea')
         if (montoTotalLinea && montoTotalLinea.textContent?.trim()) {
-          console.log(`  - MontoTotalLinea: ${montoTotalLinea.textContent.trim()}`)
           lineaDetalleData.montoTotalLineaCon = montoTotalLinea.textContent.trim()
         }
 
         // Solo agregar si tiene al menos un valor
         if (Object.keys(lineaDetalleData).length > 0) {
-          console.log(`  ✅ Agregando LineaDetalle ${index + 1}:`, lineaDetalleData)
           lineaDetalleNodes.push(lineaDetalleData)
         } else {
-          console.log(`  ❌ LineaDetalle ${index + 1} vacío, no se agrega`)
         }
       })
     }
-
-    console.log('🎯 Total de nodos LineaDetalle extraídos:', lineaDetalleNodes.length)
-    console.log('🎯 Nodos LineaDetalle:', lineaDetalleNodes)
 
     return lineaDetalleNodes
   }
@@ -851,7 +806,6 @@ export default function BillsTable({ channelId }: { channelId: string }) {
 
       // Para documentos comunes (no MyCompaXMLDOCIMP ni MyCompaXMLDOC), crear múltiples filas
       if (isCommonDocument) {
-        console.log('🔄 Procesando documento común, extrayendo nodos...')
         
         // Extraer nodos MedioPago
         // const medioPagoNodes = extractMedioPagoNodes(xmlDoc)
@@ -946,7 +900,6 @@ export default function BillsTable({ channelId }: { channelId: string }) {
         
         // Si no hay ninguna sección, crear una fila base
         if (result.length === 0) {
-          console.log('🔄 No hay nodos especiales, creando fila base...')
           result.push(baseDocumentData)
         }
         
@@ -955,7 +908,6 @@ export default function BillsTable({ channelId }: { channelId: string }) {
       }
 
       // Para documentos MyCompaXMLDOCIMP y MyCompaXMLDOC, retornar un solo objeto (comportamiento original)
-      console.log('🔄 Documento especial, retornando una sola fila')
       return [baseDocumentData]
     } catch (error) {
       console.error('Error procesando XML:', error)
@@ -1004,6 +956,48 @@ export default function BillsTable({ channelId }: { channelId: string }) {
           
           // Decodificar XML de Base64 (datos de BD)
           const xmlString = it.xml ? fromBase64(it.xml) : ''
+          
+          // Procesar categorización si no existe o está vacía
+          const tieneCategorizacion = it.categorizacion && 
+            Array.isArray(it.categorizacion) && 
+            it.categorizacion.length > 0
+          
+          if (xmlString && !tieneCategorizacion) {
+            try {
+              console.log(`⏳ Generando categorización para factura: ${it.clave}`)
+              const categorizacion = await generateCategorizacion(xmlString, channelId)
+              
+              // Actualizar categorización en la base de datos
+              if (categorizacion && Array.isArray(categorizacion) && categorizacion.length > 0) {
+                const updateResponse = await fetch('/api/facturas/categorizar', {
+                  method: 'PUT',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    clave: it.clave,
+                    channelId: channelId,
+                    categorizacion: categorizacion
+                  })
+                })
+                
+                if (updateResponse.ok) {
+                  console.log(`✅ Categorización actualizada para: ${it.clave}`)
+                  // Actualizar el item con la nueva categorización
+                  it.categorizacion = categorizacion
+                } else {
+                  const errorData = await updateResponse.json().catch(() => ({}))
+                  console.error(`❌ Error actualizando categorización para: ${it.clave}`, errorData)
+                }
+              } else {
+                console.log(`⚠️ Categorización vacía generada para: ${it.clave}`)
+              }
+            } catch (error) {
+              console.error(`❌ Error generando categorización para ${it.clave}:`, error)
+            }
+          } else if (xmlString && tieneCategorizacion) {
+            console.log(`ℹ️ Factura ${it.clave} ya tiene categorización, omitiendo generación`)
+          }
           
           // Procesar XML para extraer datos (ahora retorna array)
           const xmlDataArray = xmlString ? processXmlData(xmlString, channelData, true) : [{}]
@@ -1064,6 +1058,7 @@ export default function BillsTable({ channelId }: { channelId: string }) {
             
             const processedItem = {
               ...it,
+              _id: it._id ? (typeof it._id === 'string' ? it._id : String(it._id)) : it._id, // Asegurar que _id sea string
               clave: it.clave,
               path: it.path || '', // Campo path desde BD
               ...xmlData, // Combinar datos extraídos del XML
@@ -1146,16 +1141,13 @@ export default function BillsTable({ channelId }: { channelId: string }) {
   }, [channelId, processXmlData])
 
   useEffect(() => {
-    console.log('useEffect ejecutándose...', { channelId, hasInitialized: hasInitialized.current })
     
     // Solo ejecutar la inicialización una vez por channelId
     if (hasInitialized.current) {
-      console.log('Ya se inicializó para este channelId, saltando...')
       return
     }
     
     hasInitialized.current = true
-    console.log('Inicializando para channelId:', channelId)
     
     // Cargar configuración de columnas desde localStorage
     const savedColumns = localStorage.getItem(`bills-columns-${channelId}`)
@@ -1181,15 +1173,28 @@ export default function BillsTable({ channelId }: { channelId: string }) {
       setColumns(COLUMN_DEFINITIONS)
     }
     
-    // Cargar facturas solo una vez al montar el componente
+    // Resetear el flag cuando cambia el channelId para permitir recargar
+    hasLoadedBills.current = false
+    
+    // Cargar facturas cuando cambia el channelId
     loadBills()
   }, [channelId, loadBills])
+
+  const [cancelProgressCallback, setCancelProgressCallback] = useState<(() => void) | null>(null)
 
   const handleShowProgress = (show: boolean, current: number, total: number, title: string) => {
     setShowProgress(show)
     setProgressCurrent(current)
     setProgressTotal(total)
     setProgressTitle(title)
+  }
+
+  const handleCancelProgress = () => {
+    if (cancelProgressCallback) {
+      cancelProgressCallback()
+    }
+    setShowProgress(false)
+    setCancelProgressCallback(null)
   }
 
   // Función para enriquecer datos de CABYS
@@ -1255,7 +1260,6 @@ export default function BillsTable({ channelId }: { channelId: string }) {
           enrichedRow.codActComp = cabysData?.actEconomica || row.codActComp || ''
         }
 
-        console.log('enrichedRow', enrichedRow.descripGasInv)
 
         return enrichedRow
       }
@@ -1442,7 +1446,6 @@ export default function BillsTable({ channelId }: { channelId: string }) {
         ).then((updatedBills) => {
           // Actualizar el estado con los datos nuevos
           setBills(updatedBills)
-          console.log(`Filas con código CABYS ${codigo} recargadas exitosamente`)
         })
         
         // Retornar el estado sin cambios inmediatamente
@@ -1469,7 +1472,6 @@ export default function BillsTable({ channelId }: { channelId: string }) {
   }
 
   const handleCabysEditSave = async (updatedCabys: CabysItem) => {
-    console.log('CABYS actualizado:', updatedCabys)
     
     // Cerrar el modal primero
     setShowCabysEditModal(false)
@@ -1480,9 +1482,106 @@ export default function BillsTable({ channelId }: { channelId: string }) {
     await reloadRowsWithCabysCode(updatedCabys.codigo)
   }
 
-  const handleCategorizarClick = (bill: any) => {
-    if (bill.claveCon) {
-      setSelectedFacturaClave(bill.claveCon)
+  const handleCategorizarClick = async (bill: any) => {
+    // Buscar por clave (claveCon o clave)
+    const clave = bill.claveCon || bill.clave
+    
+    if (!clave) {
+      console.error('❌ No se puede abrir modal: falta la clave de la factura')
+      alert('Error: No se puede identificar la factura. Falta la clave.')
+      return
+    }
+
+    // Mostrar barra de progreso
+    setShowProgress(true)
+    setProgressCurrent(0)
+    setProgressTotal(1)
+    setProgressTitle('Categorizando factura...')
+
+    try {
+      // Obtener la factura completa desde la base de datos
+      const response = await fetch(`/api/facturas?channelId=${channelId}&clave=${encodeURIComponent(clave)}`)
+      
+      if (!response.ok) {
+        throw new Error('Error al obtener la factura')
+      }
+
+      const data = await response.json()
+      
+      if (!data.success || !data.factura || !data.factura.xml) {
+        throw new Error('No se encontró el XML de la factura')
+      }
+
+      // Actualizar progreso
+      setProgressCurrent(0.3)
+      setProgressTitle('Categorizando factura... (Obteniendo datos)')
+
+      // Decodificar XML de Base64
+      const xmlString = fromBase64(data.factura.xml)
+      
+      if (!xmlString) {
+        throw new Error('No se pudo decodificar el XML de la factura')
+      }
+
+      // Actualizar progreso
+      setProgressCurrent(0.5)
+      setProgressTitle('Categorizando factura... (Generando categorización)')
+
+      // Generar categorización
+      console.log(`⏳ Generando categorización para factura: ${clave}`)
+      const categorizacion = await generateCategorizacion(xmlString, channelId)
+
+      // Actualizar progreso
+      setProgressCurrent(0.8)
+      setProgressTitle('Categorizando factura... (Guardando)')
+
+      // Actualizar categorización en la base de datos
+      if (categorizacion && Array.isArray(categorizacion) && categorizacion.length > 0) {
+        const updateResponse = await fetch('/api/facturas/categorizar', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            clave: clave,
+            channelId: channelId,
+            categorizacion: categorizacion
+          })
+        })
+
+        if (updateResponse.ok) {
+          console.log(`✅ Categorización actualizada para: ${clave}`)
+        } else {
+          const errorData = await updateResponse.json().catch(() => ({}))
+          console.error(`❌ Error actualizando categorización para: ${clave}`, errorData)
+          // Continuar de todas formas para abrir el modal
+        }
+      } else {
+        console.log(`⚠️ Categorización vacía generada para: ${clave}`)
+      }
+
+      // Completar progreso
+      setProgressCurrent(1)
+      setProgressTitle('Categorización completada')
+
+      // Pequeño delay para que se vea el progreso completo
+      await new Promise(resolve => setTimeout(resolve, 300))
+
+      // Ocultar barra de progreso
+      setShowProgress(false)
+
+      // Abrir el modal (cargará los datos actualizados desde la BD)
+      setSelectedFacturaClave(clave)
+      setShowCategorizarModal(true)
+    } catch (error) {
+      console.error('Error al categorizar factura:', error)
+      
+      // Ocultar barra de progreso
+      setShowProgress(false)
+      
+      alert('Error al generar la categorización. Se abrirá el modal con los datos existentes.')
+      // Abrir el modal de todas formas
+      setSelectedFacturaClave(clave)
       setShowCategorizarModal(true)
     }
   }
@@ -1914,7 +2013,16 @@ export default function BillsTable({ channelId }: { channelId: string }) {
         onBillsAdded={handleBillsAdded}
         channelId={channelId}
         hasActiveFilters={columnFilters.length > 0}
-        onShowProgress={handleShowProgress}
+        onShowProgress={(show, current, total, title) => {
+          handleShowProgress(show, current, total, title)
+          // Si el título indica categorización, preparar el callback de cancelación
+          if (show && title.includes('Categorizando')) {
+            // El callback se establecerá cuando BillsToolbar lo pase
+          }
+        }}
+        onCancelProgress={(callback) => {
+          setCancelProgressCallback(() => callback)
+        }}
       />
 
       <div className={styles.header}>
@@ -1975,6 +2083,7 @@ export default function BillsTable({ channelId }: { channelId: string }) {
         total={progressTotal}
         isVisible={showProgress}
         title={progressTitle}
+        onCancel={progressTitle.includes('Categorizando') ? handleCancelProgress : undefined}
       />
 
       {/* Modal de edición de CABYS */}

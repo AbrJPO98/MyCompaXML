@@ -18,12 +18,43 @@ interface InvoiceData {
     _id: string
     nombre: string
     codigo: string
+    provincia?: string
+    canton?: string
+    distrito?: string
+    direccion?: string
   } | null
   caja: {
     _id: string
     numero: string
     numeracion_facturas: { [key: string]: string }
   } | null
+  channel: {
+    _id: string
+    name: string
+    ident_type: string
+    ident: string
+    commercial_name: string
+    phone_code: string
+    phone: string
+    email: string
+    registro_fiscal_IVA: string
+  } | null
+}
+
+interface UbicacionesData {
+  provincias: {
+    [key: string]: {
+      nombre: string
+      cantones: {
+        [key: string]: {
+          nombre: string
+          distritos: {
+            [key: string]: string
+          }
+        }
+      }
+    }
+  }
 }
 
 const TIPOS_DOCUMENTO = [
@@ -39,11 +70,27 @@ const TIPOS_DOCUMENTO = [
   { value: '10', label: '10 - Recibo Electrónico de Pago' }
 ]
 
+const TIPOS_IDENTIFICACION: { [key: string]: string } = {
+  '01': 'Física',
+  '02': 'Jurídica',
+  '03': 'DIMEX',
+  '04': 'NITE',
+  '##': 'Extranjero'
+}
+
 export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }: NuevaFacturaModalProps) {
   const [tipoDocumento, setTipoDocumento] = useState('01')
   const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null)
   const [loading, setLoading] = useState(false)
   const [consecutivo, setConsecutivo] = useState('')
+  const [ubicaciones, setUbicaciones] = useState<UbicacionesData | null>(null)
+  const [ubicacionTexto, setUbicacionTexto] = useState('')
+
+  useEffect(() => {
+    if (isOpen) {
+      loadUbicaciones()
+    }
+  }, [isOpen])
 
   useEffect(() => {
     if (isOpen && channelId && userId) {
@@ -53,7 +100,20 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
 
   useEffect(() => {
     calculateConsecutivo()
-  }, [tipoDocumento, invoiceData])
+    buildUbicacion()
+  }, [tipoDocumento, invoiceData, ubicaciones])
+
+  const loadUbicaciones = async () => {
+    try {
+      const response = await fetch('/CR_ubicaciones.json')
+      if (response.ok) {
+        const data = await response.json()
+        setUbicaciones(data)
+      }
+    } catch (error) {
+      console.error('Error cargando ubicaciones:', error)
+    }
+  }
 
   const loadInvoiceData = async () => {
     setLoading(true)
@@ -71,6 +131,40 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
       console.error('Error cargando datos de facturación:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const buildUbicacion = () => {
+    if (!invoiceData?.sucursal || !ubicaciones) {
+      setUbicacionTexto('')
+      return
+    }
+
+    const { provincia, canton, distrito, direccion } = invoiceData.sucursal
+
+    if (!provincia || !canton || !distrito) {
+      setUbicacionTexto(direccion || '')
+      return
+    }
+
+    try {
+      // Obtener nombre de provincia
+      const provinciaData = ubicaciones.provincias[provincia]
+      const nombreProvincia = provinciaData?.nombre || provincia
+
+      // Obtener nombre de cantón
+      const cantonData = provinciaData?.cantones[canton]
+      const nombreCanton = cantonData?.nombre || canton
+
+      // Obtener nombre de distrito
+      const nombreDistrito = cantonData?.distritos[distrito] || distrito
+
+      // Construir ubicación completa
+      const partes = [nombreDistrito, nombreCanton, nombreProvincia, direccion].filter(Boolean)
+      setUbicacionTexto(partes.join(', '))
+    } catch (error) {
+      console.error('Error construyendo ubicación:', error)
+      setUbicacionTexto(direccion || '')
     }
   }
 
@@ -105,6 +199,7 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
       setTipoDocumento('01')
       setInvoiceData(null)
       setConsecutivo('')
+      setUbicacionTexto('')
       onClose()
     }
   }
@@ -180,6 +275,96 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
                     </label>
                     <div className={styles.valueDisplay}>
                       {consecutivo || 'Calculando...'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sección: Información del emisor */}
+              <div className={styles.section}>
+                <h3 className={styles.sectionTitle}>Información del emisor</h3>
+                
+                <div className={styles.formGrid}>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>
+                      Nombre del emisor
+                    </label>
+                    <div className={styles.valueDisplay}>
+                      {invoiceData?.channel?.name || 'No disponible'}
+                    </div>
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>
+                      Tipo de identificación
+                    </label>
+                    <div className={styles.valueDisplay}>
+                      {invoiceData?.channel?.ident_type 
+                        ? `${invoiceData.channel.ident_type} - ${TIPOS_IDENTIFICACION[invoiceData.channel.ident_type] || invoiceData.channel.ident_type}`
+                        : 'No disponible'}
+                    </div>
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>
+                      Número de identificación
+                    </label>
+                    <div className={styles.valueDisplay}>
+                      {invoiceData?.channel?.ident || 'No disponible'}
+                    </div>
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>
+                      Nombre comercial
+                    </label>
+                    <div className={styles.valueDisplay}>
+                      {invoiceData?.channel?.commercial_name || 'No disponible'}
+                    </div>
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>
+                      Código de teléfono
+                    </label>
+                    <div className={styles.valueDisplay}>
+                      {invoiceData?.channel?.phone_code || 'No disponible'}
+                    </div>
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>
+                      Número de teléfono
+                    </label>
+                    <div className={styles.valueDisplay}>
+                      {invoiceData?.channel?.phone || 'No disponible'}
+                    </div>
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>
+                      Email
+                    </label>
+                    <div className={styles.valueDisplay}>
+                      {invoiceData?.channel?.email || 'No disponible'}
+                    </div>
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>
+                      Registro fiscal 8707
+                    </label>
+                    <div className={styles.valueDisplay}>
+                      {invoiceData?.channel?.registro_fiscal_IVA || 'No disponible'}
+                    </div>
+                  </div>
+
+                  <div className={styles.formGroupFull}>
+                    <label className={styles.label}>
+                      Ubicación
+                    </label>
+                    <div className={styles.valueDisplay}>
+                      {ubicacionTexto || 'No disponible'}
                     </div>
                   </div>
                 </div>
