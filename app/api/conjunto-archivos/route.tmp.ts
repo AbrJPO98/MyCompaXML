@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
-import ConjuntoArchivos from '@/lib/models/ConjuntoArchivos'
+import Categorizacion from '@/lib/models/Categorizacion'
 import { isValidObjectId } from '@/lib/dbUtils'
 
 // GET - Obtener conjuntos de archivos por channel_id
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const conjuntos = await ConjuntoArchivos.find({ channel_id: channelId })
+    const conjuntos = await Categorizacion.find({ channel_id: channelId })
       .select('nombre fecha archivos channel_id createdAt')
       .sort({ fecha: -1 })
       .lean()
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar si ya existe un conjunto con el mismo nombre y channel_id
-    const existingConjunto = await ConjuntoArchivos.findOne({
+    const existingConjunto = await Categorizacion.findOne({
       nombre,
       channel_id
     })
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const nuevoConjunto = new ConjuntoArchivos({
+    const nuevoConjunto = new Categorizacion({
       nombre,
       fecha: new Date(),
       archivos,
