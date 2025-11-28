@@ -15,6 +15,7 @@ export interface ICliente extends Document {
   address?: string
   address_extranjero?: string
   act_ecos?: string[]  // Array de códigos de actividades económicas
+  channel_id?: mongoose.Types.ObjectId  // ID del canal al que pertenece el cliente
   createdAt: Date
   updatedAt: Date
 }
@@ -80,6 +81,12 @@ const ClienteSchema: Schema = new Schema({
   act_ecos: {
     type: [String],
     default: []
+  },
+  channel_id: {
+    type: Schema.Types.ObjectId,
+    ref: 'Channel',
+    required: false,
+    index: true
   }
 }, {
   timestamps: true

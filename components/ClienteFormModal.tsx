@@ -25,6 +25,7 @@ interface ClienteFormModalProps {
   onClose: () => void
   cliente?: Cliente | null
   onSave?: () => void
+  channelId?: string
 }
 
 interface PhoneCode {
@@ -59,7 +60,8 @@ const ClienteFormModal: React.FC<ClienteFormModalProps> = ({
   isOpen, 
   onClose, 
   cliente, 
-  onSave 
+  onSave,
+  channelId
 }) => {
   const [formData, setFormData] = useState<Cliente>({
     ident: '',
@@ -272,9 +274,14 @@ const ClienteFormModal: React.FC<ClienteFormModalProps> = ({
       const method = cliente ? 'PUT' : 'POST'
 
       // Preparar datos para enviar, incluyendo las actividades económicas
-      const dataToSend = {
+      const dataToSend: any = {
         ...formData,
         act_ecos: selectedActividades.map(act => act.name.toString())
+      }
+
+      // Si es un nuevo cliente (no edición) y hay channelId, agregar channel_id
+      if (!cliente && channelId) {
+        dataToSend.channel_id = channelId
       }
 
       const response = await fetch(url, {

@@ -92,6 +92,11 @@ export async function POST(request: NextRequest) {
         throw new Error('Ya existe un cliente con esta identificación')
       }
 
+      // Validar channel_id si está presente
+      if (body.channel_id && !isValidObjectId(body.channel_id)) {
+        throw new Error('channel_id no es un ObjectId válido')
+      }
+
       const cliente = new Cliente(body)
       return await cliente.save()
     })

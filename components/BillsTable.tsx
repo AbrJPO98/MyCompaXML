@@ -1286,6 +1286,14 @@ export default function BillsTable({ channelId }: { channelId: string }) {
     }
   }
 
+  const handleBillsRemoved = (claves: string[]) => {
+    // Eliminar las facturas del estado usando las claves
+    setBills(prev => prev.filter(bill => {
+      const billClave = bill.claveCon || bill.clave
+      return !claves.includes(billClave)
+    }))
+  }
+
   const handleBillsAdded = async (rows: any[]) => {
     // Procesar archivos nuevos que vienen del BillsToolbar
     const processedRows = await Promise.all(rows.map(async (row) => {
@@ -2011,6 +2019,7 @@ export default function BillsTable({ channelId }: { channelId: string }) {
       <BillsToolbar
         onFilterColumns={() => setShowFilterModal(true)}
         onBillsAdded={handleBillsAdded}
+        onBillsRemoved={handleBillsRemoved}
         channelId={channelId}
         hasActiveFilters={columnFilters.length > 0}
         onShowProgress={(show, current, total, title) => {

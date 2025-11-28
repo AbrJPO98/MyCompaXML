@@ -41,9 +41,10 @@ interface Cliente {
 interface ClientesModalProps {
   isOpen: boolean
   onClose: () => void
+  channelId?: string
 }
 
-const ClientesModal: React.FC<ClientesModalProps> = ({ isOpen, onClose }) => {
+const ClientesModal: React.FC<ClientesModalProps> = ({ isOpen, onClose, channelId }) => {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -360,6 +361,7 @@ const ClientesModal: React.FC<ClientesModalProps> = ({ isOpen, onClose }) => {
           onClose={handleFormClose}
           cliente={editingCliente}
           onSave={handleFormClose}
+          channelId={channelId}
         />
       )}
     </>

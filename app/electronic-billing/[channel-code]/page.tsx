@@ -421,10 +421,13 @@ const ElectronicBillingPage: React.FC = () => {
       </div>
 
       {/* Modal de Clientes */}
-      <ClientesModal
-        isOpen={showClientesModal}
-        onClose={() => setShowClientesModal(false)}
-      />
+      {channel && (
+        <ClientesModal
+          isOpen={showClientesModal}
+          onClose={() => setShowClientesModal(false)}
+          channelId={channel._id}
+        />
+      )}
 
       {/* Modal de Añadir Firma Digital */}
       {channel && (

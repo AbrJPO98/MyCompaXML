@@ -53,10 +53,10 @@ const ManageFileSetModal: React.FC<ManageFileSetModalProps> = ({
       if (result.success) {
         setFileSets(result.data || [])
       } else {
-        setError(result.error || 'Error al cargar conjuntos de archivos')
+        setError(result.error || 'Error al cargar categorizaciones')
       }
     } catch (error) {
-      console.error('Error al cargar conjuntos de archivos:', error)
+      console.error('Error al cargar categorizaciones:', error)
       setError('Error de conexión')
     } finally {
       setLoading(false)
@@ -475,7 +475,7 @@ const ManageFileSetModal: React.FC<ManageFileSetModalProps> = ({
     <div className={styles.modalOverlay}>
       <div className={styles.modal}>
         <div className={styles.modalHeader}>
-          <h2>📂 Agregar Conjunto de Archivos</h2>
+          <h2>📂 Aplicar Categorización desde Conjunto</h2>
           <button 
             onClick={onClose}
             className={styles.closeButton}
@@ -494,9 +494,9 @@ const ManageFileSetModal: React.FC<ManageFileSetModalProps> = ({
           )}
 
           <div className={styles.tablesContainer}>
-            {/* Tabla de conjuntos */}
+            {/* Tabla de categorizaciones por conjunto */}
             <div className={styles.setsSection}>
-              <h3>Conjuntos de Archivos Disponibles</h3>
+              <h3>Categorizaciones disponibles</h3>
               
               {loading ? (
                 <div className={styles.loading}>
@@ -505,7 +505,7 @@ const ManageFileSetModal: React.FC<ManageFileSetModalProps> = ({
                 </div>
               ) : fileSets.length === 0 ? (
                 <div className={styles.empty}>
-                  <p>No hay conjuntos de archivos disponibles</p>
+                  <p>No hay categorizaciones disponibles</p>
                 </div>
               ) : (
                 <div className={styles.tableContainer}>

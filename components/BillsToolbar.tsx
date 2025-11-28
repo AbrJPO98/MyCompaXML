@@ -17,13 +17,14 @@ import styles from './BillsToolbar.module.css'
 interface BillsToolbarProps {
   onFilterColumns: () => void
   onBillsAdded?: (rows: any[]) => void
+  onBillsRemoved?: (claves: string[]) => void
   channelId: string
   hasActiveFilters?: boolean
   onShowProgress?: (show: boolean, current: number, total: number, title: string) => void
   onCancelProgress?: (callback: () => void) => void
 }
 
-const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdded, channelId, hasActiveFilters = false, onShowProgress, onCancelProgress }) => {
+const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdded, onBillsRemoved, channelId, hasActiveFilters = false, onShowProgress, onCancelProgress }) => {
   // Función para validar formato de clave (50 dígitos numéricos)
   const isValidClave = (clave: string): boolean => {
     if (!clave) return false
@@ -35,6 +36,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
   const [showCabysMenu, setShowCabysMenu] = useState(false)
   const [showProcessesMenu, setShowProcessesMenu] = useState(false)
   const [showFilesMenu, setShowFilesMenu] = useState(false)
+  const [showCategorizacionesMenu, setShowCategorizacionesMenu] = useState(false)
   const [showFileSetsMenuModal, setShowFileSetsMenuModal] = useState(false)
   const [showCabysModal, setShowCabysModal] = useState(false)
   const [showCabysEditModal, setShowCabysEditModal] = useState(false)
@@ -56,6 +58,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
     setShowCabysMenu(false)
     setShowProcessesMenu(false)
     setShowFilesMenu(false)
+    setShowCategorizacionesMenu(false)
   }
 
   const handleCabysClick = () => {
@@ -63,6 +66,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
     setShowWorkspaceMenu(false)
     setShowProcessesMenu(false)
     setShowFilesMenu(false)
+    setShowCategorizacionesMenu(false)
   }
 
   const handleProcessesClick = () => {
@@ -70,6 +74,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
     setShowWorkspaceMenu(false)
     setShowCabysMenu(false)
     setShowFilesMenu(false)
+    setShowCategorizacionesMenu(false)
   }
 
   const handleFilesClick = () => {
@@ -77,10 +82,19 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
     setShowWorkspaceMenu(false)
     setShowCabysMenu(false)
     setShowProcessesMenu(false)
+    setShowCategorizacionesMenu(false)
+  }
+
+  const handleCategorizacionesClick = () => {
+    setShowCategorizacionesMenu(!showCategorizacionesMenu)
+    setShowWorkspaceMenu(false)
+    setShowCabysMenu(false)
+    setShowProcessesMenu(false)
+    setShowFilesMenu(false)
   }
 
   const handleFileSetsClick = () => {
-    setShowFilesMenu(false)
+    setShowCategorizacionesMenu(false)
     setShowFileSetsMenuModal(true)
   }
 
@@ -110,7 +124,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
   }
 
   const handleCategorizeAllBills = async () => {
-    setShowProcessesMenu(false)
+    setShowCategorizacionesMenu(false)
     
     // Confirmación
     const confirmed = window.confirm('¿Categorizar todas las facturas? Esto puede tardar unos minutos')
@@ -423,6 +437,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
     setShowCabysMenu(false)
     setShowProcessesMenu(false)
     setShowFilesMenu(false)
+    setShowCategorizacionesMenu(false)
   }
 
   const handleFileLogsClick = () => {
@@ -436,6 +451,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
     setShowCabysMenu(false)
     setShowProcessesMenu(false)
     setShowFilesMenu(false)
+    setShowCategorizacionesMenu(false)
     setShowDataExtrasMenu(false)
   }
 
@@ -606,6 +622,30 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
       }
     }
 
+    // Verificar si alguna clave está en categorizaciones
+    let clavesEnCategorizaciones: string[] = []
+    if (claves.length > 0) {
+      try {
+        const checkCategorizacionesResponse = await fetch('/api/categorizaciones/check', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            claves: claves,
+            channelId: channelId
+          })
+        })
+
+        const checkCategorizacionesResult = await checkCategorizacionesResponse.json()
+        if (checkCategorizacionesResult.success) {
+          clavesEnCategorizaciones = checkCategorizacionesResult.data.clavesEnCategorizaciones || []
+        }
+      } catch (error) {
+        console.error('Error verificando claves en categorizaciones:', error)
+      }
+    }
+
     // Arrays separados para archivos especiales (MensajeHacienda/MensajeReceptor)
     const specialPayload: any[] = []
 
@@ -685,6 +725,18 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
             continue
           }
 
+          // Validación 5: Verificar si la clave está en categorizaciones
+          if (clavesEnCategorizaciones.includes(clave)) {
+            addFileLog(channelId, {
+              fileName: file.name,
+              summary: 'Documento ya categorizado',
+              detail: `El documento de importación "${file.name}" con clave "${clave}" ya se encuentra en una categorización y no puede ser procesado nuevamente.`,
+              type: 'rejected'
+            })
+            console.warn(`Documento de importación con clave ${clave} ya está en una categorización, se omite el archivo ${file.name}`)
+            continue
+          }
+
           // Extraer FechaEmision para ordenamiento
           const fechaEmision = extractTagValue(xmlDoc, 'FechaEmision')
           
@@ -758,6 +810,18 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
               type: 'rejected'
             })
             console.warn(`Documento MyCompaXMLDOC con clave ${clave} está descartado, se omite el archivo ${file.name}`)
+            continue
+          }
+
+          // Validación 5: Verificar si la clave está en categorizaciones
+          if (clavesEnCategorizaciones.includes(clave)) {
+            addFileLog(channelId, {
+              fileName: file.name,
+              summary: 'Documento ya categorizado',
+              detail: `El documento MyCompaXMLDOC "${file.name}" con clave "${clave}" ya se encuentra en una categorización y no puede ser procesado nuevamente.`,
+              type: 'rejected'
+            })
+            console.warn(`Documento MyCompaXMLDOC con clave ${clave} ya está en una categorización, se omite el archivo ${file.name}`)
             continue
           }
 
@@ -837,6 +901,18 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
             continue
           }
 
+          // Validación 5: Verificar si la clave está en categorizaciones
+          if (clavesEnCategorizaciones.includes(clave)) {
+            addFileLog(channelId, {
+              fileName: file.name,
+              summary: 'Documento ya categorizado',
+              detail: `El documento de respuesta "${file.name}" con clave "${clave}" ya se encuentra en una categorización y no puede ser procesado nuevamente.`,
+              type: 'rejected'
+            })
+            console.warn(`Mensaje con clave ${clave} ya está en una categorización, se omite el archivo ${file.name}`)
+            continue
+          }
+
           const xmlB64 = toBase64(text)
           
           specialPayload.push({
@@ -900,6 +976,18 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
             type: 'rejected'
           })
           console.warn(`Factura con clave ${clave} está descartada, se omite el archivo ${file.name}`)
+          continue
+        }
+
+        // Validación 5: Verificar si la clave está en categorizaciones
+        if (clavesEnCategorizaciones.includes(clave)) {
+          addFileLog(channelId, {
+            fileName: file.name,
+            summary: 'Factura ya categorizada',
+            detail: `La factura "${file.name}" con clave "${clave}" ya se encuentra en una categorización y no puede ser procesada nuevamente.`,
+            type: 'rejected'
+          })
+          console.warn(`Factura con clave ${clave} ya está en una categorización, se omite el archivo ${file.name}`)
           continue
         }
 
@@ -1151,14 +1239,6 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
                   >
                     📨 Ver documentos de respuesta
                   </button>
-                  <button
-                    onClick={handleFileSetsClick}
-                    className={`${styles.dropdownItem} ${hasActiveFilters ? styles.disabled : ''}`}
-                    disabled={hasActiveFilters}
-                    title={hasActiveFilters ? 'No se puede gestionar conjuntos de archivos mientras hay filtros activos' : ''}
-                  >
-                    📁 Conjuntos de archivos
-                  </button>
                 </div>
               </>
             )}
@@ -1252,6 +1332,40 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
 
           <div className={styles.dropdown}>
             <button
+              onClick={handleCategorizacionesClick}
+              className={`${styles.toolbarButton} ${showCategorizacionesMenu ? styles.active : ''}`}
+            >
+              🏷️ Categorizaciones
+              <span className={styles.dropdownArrow}>
+                {showCategorizacionesMenu ? '▲' : '▼'}
+              </span>
+            </button>
+            
+            {showCategorizacionesMenu && (
+              <>
+                <div className={styles.backdrop} onClick={handleBackdropClick}></div>
+                <div className={styles.dropdownMenu}>
+                  <button
+                    onClick={handleFileSetsClick}
+                    className={`${styles.dropdownItem} ${hasActiveFilters ? styles.disabled : ''}`}
+                    disabled={hasActiveFilters}
+                    title={hasActiveFilters ? 'No se puede gestionar categorizaciones mientras hay filtros activos' : ''}
+                  >
+                    📁 Registrar categorización
+                  </button>
+                  <button
+                    onClick={handleCategorizeAllBills}
+                    className={styles.dropdownItem}
+                  >
+                    🏷️ Categorizar todas las facturas
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className={styles.dropdown}>
+            <button
               onClick={handleProcessesClick}
               className={`${styles.toolbarButton} ${showProcessesMenu ? styles.active : ''}`}
             >
@@ -1282,12 +1396,6 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
                     className={styles.dropdownItem}
                   >
                     📨 Mensajes especiales
-                  </button>
-                  <button
-                    onClick={handleCategorizeAllBills}
-                    className={styles.dropdownItem}
-                  >
-                    🏷️ Categorizar todas las facturas
                   </button>
                 </div>
               </>
@@ -1333,16 +1441,17 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
         />
       )}
 
-      {/* Modal de crear conjunto de archivos */}
+      {/* Modal de crear categorización */}
       {showCreateFileSetModal && (
         <CreateFileSetModal
           isOpen={showCreateFileSetModal}
           onClose={() => setShowCreateFileSetModal(false)}
           channelId={channelId}
+          onBillsRemoved={onBillsRemoved}
         />
       )}
 
-      {/* Modal de gestión de conjuntos de archivos */}
+      {/* Modal de gestión de categorizaciones */}
       {showManageFileSetModal && (
         <ManageFileSetModal
           isOpen={showManageFileSetModal}
@@ -1380,7 +1489,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
         />
       )}
 
-      {/* Modal de menú de conjuntos de archivos */}
+      {/* Modal de menú de categorizaciones */}
       {showFileSetsMenuModal && (
         <FileSetsMenuModal
           isOpen={showFileSetsMenuModal}

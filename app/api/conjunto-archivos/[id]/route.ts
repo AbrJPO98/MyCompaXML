@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
-import ConjuntoArchivos from '@/lib/models/ConjuntoArchivos'
+import Categorizacion from '@/lib/models/Categorizacion'
 import { isValidObjectId } from '@/lib/dbUtils'
 
 // GET - Obtener conjunto de archivos por ID
@@ -20,7 +20,7 @@ export async function GET(
       )
     }
 
-    const conjunto = await ConjuntoArchivos.findById(id).lean()
+    const conjunto = await Categorizacion.findById(id).lean()
 
     if (!conjunto) {
       return NextResponse.json(
@@ -59,7 +59,7 @@ export async function DELETE(
       )
     }
 
-    const conjunto = await ConjuntoArchivos.findByIdAndDelete(id)
+    const conjunto = await Categorizacion.findByIdAndDelete(id)
 
     if (!conjunto) {
       return NextResponse.json(

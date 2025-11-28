@@ -20,9 +20,17 @@
   width: 90vw;
   max-width: 800px;
   height: 85vh;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
   animation: modalSlideIn 0.3s ease-out;
+  overflow: hidden;
+}
+
+.modalLarge {
+  max-width: 1200px;
+  height: 90vh;
+  max-height: 90vh;
 }
 
 @keyframes modalSlideIn {
@@ -80,10 +88,12 @@
 /* Modal Body */
 .modalBody {
   padding: 1.5rem 2rem;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-height: 0;
 }
 
 /* Name Section */
@@ -173,6 +183,117 @@
   margin-bottom: 1rem;
 }
 
+.errorHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.errorHeader p {
+  margin: 0;
+  flex: 1;
+}
+
+.collapseButton {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  border: 1px solid #721c24;
+  background: #ffffff;
+  color: #721c24;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.collapseButton:hover {
+  background: #721c24;
+  color: #ffffff;
+}
+
+.errorDetailsContainer {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  max-height: 250px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.errorTableWrapper {
+  flex: 1;
+  height: 200px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.errorTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.errorTable th,
+.errorTable td {
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid #f1b0b7;
+  text-align: left;
+}
+
+.errorTable th {
+  background: #f5c6cb;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.errorDetailsButton {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  border: 1px solid #721c24;
+  background: #ffffff;
+  color: #721c24;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.errorDetailsButton:hover {
+  background: #721c24;
+  color: #ffffff;
+}
+
+.errorTextareaWrapper {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  width: 50%;
+}
+
+.errorTextareaLabel {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.errorTextarea {
+  height: 200px;
+  resize: none;
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #f1b0b7;
+  font-family: monospace;
+  font-size: 0.85rem;
+  background: #fff;
+  color: #721c24;
+  box-sizing: border-box;
+  white-space: pre-wrap;
+  line-height: 1.5;
+  overflow-y: auto;
+}
+
 .empty {
   text-align: center;
   color: #666;
@@ -182,7 +303,8 @@
 
 /* Table Container */
 .tableContainer {
-  flex: 1;
+  flex: 0 0 auto;
+  height: 300px;
   overflow: auto;
   border: 1px solid #dee2e6;
   border-radius: 8px;
