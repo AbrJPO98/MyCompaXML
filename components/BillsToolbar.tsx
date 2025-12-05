@@ -10,7 +10,6 @@ import ManageFileSetModal from './ManageFileSetModal'
 import SpecialMessagesModal from './SpecialMessagesModal'
 import FileLogsModal, { addFileLog } from './FileLogsModal'
 import ImportDocModal from './ImportDocModal'
-import FileSetsMenuModal from './FileSetsMenuModal'
 import { generateCategorizacion } from '@/lib/categorization'
 import styles from './BillsToolbar.module.css'
 
@@ -37,7 +36,6 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
   const [showProcessesMenu, setShowProcessesMenu] = useState(false)
   const [showFilesMenu, setShowFilesMenu] = useState(false)
   const [showCategorizacionesMenu, setShowCategorizacionesMenu] = useState(false)
-  const [showFileSetsMenuModal, setShowFileSetsMenuModal] = useState(false)
   const [showCabysModal, setShowCabysModal] = useState(false)
   const [showCabysEditModal, setShowCabysEditModal] = useState(false)
   const [showDescripcionesPersonalizadasModal, setShowDescripcionesPersonalizadasModal] = useState(false)
@@ -93,10 +91,6 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
     setShowFilesMenu(false)
   }
 
-  const handleFileSetsClick = () => {
-    setShowCategorizacionesMenu(false)
-    setShowFileSetsMenuModal(true)
-  }
 
   const handleFilterColumns = () => {
     setShowWorkspaceMenu(false)
@@ -418,10 +412,12 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
   }
 
   const handleCreateFileSet = () => {
+    setShowCategorizacionesMenu(false)
     setShowCreateFileSetModal(true)
   }
 
   const handleManageFileSet = () => {
+    setShowCategorizacionesMenu(false)
     setShowManageFileSetModal(true)
   }
 
@@ -1346,12 +1342,20 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
                 <div className={styles.backdrop} onClick={handleBackdropClick}></div>
                 <div className={styles.dropdownMenu}>
                   <button
-                    onClick={handleFileSetsClick}
+                    onClick={handleCreateFileSet}
                     className={`${styles.dropdownItem} ${hasActiveFilters ? styles.disabled : ''}`}
                     disabled={hasActiveFilters}
                     title={hasActiveFilters ? 'No se puede gestionar categorizaciones mientras hay filtros activos' : ''}
                   >
                     📁 Registrar categorización
+                  </button>
+                  <button
+                    onClick={handleManageFileSet}
+                    className={`${styles.dropdownItem} ${hasActiveFilters ? styles.disabled : ''}`}
+                    disabled={hasActiveFilters}
+                    title={hasActiveFilters ? 'No se puede gestionar categorizaciones mientras hay filtros activos' : ''}
+                  >
+                    Ver categorizaciones realizadas
                   </button>
                   <button
                     onClick={handleCategorizeAllBills}
@@ -1489,15 +1493,6 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
         />
       )}
 
-      {/* Modal de menú de categorizaciones */}
-      {showFileSetsMenuModal && (
-        <FileSetsMenuModal
-          isOpen={showFileSetsMenuModal}
-          onClose={() => setShowFileSetsMenuModal(false)}
-          onCreateFileSet={handleCreateFileSet}
-          onManageFileSet={handleManageFileSet}
-        />
-      )}
 
       {/* Modal de descripciones personalizadas */}
       {showDescripcionesPersonalizadasModal && (

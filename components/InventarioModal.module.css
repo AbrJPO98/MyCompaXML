@@ -18,10 +18,12 @@
   border-radius: 12px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   width: 100%;
-  max-width: 600px;
+  max-width: 1000px;
   max-height: 90vh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   animation: modalSlideIn 0.3s ease-out;
+  overflow: hidden;
 }
 
 @keyframes modalSlideIn {
@@ -44,6 +46,7 @@
   border-bottom: 1px solid #e9ecef;
   background: #f8f9fa;
   border-radius: 12px 12px 0 0;
+  flex-shrink: 0;
 }
 
 .modalHeader h2 {
@@ -73,6 +76,14 @@
 .closeButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Modal Content (scrollable area) */
+.modalContent {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
 }
 
 /* Form */
@@ -226,14 +237,20 @@
   cursor: not-allowed;
 }
 
+/* Modal Footer */
+.modalFooter {
+  flex-shrink: 0;
+  border-top: 1px solid #e9ecef;
+  background: #f8f9fa;
+  border-radius: 0 0 12px 12px;
+}
+
 /* Form Actions */
 .formActions {
   display: flex;
   gap: 1rem;
   justify-content: flex-end;
-  margin-top: 2rem;
-  padding-top: 1rem;
-  border-top: 1px solid #e9ecef;
+  padding: 1.5rem 2rem;
 }
 
 .cancelButton,
@@ -288,6 +305,92 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Section Styles */
+.section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid #e9ecef;
+}
+
+.sectionTitle {
+  margin: 0 0 1.5rem 0;
+  color: #333;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.subsection {
+  margin-bottom: 1.5rem;
+}
+
+.subsectionTitle {
+  margin: 0 0 1rem 0;
+  color: #555;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.subsubsection {
+  margin-bottom: 1.5rem;
+  padding-left: 1rem;
+  border-left: 2px solid #e9ecef;
+}
+
+.subsubsectionTitle {
+  margin: 0 0 1rem 0;
+  color: #666;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Checkbox Group */
+.checkboxGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.checkboxGroup input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  cursor: pointer;
+}
+
+.checkboxGroup label {
+  margin: 0;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+/* Input with Icon */
+.inputWithIcon {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.inputWithIcon input {
+  padding-right: 2.5rem;
+}
+
+.inputIcon {
+  position: absolute;
+  right: 0.75rem;
+  color: #666;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+/* Info Field (read-only, yellow background) */
+.infoField {
+  background-color: #fff3cd !important;
+  border-color: #ffc107 !important;
+  color: #856404 !important;
+  font-weight: 600;
+  cursor: not-allowed;
 }
 
 /* Responsive */
