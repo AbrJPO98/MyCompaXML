@@ -80,6 +80,14 @@ interface Cliente {
   act_ecos?: string[]
 }
 
+interface InventarioItem {
+  _id: string
+  descripcion: string
+  cantidad: number
+  precio: number
+  image?: string
+}
+
 const TIPOS_DOCUMENTO = [
   { value: '01', label: '01 - Factura electrónica' },
   { value: '02', label: '02 - Nota de débito electrónica' },
@@ -181,12 +189,17 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
   const [cambioMoneda, setCambioMoneda] = useState('1')
   const [loadingCambio, setLoadingCambio] = useState(false)
 
+  // Estados para detalle de la factura basado en inventario
+  const [inventarioItems, setInventarioItems] = useState<InventarioItem[]>([])
+  const [cantidadesSeleccionadas, setCantidadesSeleccionadas] = useState<Record<string, number>>({})
+
   useEffect(() => {
     if (isOpen) {
       loadUbicaciones()
       loadActividadesEconomicas()
       if (channelId) {
         loadClientes()
+        loadInventario()
       }
     }
   }, [isOpen, channelId])
@@ -333,6 +346,56 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
     }
   }
 
+  const loadInventario = async () => {
+    if (!channelId) return
+    try {
+      const response = await fetch(`/api/inventario?channelId=${channelId}`)
+      if (response.ok) {
+        const data: any[] = await response.json()
+        // La API ya filtra por channel_id, pero verificamos por seguridad
+        // Mapear correctamente todos los campos incluyendo image
+        const items: InventarioItem[] = (data || [])
+          .filter((item: any) => {
+            // Asegurar que el channel_id coincida con el canal actual
+            // Puede venir como ObjectId, string, o objeto con _id
+            let itemChannelId: string = ''
+            if (item.channel_id) {
+              if (typeof item.channel_id === 'string') {
+                itemChannelId = item.channel_id
+              } else if (item.channel_id._id) {
+                itemChannelId = String(item.channel_id._id)
+              } else if (item.channel_id.toString) {
+                itemChannelId = item.channel_id.toString()
+              }
+            }
+            const currentChannelId = String(channelId)
+            return itemChannelId === currentChannelId
+          })
+          .map((item: any) => ({
+            _id: item._id || item._id?.toString() || '',
+            descripcion: item.descripcion || '',
+            cantidad: Number(item.cantidad) || 0,
+            precio: Number(item.precio) || 0,
+            image: item.image ? String(item.image).trim() : ''
+          }))
+          .filter((item: InventarioItem) => item._id) // Filtrar items sin _id válido
+        
+        setInventarioItems(items)
+        // Inicializar cantidades seleccionadas manteniendo valores previos si existen
+        setCantidadesSeleccionadas((prev) => {
+          const next: Record<string, number> = {}
+          items.forEach((item) => {
+            const current = prev[item._id]
+            next[item._id] = typeof current === 'number' ? current : 0
+          })
+          return next
+        })
+      }
+    } catch (error) {
+      console.error('Error cargando inventario:', error)
+    }
+  }
+
   const handleClienteChange = (clienteId: string) => {
     setClienteSeleccionado(clienteId)
     
@@ -394,6 +457,16 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
     setActividadEconomicaSearch(`${actividad.name} - ${actividad.description}`)
     setActividadEconomicaSeleccionada(String(actividad.name))
     setShowActividadEconomicaDropdown(false)
+  }
+
+  const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: number) => {
+    setCantidadesSeleccionadas((prev) => {
+      const actual = prev[inventarioId] || 0
+      let nueva = actual + delta
+      if (nueva < 0) nueva = 0
+      if (nueva > maxCantidad) nueva = maxCantidad
+      return { ...prev, [inventarioId]: nueva }
+    })
   }
 
   const searchHacienda = async () => {
@@ -555,6 +628,9 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
       // Limpiar estados de tipo de cambio
       setTipoMoneda('CRC')
       setCambioMoneda('1')
+      // Limpiar detalle de factura
+      setInventarioItems([])
+      setCantidadesSeleccionadas({})
       onClose()
     }
   }
@@ -1122,6 +1198,94 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
                       </span>
                     )}
                   </div>
+                </div>
+              </div>
+
+              {/* Sección: Detalle de la factura */}
+              <div className={styles.section}>
+                <h3 className={styles.sectionTitle}>Detalle de la factura</h3>
+                <div className={styles.itemsGrid}>
+                  {inventarioItems.length === 0 ? (
+                    <p className={styles.emptyItemsText}>
+                      No hay artículos de inventario registrados para este canal.
+                    </p>
+                  ) : (
+                    inventarioItems.map((item) => {
+                      const cantidadSeleccionada = cantidadesSeleccionadas[item._id] || 0
+                      // Construir la URL de la imagen igual que en InventarioModal.tsx
+                      const imageUrl = item.image && item.image.trim() 
+                        ? `/protected/inventory-images/${channelId}/${item._id}/${item.image.trim()}` 
+                        : null
+                      return (
+                        <div key={item._id} className={styles.itemCard}>
+                          {/* Primera fila: Imagen y Descripción */}
+                          <div className={styles.itemRow1}>
+                            <div className={styles.itemImageWrapper}>
+                              {imageUrl ? (
+                                <img
+                                  src={imageUrl}
+                                  alt={item.descripcion}
+                                  className={styles.itemImage}
+                                  onError={(e) => {
+                                    // Si la imagen falla al cargar, mostrar placeholder
+                                    const target = e.target as HTMLImageElement
+                                    target.style.display = 'none'
+                                    const placeholder = target.nextElementSibling as HTMLElement
+                                    if (placeholder && placeholder.classList.contains(styles.itemImagePlaceholder)) {
+                                      placeholder.style.display = 'flex'
+                                    }
+                                  }}
+                                />
+                              ) : null}
+                              <div 
+                                className={styles.itemImagePlaceholder}
+                                style={{ display: imageUrl ? 'none' : 'flex' }}
+                              >
+                                <span>Sin imagen</span>
+                              </div>
+                            </div>
+                            <div
+                              className={styles.itemDescription}
+                              title={item.descripcion}
+                            >
+                              {item.descripcion}
+                            </div>
+                          </div>
+                          {/* Segunda fila: Precio y Botones */}
+                          <div className={styles.itemRow2}>
+                            <span className={styles.itemPrice}>
+                              ₡{item.precio.toLocaleString('es-CR')}
+                            </span>
+                            <div className={styles.quantityControls}>
+                              <button
+                                type="button"
+                                className={styles.quantityButton}
+                                onClick={() =>
+                                  handleChangeCantidad(item._id, -1, item.cantidad)
+                                }
+                                disabled={cantidadSeleccionada <= 0}
+                              >
+                                −
+                              </button>
+                              <span className={styles.quantityLabel}>
+                                {cantidadSeleccionada}
+                              </span>
+                              <button
+                                type="button"
+                                className={styles.quantityButton}
+                                onClick={() =>
+                                  handleChangeCantidad(item._id, 1, item.cantidad)
+                                }
+                                disabled={cantidadSeleccionada >= item.cantidad}
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
                 </div>
               </div>
             </>

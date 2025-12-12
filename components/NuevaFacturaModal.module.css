@@ -391,6 +391,150 @@
   background-color: #9ca3af;
 }
 
+/* Detalle de la factura - listado de artículos de inventario */
+.itemsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.itemCard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background-color: #ffffff;
+  padding: 10px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  min-width: 250px;
+  max-width: 250px;
+  margin: 0 auto;
+}
+
+.itemRow1 {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.itemImageWrapper {
+  width: 80px;
+  min-width: 80px;
+  height: 80px;
+  min-height: 80px;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.itemImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background-color: #ffffff;
+}
+
+.itemImagePlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #9ca3af;
+  padding: 4px;
+  text-align: center;
+}
+
+.itemDescription {
+  font-size: 13px;
+  font-weight: 500;
+  color: #111827;
+  flex: 1;
+  min-width: 0;
+  height: 80px;
+  min-height: 80px;
+  max-height: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  padding: 4px 0;
+  box-sizing: border-box;
+}
+
+.itemRow2 {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.quantityControls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.quantityButton {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background-color: #ffffff;
+  color: #111827;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.quantityButton:hover:not(:disabled) {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.quantityButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.quantityLabel {
+  min-width: 32px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.itemPrice {
+  font-size: 13px;
+  font-weight: 600;
+  color: #059669;
+  flex-shrink: 0;
+}
+
+.emptyItemsText {
+  grid-column: 1 / -1;
+  font-size: 14px;
+  color: #6b7280;
+}
+
 @media (max-width: 1024px) {
   .formRow {
     grid-template-columns: repeat(2, 1fr);
@@ -398,6 +542,14 @@
 
   .formGrid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .itemsGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .itemCard {
+    max-width: 220px;
   }
 }
 
@@ -426,5 +578,13 @@
 
   .formGrid {
     grid-template-columns: 1fr;
+  }
+
+  .itemsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .itemCard {
+    max-width: 100%;
   }
 }

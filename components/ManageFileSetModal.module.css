@@ -130,6 +130,7 @@
   font-weight: 600;
   color: #333;
   padding-bottom: 0.4rem;
+  padding-top: 0.4rem;
   border-bottom: 2px solid #e9ecef;
   flex-shrink: 0;
 }
@@ -334,8 +335,7 @@
 /* Autocomplete */
 .autocompleteContainer {
   width: 100%;
-  max-width: 600px;
-  margin: 0 auto;
+  flex-shrink: 0;
 }
 
 .autocompleteContainer label {
@@ -434,9 +434,44 @@
   margin-bottom: 0;
 }
 
-/* Ajustes para el layout de tablas */
-.autocompleteContainer {
+/* Collapsable Section */
+.collapsableSection {
+  width: 100%;
   flex-shrink: 0;
+}
+
+.collapseButton {
+  width: 100%;
+  background: #f8f9fa;
+  border: 2px solid #dee2e6;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+  transition: all 0.2s ease;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.collapseButton:hover {
+  background: #e9ecef;
+  border-color: #007bff;
+}
+
+.collapseButton:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.collapseButtonText {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 /* Responsive */

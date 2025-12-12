@@ -49,6 +49,7 @@ const ManageFileSetModal: React.FC<ManageFileSetModalProps> = ({
   const [selectedArchivo, setSelectedArchivo] = useState<Archivo | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [tablesExpanded, setTablesExpanded] = useState(false)
 
   const loadCategorizaciones = useCallback(async () => {
     if (!channelId || !isOpen) return
@@ -80,6 +81,8 @@ const ManageFileSetModal: React.FC<ManageFileSetModalProps> = ({
       setSearchTerm('')
       setSelectedCategorizacion(null)
       setError(null)
+      setTablesExpanded(false)
+      setSelectedArchivo(null)
     }
   }, [isOpen, loadCategorizaciones])
 
@@ -236,132 +239,147 @@ const ManageFileSetModal: React.FC<ManageFileSetModalProps> = ({
 
           </div>
 
-          {/* Tablas de datos */}
+          {/* Tablas de datos - Collapsable */}
           {selectedCategorizacion && (
-            <div className={styles.tablesContainer}>
-              {/* Primera tabla: Archivos */}
-              <div className={styles.filesSection}>
-                <h3>Archivos de la categorización</h3>
-                
-                {selectedCategorizacion.archivos.length === 0 ? (
-                  <div className={styles.empty}>
-                    <p>No hay archivos en esta categorización</p>
-                  </div>
-                ) : (
-                  <div className={styles.tableContainer}>
-                    <table className={styles.table}>
-                      <thead>
-                        <tr>
-                          <th>Clave</th>
-                          <th>Nombre</th>
-                          <th>Acciones</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedCategorizacion.archivos.map((archivo, index) => (
-                          <tr key={index} className={selectedArchivo?.clave === archivo.clave ? styles.selectedRow : ''}>
-                            <td title={archivo.clave} className={styles.truncate}>
-                              {archivo.clave}
-                            </td>
-                            <td title={archivo.nombre} className={styles.truncate}>
-                              {archivo.nombre}
-                            </td>
-                            <td className={styles.centered}>
-                              <div className={styles.actions}>
-                                <button
-                                  type="button"
-                                  className={styles.downloadButton}
-                                  onClick={() => handleDownloadFile(archivo)}
-                                  title="Descargar XML"
-                                >
-                                  📥 Descargar
-                                </button>
-                                <button
-                                  type="button"
-                                  className={styles.viewButton}
-                                  onClick={() => handleViewCategorizacion(archivo)}
-                                  title="Ver datos de categorización"
-                                  disabled={!archivo.categorizacion || archivo.categorizacion.length === 0}
-                                >
-                                  👁️ Ver categorización
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-
-              {/* Segunda tabla: Datos de categorización */}
-              <div className={styles.categorizacionSection}>
-                {selectedArchivo ? (
-                  <>
-                    <h3>Datos de categorización - {selectedArchivo.nombre}</h3>
-                    {selectedArchivo.categorizacion && selectedArchivo.categorizacion.length > 0 ? (
+            <div className={styles.collapsableSection}>
+              <button
+                type="button"
+                className={styles.collapseButton}
+                onClick={() => setTablesExpanded(!tablesExpanded)}
+                aria-expanded={tablesExpanded}
+              >
+                <span className={styles.collapseButtonText}>
+                  {tablesExpanded ? '▼ Ocultar tablas' : '▶ Mostrar tablas'}
+                </span>
+              </button>
+              
+              {tablesExpanded && (
+                <div className={styles.tablesContainer}>
+                  {/* Primera tabla: Archivos */}
+                  <div className={styles.filesSection}>
+                    <h3>Archivos de la categorización</h3>
+                    
+                    {selectedCategorizacion.archivos.length === 0 ? (
+                      <div className={styles.empty}>
+                        <p>No hay archivos en esta categorización</p>
+                      </div>
+                    ) : (
                       <div className={styles.tableContainer}>
                         <table className={styles.table}>
                           <thead>
                             <tr>
-                              <th>CABYS</th>
-                              <th>Descripción Personalizada</th>
-                              <th>Bien o Servicio</th>
-                              <th>Descripción Gas/Inv</th>
-                              <th>Categoría</th>
-                              <th>Actividad Económica</th>
-                              <th>Vida Útil</th>
-                              <th>Importado</th>
+                              <th>Clave</th>
+                              <th>Nombre</th>
+                              <th>Acciones</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {selectedArchivo.categorizacion.map((item, index) => (
-                              <tr key={index}>
-                                <td className={styles.truncate} title={item.cabys}>
-                                  {item.cabys || '-'}
+                            {selectedCategorizacion.archivos.map((archivo, index) => (
+                              <tr key={index} className={selectedArchivo?.clave === archivo.clave ? styles.selectedRow : ''}>
+                                <td title={archivo.clave} className={styles.truncate}>
+                                  {archivo.clave}
                                 </td>
-                                <td className={styles.truncate} title={item.descripPer}>
-                                  {item.descripPer || '-'}
+                                <td title={archivo.nombre} className={styles.truncate}>
+                                  {archivo.nombre}
                                 </td>
-                                <td className={styles.truncate} title={item.bienoserv}>
-                                  {item.bienoserv || '-'}
-                                </td>
-                                <td className={styles.truncate} title={item.descripGasInv}>
-                                  {item.descripGasInv || '-'}
-                                </td>
-                                <td className={styles.truncate} title={item.categoria}>
-                                  {item.categoria || '-'}
-                                </td>
-                                <td className={styles.truncate} title={item.actEconomica}>
-                                  {item.actEconomica || '-'}
-                                </td>
-                                <td className={styles.truncate} title={item.vidaUtil}>
-                                  {item.vidaUtil || '-'}
-                                </td>
-                                <td className={styles.truncate} title={item.importado}>
-                                  {item.importado || '-'}
+                                <td className={styles.centered}>
+                                  <div className={styles.actions}>
+                                    <button
+                                      type="button"
+                                      className={styles.downloadButton}
+                                      onClick={() => handleDownloadFile(archivo)}
+                                      title="Descargar XML"
+                                    >
+                                      📥 Descargar
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={styles.viewButton}
+                                      onClick={() => handleViewCategorizacion(archivo)}
+                                      title="Ver datos de categorización"
+                                      disabled={!archivo.categorizacion || archivo.categorizacion.length === 0}
+                                    >
+                                      👁️ Ver categorización
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
                       </div>
-                    ) : (
-                      <div className={styles.empty}>
-                        <p>Este archivo no tiene datos de categorización</p>
-                      </div>
                     )}
-                  </>
-                ) : (
-                  <>
-                    <h3>Datos de categorización</h3>
-                    <div className={styles.empty}>
-                      <p>Selecciona un archivo para ver sus datos de categorización</p>
-                    </div>
-                  </>
-                )}
-              </div>
+                  </div>
+
+                  {/* Segunda tabla: Datos de categorización */}
+                  <div className={styles.categorizacionSection}>
+                    {selectedArchivo ? (
+                      <>
+                        <h3>Datos de categorización - {selectedArchivo.nombre}</h3>
+                        {selectedArchivo.categorizacion && selectedArchivo.categorizacion.length > 0 ? (
+                          <div className={styles.tableContainer}>
+                            <table className={styles.table}>
+                              <thead>
+                                <tr>
+                                  <th>CABYS</th>
+                                  <th>Descripción Personalizada</th>
+                                  <th>Bien o Servicio</th>
+                                  <th>Descripción Gas/Inv</th>
+                                  <th>Categoría</th>
+                                  <th>Actividad Económica</th>
+                                  <th>Vida Útil</th>
+                                  <th>Importado</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {selectedArchivo.categorizacion.map((item, index) => (
+                                  <tr key={index}>
+                                    <td className={styles.truncate} title={item.cabys}>
+                                      {item.cabys || '-'}
+                                    </td>
+                                    <td className={styles.truncate} title={item.descripPer}>
+                                      {item.descripPer || '-'}
+                                    </td>
+                                    <td className={styles.truncate} title={item.bienoserv}>
+                                      {item.bienoserv || '-'}
+                                    </td>
+                                    <td className={styles.truncate} title={item.descripGasInv}>
+                                      {item.descripGasInv || '-'}
+                                    </td>
+                                    <td className={styles.truncate} title={item.categoria}>
+                                      {item.categoria || '-'}
+                                    </td>
+                                    <td className={styles.truncate} title={item.actEconomica}>
+                                      {item.actEconomica || '-'}
+                                    </td>
+                                    <td className={styles.truncate} title={item.vidaUtil}>
+                                      {item.vidaUtil || '-'}
+                                    </td>
+                                    <td className={styles.truncate} title={item.importado}>
+                                      {item.importado || '-'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <div className={styles.empty}>
+                            <p>Este archivo no tiene datos de categorización</p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <h3>Datos de categorización</h3>
+                        <div className={styles.empty}>
+                          <p>Selecciona un archivo para ver sus datos de categorización</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -91,15 +91,34 @@
   padding: 2rem;
 }
 
+.headerRow {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  align-items: stretch;
+}
+
+.headerLeft {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.headerRight {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+}
+
 .formRow {
   display: flex;
   gap: 1rem;
-  margin-bottom: 1rem;
 }
 
 .formGroup {
   flex: 1;
-  margin-bottom: 1rem;
 }
 
 .formGroup label {
@@ -140,6 +159,61 @@
 .formGroup textarea {
   resize: vertical;
   min-height: 80px;
+}
+
+.radioGroup {
+  display: flex;
+  flex-direction: row;
+  gap: 1.5rem;
+  margin-top: 0.5rem;
+  align-items: center;
+}
+
+.radioLabel {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  padding: 0;
+  border: none;
+  background: transparent;
+  transition: none;
+}
+
+.radioLabel:hover {
+  background: transparent;
+}
+
+.radioLabel input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #007bff;
+  margin: 0;
+  flex-shrink: 0;
+  vertical-align: middle;
+  margin-right: 0.25rem;
+}
+
+.radioLabel input[type="radio"]:checked + span {
+  font-weight: 600;
+  color: #007bff;
+}
+
+.radioLabel input[type="radio"]:disabled {
+  cursor: not-allowed;
+}
+
+.radioLabel span {
+  font-size: 0.9rem;
+  color: #333;
+  line-height: 1.5;
+  vertical-align: middle;
+}
+
+.radioLabel:has(input[type="radio"]:checked) {
+  background: transparent;
 }
 
 .inputError {
@@ -199,6 +273,123 @@
   background: #f8f9fa;
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+/* Imagen de inventario */
+.imageSection {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  height: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
+  align-self: stretch;
+}
+
+.imageLabel {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: #333;
+  flex-shrink: 0;
+}
+
+.imageContainer {
+  width: 100%;
+  height: 220px;
+  min-height: 220px;
+  max-height: 220px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+  background-color: #fafafa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.imagePreview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.imagePlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999999;
+  font-size: 0.85rem;
+  background-color: #fafafa;
+}
+
+.imageControls {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  flex-shrink: 0;
+}
+
+.browseButton {
+  padding: 0.5rem 1rem;
+  background: linear-gradient(to bottom, #f5f5f5, #e8e8e8);
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #333;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.browseButton:hover:not(:disabled) {
+  background: linear-gradient(to bottom, #e8e8e8, #d8d8d8);
+  border-color: #999;
+}
+
+.browseButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.removeButton {
+  padding: 0.5rem 1rem;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.removeButton:hover:not(:disabled) {
+  background: #c82333;
+}
+
+.removeButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.hiddenFileInput {
+  display: none;
+}
+
+.fileName {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: #666;
+  word-break: break-word;
+  flex-shrink: 0;
 }
 
 .cabysSelected {

@@ -214,6 +214,7 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
     cabys: '',
     descripcion: '',
     tipo: '',
+    tipoMercancia: 'Normal',
     precio: '',
     cantidad: '',
     partidaArancelaria: '',
@@ -265,6 +266,9 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
   const [showCabysEditModal, setShowCabysEditModal] = useState(false)
   const [selectedCabysCodigo, setSelectedCabysCodigo] = useState<string | null>(null)
   const [selectedCabysInfo, setSelectedCabysInfo] = useState<string>('')
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   // Initialize form data for editing
   useEffect(() => {
@@ -273,6 +277,7 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
         cabys: inventario.cabys || '',
         descripcion: inventario.descripcion || '',
         tipo: inventario.tipo || '',
+        tipoMercancia: (inventario as any).tipoMercancia || 'Normal',
         precio: inventario.precio?.toString() || '',
         cantidad: inventario.cantidad?.toString() || '',
         partidaArancelaria: (inventario as any).partidaArancelaria || '',
@@ -316,6 +321,64 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
         montoExportacion: (inventario as any).montoExportacion?.toString() || ''
       })
       setSelectedCabysInfo(inventario.cabys || '')
+      // Inicializar previsualización de imagen si existe
+      if ((inventario as any).image) {
+        setImagePreview(`/protected/inventory-images/${channelId}/${inventario._id}/${(inventario as any).image}`)
+      } else {
+        setImagePreview(null)
+      }
+      setImageFile(null)
+    } else {
+      setFormData({
+        cabys: '',
+        descripcion: '',
+        tipo: '',
+        tipoMercancia: 'Normal',
+        precio: '',
+        cantidad: '',
+        partidaArancelaria: '',
+        codigoComercial: '',
+        tipoCodigoComercial: '',
+        unidadMedida: '',
+        unidadMedidaComercial: '',
+        tipoTransaccion: '',
+        esMedicamento: false,
+        registro: '',
+        formaFarmaceutica: '',
+        esVinSerie: false,
+        numeroVinSerie: '',
+        tieneDescuento: false,
+        naturalezaDescuento: '',
+        montoDescuento: '',
+        codigoDescuento: '',
+        tipoDescuento: '',
+        detalleDescuento: '',
+        baseImponible: '',
+        tieneImpuesto: false,
+        codigoImpuesto: '',
+        detalleImpuesto: '',
+        tipoTarifa: '',
+        tarifa: '',
+        esEspecifico: false,
+        porcentajeEspecifico: '',
+        impuestoPorUnidad: '',
+        cantidadUnidadMedida: '',
+        volumenPorUnidadConsumo: '',
+        tieneExoneracion: false,
+        documentoExoneracion: '',
+        detalleExoneracion: '',
+        numeroDocumentoExoneracion: '',
+        articuloExoneracion: '',
+        incisoExoneracion: '',
+        institucionExoneracion: '',
+        detalleInstitucionExoneracion: '',
+        fechaAutorizacionExoneracion: '',
+        porcentajeExoneracion: '',
+        montoExportacion: ''
+      })
+      setSelectedCabysInfo('')
+      setImageFile(null)
+      setImagePreview(null)
     }
   }, [inventario])
 
@@ -540,6 +603,28 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
     return Object.keys(newErrors).length === 0
   }
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null
+    setImageFile(file)
+    if (file) {
+      setImagePreview(URL.createObjectURL(file))
+    } else {
+      setImagePreview(null)
+    }
+  }
+
+  const handleBrowseClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleRemoveImage = () => {
+    setImageFile(null)
+    setImagePreview(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -552,15 +637,87 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
       const url = isEditing ? `/api/inventario/${inventario!._id}` : '/api/inventario'
       const method = isEditing ? 'PUT' : 'POST'
       
-      const body = isEditing 
-        ? formData 
-        : { ...formData, channel_id: channelId }
+      // Función helper para convertir strings a números de forma segura
+      const toNumber = (value: string | number, defaultValue: number = 0): number => {
+        if (typeof value === 'number') return isNaN(value) ? defaultValue : value
+        if (!value || value === '') return defaultValue
+        const parsed = parseFloat(String(value))
+        return isNaN(parsed) ? defaultValue : parsed
+      }
 
-      // Convertir precio y cantidad a números
-      const bodyWithNumbers = {
-        ...body,
-        precio: parseFloat(formData.precio),
-        cantidad: parseInt(formData.cantidad)
+      const toInt = (value: string | number, defaultValue: number = 0): number => {
+        if (typeof value === 'number') return isNaN(value) ? defaultValue : Math.floor(value)
+        if (!value || value === '') return defaultValue
+        const parsed = parseInt(String(value))
+        return isNaN(parsed) ? defaultValue : parsed
+      }
+
+      // Preparar el body con todos los campos correctamente convertidos
+      const bodyWithNumbers: any = {
+        // Campos requeridos
+        cabys: formData.cabys.trim(),
+        descripcion: formData.descripcion.trim(),
+        tipo: formData.tipo.trim(),
+        tipoMercancia: formData.tipoMercancia || 'Normal',
+        precio: toNumber(formData.precio, 0),
+        cantidad: toInt(formData.cantidad, 0),
+        // Información para facturación
+        partidaArancelaria: formData.partidaArancelaria?.trim() || '',
+        codigoComercial: formData.codigoComercial?.trim() || '',
+        tipoCodigoComercial: formData.tipoCodigoComercial || '',
+        // Datos del producto o servicio
+        unidadMedida: formData.unidadMedida?.trim() || '',
+        unidadMedidaComercial: formData.unidadMedidaComercial?.trim() || '',
+        tipoTransaccion: formData.tipoTransaccion || '',
+        // Medicamento
+        esMedicamento: Boolean(formData.esMedicamento),
+        registro: formData.registro?.trim() || '',
+        formaFarmaceutica: formData.formaFarmaceutica || '',
+        // VIN o serie
+        esVinSerie: Boolean(formData.esVinSerie),
+        numeroVinSerie: formData.numeroVinSerie?.trim() || '',
+        // Descuento
+        tieneDescuento: Boolean(formData.tieneDescuento),
+        naturalezaDescuento: formData.naturalezaDescuento?.trim() || '',
+        montoDescuento: toNumber(formData.montoDescuento, 0),
+        codigoDescuento: formData.codigoDescuento || '',
+        tipoDescuento: formData.tipoDescuento || '',
+        detalleDescuento: formData.detalleDescuento?.trim() || '',
+        baseImponible: toNumber(formData.baseImponible, 0),
+        // Impuesto
+        tieneImpuesto: Boolean(formData.tieneImpuesto),
+        codigoImpuesto: formData.codigoImpuesto || '',
+        detalleImpuesto: formData.detalleImpuesto?.trim() || '',
+        tipoTarifa: formData.tipoTarifa || '',
+        tarifa: toNumber(formData.tarifa, 0),
+        // Impuesto específico
+        esEspecifico: Boolean(formData.esEspecifico),
+        porcentajeEspecifico: toNumber(formData.porcentajeEspecifico, 0),
+        impuestoPorUnidad: toNumber(formData.impuestoPorUnidad, 0),
+        cantidadUnidadMedida: toNumber(formData.cantidadUnidadMedida, 0),
+        volumenPorUnidadConsumo: toNumber(formData.volumenPorUnidadConsumo, 0),
+        // Exoneración
+        tieneExoneracion: Boolean(formData.tieneExoneracion),
+        documentoExoneracion: formData.documentoExoneracion || '',
+        detalleExoneracion: formData.detalleExoneracion?.trim() || '',
+        numeroDocumentoExoneracion: toInt(formData.numeroDocumentoExoneracion, 0),
+        articuloExoneracion: formData.articuloExoneracion?.trim() || '',
+        incisoExoneracion: formData.incisoExoneracion?.trim() || '',
+        institucionExoneracion: formData.institucionExoneracion || '',
+        detalleInstitucionExoneracion: formData.detalleInstitucionExoneracion?.trim() || '',
+        fechaAutorizacionExoneracion: formData.fechaAutorizacionExoneracion?.trim() || '',
+        porcentajeExoneracion: toNumber(formData.porcentajeExoneracion, 0),
+        montoExportacion: toNumber(formData.montoExportacion, 0)
+      }
+
+      // Agregar channel_id solo si no es edición
+      if (!isEditing) {
+        bodyWithNumbers.channel_id = channelId
+      }
+
+      // Log para debugging (solo en desarrollo)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Enviando datos al servidor:', JSON.stringify(bodyWithNumbers, null, 2))
       }
 
       const response = await fetch(url, {
@@ -574,8 +731,45 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
       const data = await response.json()
 
       if (response.ok) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Respuesta del servidor:', data)
+        }
+
+        // Si hay imagen seleccionada, subirla después de guardar el artículo
+        if (imageFile) {
+          const savedInventario = data.inventario
+          const inventarioId = isEditing ? inventario!._id : savedInventario?._id
+          const inventarioChannelId = isEditing ? channelId : savedInventario?.channel_id || channelId
+
+          if (inventarioId && inventarioChannelId) {
+            const imageFormData = new FormData()
+            imageFormData.append('image', imageFile)
+            imageFormData.append('channelId', inventarioChannelId)
+
+            try {
+              const imageResponse = await fetch(`/api/inventario/${inventarioId}/image`, {
+                method: 'POST',
+                body: imageFormData
+              })
+
+              const imageData = await imageResponse.json()
+
+              if (!imageResponse.ok) {
+                console.error('Error al subir imagen de inventario:', imageData)
+                alert('El artículo se guardó, pero hubo un error al subir la imagen.')
+              } else if (process.env.NODE_ENV === 'development') {
+                console.log('Imagen de inventario guardada:', imageData)
+              }
+            } catch (imageError) {
+              console.error('Error subiendo imagen de inventario:', imageError)
+              alert('El artículo se guardó, pero hubo un error de conexión al subir la imagen.')
+            }
+          }
+        }
+
         onClose(true)
       } else {
+        console.error('Error del servidor:', data)
         alert(`Error: ${data.error || 'Error procesando el artículo'}`)
       }
     } catch (error) {
@@ -602,122 +796,205 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
 
         <div className={styles.modalContent}>
           <form onSubmit={handleSubmit} className={styles.form}>
-          <div className={styles.formRow}>
-            <div className={styles.formGroup}>
-              <label htmlFor="cabys">Código CABYS *</label>
-              <div className={styles.cabysSelector}>
-                <button
-                  type="button"
-                  onClick={() => setShowCabysModal(true)}
-                  className={`${styles.cabysButton} ${errors.cabys ? styles.inputError : ''}`}
-                  disabled={loading}
-                >
-                  {selectedCabysInfo ? (
-                    <span className={styles.cabysSelected}>
-                      📋 {selectedCabysInfo.length > 50 ? selectedCabysInfo.substring(0, 50) + '...' : selectedCabysInfo}
-                    </span>
+
+          <div className={styles.headerRow}>
+            <div className={styles.headerRight}>
+              <div className={styles.imageSection}>
+                <label className={styles.imageLabel}>Imagen del artículo</label>
+                <div className={styles.imageContainer}>
+                  {imagePreview ? (
+                    <img
+                      src={imagePreview}
+                      alt="Previsualización del artículo"
+                      className={styles.imagePreview}
+                    />
                   ) : (
-                    <span className={styles.cabysPlaceholder}>
-                      🔍 Seleccionar código CABYS
-                    </span>
+                    <div className={styles.imagePlaceholder}>
+                      <span>Sin imagen</span>
+                    </div>
                   )}
-                </button>
-                {selectedCabysInfo && (
+                </div>
+                <div className={styles.imageControls}>
                   <button
                     type="button"
-                    onClick={() => {
-                      setFormData(prev => ({ ...prev, cabys: '' }))
-                      setSelectedCabysInfo('')
-                    }}
-                    className={styles.clearButton}
+                    onClick={handleBrowseClick}
                     disabled={loading}
-                    title="Limpiar selección"
+                    className={styles.browseButton}
                   >
-                    ×
+                    Examinar...
                   </button>
-                )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    disabled={loading}
+                    className={styles.hiddenFileInput}
+                  />
+                  {imageFile && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      disabled={loading}
+                      className={styles.removeButton}
+                    >
+                      Eliminar
+                    </button>
+                  )}
+                </div>
+                <div className={styles.fileName}>
+                  {imageFile ? imageFile.name : 'No se ha seleccionado ningún archivo.'}
+                </div>
               </div>
-              {errors.cabys && <span className={styles.error}>{errors.cabys}</span>}
             </div>
+            <div className={styles.headerLeft}>
+              <div className={styles.formGroup}>
+                <label>Tipo de mercancía</label>
+                <div className={styles.radioGroup}>
+                  <label className={styles.radioLabel}>
+                    <input
+                      type="radio"
+                      name="tipoMercancia"
+                      value="Normal"
+                      checked={formData.tipoMercancia === 'Normal'}
+                      onChange={handleInputChange}
+                      disabled={loading}
+                    />
+                    <span>Normal</span>
+                  </label>
+                  <label className={styles.radioLabel}>
+                    <input
+                      type="radio"
+                      name="tipoMercancia"
+                      value="Surtido"
+                      checked={formData.tipoMercancia === 'Surtido'}
+                      onChange={handleInputChange}
+                      disabled={loading}
+                    />
+                    <span>Surtido</span>
+                  </label>
+                </div>
+              </div>
 
-            <div className={styles.formGroup}>
-              <label htmlFor="tipo">Tipo *</label>
-              <select
-                id="tipo"
-                name="tipo"
-                value={formData.tipo}
-                onChange={handleInputChange}
-                className={errors.tipo ? styles.inputError : ''}
-                disabled={loading || tiposLoading}
-              >
-                <option value="">
-                  {tiposLoading ? 'Cargando tipos...' : 'Seleccionar tipo'}
-                </option>
-                {tiposDisponibles.map((tipo) => (
-                  <option key={tipo} value={tipo}>
-                    {tipo}
-                  </option>
-                ))}
-              </select>
-              {errors.tipo && <span className={styles.error}>{errors.tipo}</span>}
-              {tiposLoading && (
-                <small className={styles.loadingText}>
-                  Cargando tipos desde CABYS...
-                </small>
-              )}
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label htmlFor="cabys">Código CABYS *</label>
+                  <div className={styles.cabysSelector}>
+                    <button
+                      type="button"
+                      onClick={() => setShowCabysModal(true)}
+                      className={`${styles.cabysButton} ${errors.cabys ? styles.inputError : ''}`}
+                      disabled={loading}
+                    >
+                      {selectedCabysInfo ? (
+                        <span className={styles.cabysSelected}>
+                          📋 {selectedCabysInfo.length > 50 ? selectedCabysInfo.substring(0, 50) + '...' : selectedCabysInfo}
+                        </span>
+                      ) : (
+                        <span className={styles.cabysPlaceholder}>
+                          🔍 Seleccionar código CABYS
+                        </span>
+                      )}
+                    </button>
+                    {selectedCabysInfo && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, cabys: '' }))
+                          setSelectedCabysInfo('')
+                        }}
+                        className={styles.clearButton}
+                        disabled={loading}
+                        title="Limpiar selección"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                  {errors.cabys && <span className={styles.error}>{errors.cabys}</span>}
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label htmlFor="tipo">Tipo *</label>
+                  <select
+                    id="tipo"
+                    name="tipo"
+                    value={formData.tipo}
+                    onChange={handleInputChange}
+                    className={errors.tipo ? styles.inputError : ''}
+                    disabled={loading || tiposLoading}
+                  >
+                    <option value="">
+                      {tiposLoading ? 'Cargando tipos...' : 'Seleccionar tipo'}
+                    </option>
+                    {tiposDisponibles.map((tipo) => (
+                      <option key={tipo} value={tipo}>
+                        {tipo}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.tipo && <span className={styles.error}>{errors.tipo}</span>}
+                  {tiposLoading && (
+                    <small className={styles.loadingText}>
+                      Cargando tipos desde CABYS...
+                    </small>
+                  )}
+                </div>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label htmlFor="descripcion">Descripción *</label>
+                <textarea
+                  id="descripcion"
+                  name="descripcion"
+                  value={formData.descripcion}
+                  onChange={handleInputChange}
+                  className={errors.descripcion ? styles.inputError : ''}
+                  disabled={loading}
+                  placeholder="Descripción detallada del artículo"
+                  rows={3}
+                />
+                {errors.descripcion && <span className={styles.error}>{errors.descripcion}</span>}
+              </div>
+
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label htmlFor="precio">Precio (₡) *</label>
+                  <input
+                    type="number"
+                    id="precio"
+                    name="precio"
+                    value={formData.precio}
+                    onChange={handleInputChange}
+                    className={errors.precio ? styles.inputError : ''}
+                    disabled={loading}
+                    placeholder="0.00"
+                    min="0"
+                    step="0.01"
+                  />
+                  {errors.precio && <span className={styles.error}>{errors.precio}</span>}
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label htmlFor="cantidad">Cantidad *</label>
+                  <input
+                    type="number"
+                    id="cantidad"
+                    name="cantidad"
+                    value={formData.cantidad}
+                    onChange={handleInputChange}
+                    className={errors.cantidad ? styles.inputError : ''}
+                    disabled={loading}
+                    placeholder="0"
+                    min="0"
+                    step="1"
+                  />
+                  {errors.cantidad && <span className={styles.error}>{errors.cantidad}</span>}
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className={styles.formGroup}>
-            <label htmlFor="descripcion">Descripción *</label>
-            <textarea
-              id="descripcion"
-              name="descripcion"
-              value={formData.descripcion}
-              onChange={handleInputChange}
-              className={errors.descripcion ? styles.inputError : ''}
-              disabled={loading}
-              placeholder="Descripción detallada del artículo"
-              rows={3}
-            />
-            {errors.descripcion && <span className={styles.error}>{errors.descripcion}</span>}
-          </div>
-
-          <div className={styles.formRow}>
-            <div className={styles.formGroup}>
-              <label htmlFor="precio">Precio (₡) *</label>
-              <input
-                type="number"
-                id="precio"
-                name="precio"
-                value={formData.precio}
-                onChange={handleInputChange}
-                className={errors.precio ? styles.inputError : ''}
-                disabled={loading}
-                placeholder="0.00"
-                min="0"
-                step="0.01"
-              />
-              {errors.precio && <span className={styles.error}>{errors.precio}</span>}
-            </div>
-
-            <div className={styles.formGroup}>
-              <label htmlFor="cantidad">Cantidad *</label>
-              <input
-                type="number"
-                id="cantidad"
-                name="cantidad"
-                value={formData.cantidad}
-                onChange={handleInputChange}
-                className={errors.cantidad ? styles.inputError : ''}
-                disabled={loading}
-                placeholder="0"
-                min="0"
-                step="1"
-              />
-              {errors.cantidad && <span className={styles.error}>{errors.cantidad}</span>}
-            </div>
-          </div>
 
           {/* Sección: Información para facturación */}
           <div className={styles.section}>
