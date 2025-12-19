@@ -1,0 +1,247 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.navRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.navLeft {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.breadcrumb {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.addRow {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.addFieldGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 16px;
+  align-items: flex-end;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.addGroupGrid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: flex-end;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.addFieldCol {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.addButtons {
+  display: flex;
+  align-items: flex-end;
+}
+
+.inlineLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.inlineInput {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background-color: white;
+  color: #111827;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.inlineInput:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.normalizedHint {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.primaryButton {
+
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  background: #3b82f6;
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-right: 4px;
+}
+
+.primaryButton:hover:not(:disabled) {
+  background-color: #2563eb;
+}
+
+.primaryButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.smallButton {
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #111827;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-right: 4px;
+}
+
+.smallButton:hover {
+  background: #e5e7eb;
+}
+
+.dangerButton {
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #b91c1c;
+  background: #fff;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.dangerButton:hover {
+  background: #fef2f2;
+}
+
+.tableWrapper {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow-x: auto;
+  background: #ffffff;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table th,
+.table td {
+  padding: 10px 10px;
+  border-bottom: 1px solid #e5e7eb;
+  vertical-align: middle;
+}
+
+.table th {
+  background: #f9fafb;
+  font-weight: 600;
+  color: #111827;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.tableInput {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background-color: white;
+  color: #111827;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.tableInput:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.mono {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #111827;
+  white-space: nowrap;
+}
+
+.muted {
+  color: #9ca3af;
+}
+
+.actionsCell {
+  white-space: nowrap;
+}
+
+.emptyCell {
+  color: #6b7280;
+}
+
+.createRow {
+  background-color: #f9fafb;
+}
+
+.createCell {
+  text-align: center;
+  padding: 16px;
+}
+
+.createButton {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #3b82f6;
+  background-color: white;
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin: 0 4px;
+}
+
+.createButton:hover {
+  background-color: #eff6ff;
+  border-color: #2563eb;
+}
+
+@media (max-width: 900px) {
+  .addFieldGrid {
+    grid-template-columns: 1fr;
+  }
+  .addGroupGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+

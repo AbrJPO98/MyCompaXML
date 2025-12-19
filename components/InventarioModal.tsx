@@ -194,6 +194,7 @@ interface Inventario {
   _id?: string
   cabys: string
   descripcion: string
+  titulo?: string
   tipo: string
   precio: number
   cantidad: number
@@ -213,6 +214,7 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
   const [formData, setFormData] = useState({
     cabys: '',
     descripcion: '',
+    titulo: '',
     tipo: '',
     tipoMercancia: 'Normal',
     precio: '',
@@ -276,6 +278,7 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
       setFormData({
         cabys: inventario.cabys || '',
         descripcion: inventario.descripcion || '',
+        titulo: (inventario as any).titulo || '',
         tipo: inventario.tipo || '',
         tipoMercancia: (inventario as any).tipoMercancia || 'Normal',
         precio: inventario.precio?.toString() || '',
@@ -332,6 +335,7 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
       setFormData({
         cabys: '',
         descripcion: '',
+        titulo: '',
         tipo: '',
         tipoMercancia: 'Normal',
         precio: '',
@@ -521,6 +525,20 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
     return baseImponible > 0 ? baseImponible : subtotal
   }, [formData.baseImponible, subtotal])
 
+  // Ajustar Tarifa cuando el código usa porcentaje fijo del tipo de tarifa
+  React.useEffect(() => {
+    if (formData.codigoImpuesto === '01' || formData.codigoImpuesto === '07') {
+      const tipoSeleccionado = TIPOS_TARIFA.find(t => t.value === formData.tipoTarifa)
+      const porcentaje = tipoSeleccionado ? tipoSeleccionado.porcentaje : ''
+      if (porcentaje !== '' && formData.tarifa !== String(porcentaje)) {
+        setFormData(prev => ({
+          ...prev,
+          tarifa: String(porcentaje)
+        }))
+      }
+    }
+  }, [formData.codigoImpuesto, formData.tipoTarifa])
+
   // Calcular monto del impuesto
   const montoImpuesto = React.useMemo(() => {
     if (!formData.tieneImpuesto) return 0
@@ -657,6 +675,7 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
         // Campos requeridos
         cabys: formData.cabys.trim(),
         descripcion: formData.descripcion.trim(),
+        titulo: formData.titulo?.trim() || '',
         tipo: formData.tipo.trim(),
         tipoMercancia: formData.tipoMercancia || 'Normal',
         precio: toNumber(formData.precio, 0),
@@ -915,6 +934,36 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
                 </div>
 
                 <div className={styles.formGroup}>
+                  <label htmlFor="titulo">Título</label>
+                  <input
+                    type="text"
+                    id="titulo"
+                    name="titulo"
+                    value={formData.titulo}
+                    onChange={handleInputChange}
+                    disabled={loading}
+                    placeholder="Título corto para la factura"
+                  />
+                </div>
+              </div>
+              
+              <div className={styles.formGroup}>
+                <label htmlFor="descripcion">Descripción *</label>
+                <textarea
+                  id="descripcion"
+                  name="descripcion"
+                  value={formData.descripcion}
+                  onChange={handleInputChange}
+                  className={errors.descripcion ? styles.inputError : ''}
+                  disabled={loading}
+                  placeholder="Descripción detallada del artículo"
+                  rows={3}
+                />
+                {errors.descripcion && <span className={styles.error}>{errors.descripcion}</span>}
+              </div>
+
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
                   <label htmlFor="tipo">Tipo *</label>
                   <select
                     id="tipo"
@@ -940,24 +989,7 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
                     </small>
                   )}
                 </div>
-              </div>
 
-              <div className={styles.formGroup}>
-                <label htmlFor="descripcion">Descripción *</label>
-                <textarea
-                  id="descripcion"
-                  name="descripcion"
-                  value={formData.descripcion}
-                  onChange={handleInputChange}
-                  className={errors.descripcion ? styles.inputError : ''}
-                  disabled={loading}
-                  placeholder="Descripción detallada del artículo"
-                  rows={3}
-                />
-                {errors.descripcion && <span className={styles.error}>{errors.descripcion}</span>}
-              </div>
-
-              <div className={styles.formRow}>
                 <div className={styles.formGroup}>
                   <label htmlFor="precio">Precio (₡) *</label>
                   <input

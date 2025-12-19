@@ -37,11 +37,24 @@ export async function GET(request: NextRequest) {
         error: result.error,
         message: 'Error al obtener inventario'
       },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      }
     )
   }
 
-  return NextResponse.json(result.data)
+  return NextResponse.json(result.data, {
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    }
+  })
 }
 
 // POST /api/inventario - Crear nuevo artículo de inventario
@@ -53,6 +66,7 @@ export async function POST(request: NextRequest) {
     const { 
       cabys, 
       descripcion, 
+      titulo,
       tipo, 
       tipoMercancia,
       precio, 
@@ -159,6 +173,7 @@ export async function POST(request: NextRequest) {
     const inventarioData: any = {
       cabys: String(cabys || '').trim(),
       descripcion: String(descripcion || '').trim(),
+      titulo: String(titulo || '').trim(),
       tipo: String(tipo || '').trim(),
       tipoMercancia: tipoMercancia || 'Normal',
       precio: precioNum,

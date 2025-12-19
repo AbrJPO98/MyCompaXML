@@ -11,6 +11,11 @@ const InventarioSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  titulo: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   tipo: {
     type: String,
     required: true,

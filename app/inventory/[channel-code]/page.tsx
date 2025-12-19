@@ -25,6 +25,7 @@ interface Inventario {
   _id: string
   cabys: string
   descripcion: string
+  titulo?: string
   tipo: string
   precio: number
   cantidad: number
@@ -136,7 +137,12 @@ export default function InventoryPage() {
     
     setInventarioLoading(true)
     try {
-      const response = await fetch(`/api/inventario?channelId=${channelAccess.channel._id}`)
+      const response = await fetch(`/api/inventario?channelId=${channelAccess.channel._id}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      })
       
       if (response.ok) {
         const data = await response.json()
@@ -229,6 +235,7 @@ export default function InventoryPage() {
   // Filtrar inventario basado en el término de búsqueda
   const filteredInventario = inventario.filter(item =>
     item.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (item.titulo && item.titulo.toLowerCase().includes(searchTerm.toLowerCase())) ||
     item.cabys.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.tipo.toLowerCase().includes(searchTerm.toLowerCase())
   )
@@ -329,7 +336,7 @@ export default function InventoryPage() {
                   <thead>
                     <tr>
                       <th>CABYS</th>
-                      <th>Descripción</th>
+                      <th>Título</th>
                       <th>Tipo</th>
                       <th>Precio</th>
                       <th>Cantidad</th>
@@ -347,7 +354,9 @@ export default function InventoryPage() {
                       filteredInventario.map((item) => (
                         <tr key={item._id}>
                           <td className={styles.cabys}>{item.cabys}</td>
-                          <td className={styles.descripcion}>{item.descripcion}</td>
+                          <td className={styles.descripcion}>
+                            {item.titulo ? item.titulo : item.descripcion}
+                          </td>
                           <td className={styles.tipo}>{item.tipo}</td>
                           <td className={styles.precio}>₡{item.precio.toLocaleString()}</td>
                           <td className={styles.cantidad}>{item.cantidad}</td>

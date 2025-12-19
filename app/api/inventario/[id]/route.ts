@@ -70,6 +70,7 @@ export async function PUT(
     const { 
       cabys, 
       descripcion, 
+      titulo,
       tipo, 
       tipoMercancia,
       precio, 
@@ -168,6 +169,7 @@ export async function PUT(
     const updateData: any = {
       cabys: String(cabys || '').trim(),
       descripcion: String(descripcion || '').trim(),
+      titulo: String(titulo || '').trim(),
       tipo: String(tipo || '').trim(),
       tipoMercancia: tipoMercancia || 'Normal',
       precio: precioNum,
