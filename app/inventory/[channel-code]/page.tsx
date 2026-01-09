@@ -37,6 +37,7 @@ interface Inventario {
 interface UserChannelAccess {
   hasAccess: boolean
   isAdmin: boolean
+  permisos: string[]
   channel: Channel | null
 }
 
@@ -113,7 +114,9 @@ export default function InventoryPage() {
         },
         body: JSON.stringify({
           userId: user._id,
-          channelCode: channelCode
+          channelCode: channelCode,
+          checkPerm: true,
+          perm: 'Inventario'
         })
       })
 

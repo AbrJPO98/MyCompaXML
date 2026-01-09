@@ -83,6 +83,37 @@
   transform: translateY(-1px);
 }
 
+.rolesButton {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.rolesButton:hover {
+  background: #0056b3;
+  transform: translateY(-1px);
+}
+
+.roleSelect {
+  width: 100%;
+  min-width: 140px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  font-size: 0.8rem;
+  color: #111827;
+}
+
 .acceptButton {
   background: #28a745;
   color: white;

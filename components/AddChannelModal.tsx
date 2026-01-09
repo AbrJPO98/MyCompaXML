@@ -94,7 +94,6 @@ const AddChannelModal: React.FC<AddChannelModalProps> = ({
         body: JSON.stringify({
           userId,
           channelId,
-          is_admin: false,
           isActive: false
         }),
       })

@@ -12,7 +12,7 @@ interface PendingMember {
   cedula: string
   email: string
   telefono: string
-  esAdmin: boolean
+  roleName?: string
   isActive: boolean
   createdAt: string
   isAccepted: boolean
@@ -73,7 +73,7 @@ const PendingMembersModal: React.FC<PendingMembersModalProps> = ({
             cedula: userInfo?.ident || '',
             email: userInfo?.email || '',
             telefono: userInfo?.phone_code && userInfo?.phone ? `+${userInfo.phone_code} ${userInfo.phone}` : '',
-            esAdmin: userChannel.is_admin || false,
+            roleName: userChannel.role && typeof userChannel.role === 'object' ? userChannel.role.nombre : '',
             isActive: userChannel.isActive,
             createdAt: userChannel.createdAt,
             isAccepted: false

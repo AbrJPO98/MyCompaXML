@@ -54,6 +54,7 @@ interface Sucursal {
 interface UserChannelAccess {
   hasAccess: boolean
   isAdmin: boolean
+  permisos: string[]
   channel: Channel | null
 }
 
@@ -156,7 +157,9 @@ export default function ChannelManagementPage() {
         },
         body: JSON.stringify({
           userId: user._id,
-          channelCode: channelCode
+          channelCode: channelCode,
+          checkPerm: true,
+          perm: 'Canal'
         })
       })
 
@@ -723,6 +726,7 @@ export default function ChannelManagementPage() {
           </section>
 
           {/* Actividades Económicas */}
+          {channelAccess.permisos.includes('Actividades económicas') && (
           <section className={styles.section}>
             <div className={styles.card}>
               <div className={styles.actividadesHeader}>
@@ -804,13 +808,15 @@ export default function ChannelManagementPage() {
                               >
                                 🗑️
                               </button>
-                              <button
-                                onClick={() => loadSucursales(actividad._id)}
-                                className={styles.viewButton}
-                                title="Ver Sucursales"
-                              >
-                                🏢
-                              </button>
+                              {channelAccess.permisos.includes('Sucursales') && (
+                                <button
+                                  onClick={() => loadSucursales(actividad._id)}
+                                  className={styles.viewButton}
+                                  title="Ver Sucursales"
+                                >
+                                  🏢
+                                </button>
+                              )}
                               <button
                                 onClick={() => handleAddSucursal(actividad._id)}
                                 className={styles.addButton}
@@ -835,9 +841,10 @@ export default function ChannelManagementPage() {
               </div>
             </div>
           </section>
+          )}
 
           {/* Sección de Sucursales */}
-          {selectedActivityId && (
+          {selectedActivityId && channelAccess.permisos.includes('Sucursales') && (
             <section className={styles.section}>
               <div className={styles.card}>
                 <div className={styles.sectionHeader}>

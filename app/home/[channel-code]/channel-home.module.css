@@ -237,58 +237,98 @@
   gap: 2rem;
 }
 
-.actionsGrid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
+.actionsDropdown {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.actionsGridAdmin {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
+.actionsMenu {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
 }
 
-.actionButton {
+.actionItem {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.actionItem:first-child {
+  border-top: none;
+}
+
+.actionItemLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.actionItemTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.actionItemIcon {
+  flex: 0 0 auto;
+}
+
+.actionItemTitle {
+  font-weight: 700;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.actionItemDescription {
+  color: #4b5563;
+  font-size: 0.9rem;
+  line-height: 1.25rem;
+}
+
+.actionItemDenied {
+  color: #b91c1c;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.actionItemRight {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}
+
+.actionAccessButton {
   background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
   color: white;
   border: none;
-  padding: 0.75rem 1.5rem;
+  padding: 0.6rem 1rem;
   border-radius: 8px;
   cursor: pointer;
-  font-weight: 500;
+  font-weight: 600;
   transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  white-space: nowrap;
 }
 
-.actionButton:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+.actionAccessButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
 }
 
-.actionDescription {
-  background: #f8f9fa;
-  padding: 1.5rem;
-  border-radius: 8px;
-  border-left: 4px solid #007bff;
-}
-
-.actionDescription p {
-  margin: 0 0 1rem 0;
-  color: #555;
-  font-weight: 500;
-}
-
-.actionDescription ul {
-  margin: 0;
-  padding-left: 1.5rem;
-  color: #666;
-}
-
-.actionDescription li {
-  margin-bottom: 0.5rem;
+.actionAccessButton:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
 }
 
 /* Responsive */
@@ -327,18 +367,16 @@
     flex-direction: column;
   }
 
-  .actionsGrid {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-  .actionsGridAdmin {
-    grid-template-columns: 1fr;
-    gap: 1rem;
+  .actionItem {
+    flex-direction: column;
+    align-items: stretch;
   }
 
-  .actionButton {
-    justify-content: center;
+  .actionItemRight {
+    justify-content: flex-end;
   }
+
+  /* (El dropdown ya es responsive por sí mismo) */
 }
 
 @media (max-width: 480px) {
@@ -359,7 +397,5 @@
     padding: 0.35rem 0.7rem;
   }
 
-  .actionDescription {
-    padding: 1rem;
-  }
+  /* (Sin actionDescription en este layout) */
 }

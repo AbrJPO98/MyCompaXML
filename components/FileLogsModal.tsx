@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import styles from './FileLogsModal.module.css'
 
 export interface FileLogEntry {
@@ -19,51 +19,17 @@ interface FileLogsModalProps {
 
 const FileLogsModal: React.FC<FileLogsModalProps> = ({ isOpen, onClose, channelId }) => {
   const [logs, setLogs] = useState<FileLogEntry[]>([])
-  const [filteredLogs, setFilteredLogs] = useState<FileLogEntry[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedDetail, setSelectedDetail] = useState<string>('')
   const [typeFilter, setTypeFilter] = useState<string>('all')
 
-  const loadLogs = () => {
-    setLoading(true)
-    
-    // Cargar logs del localStorage específico para el canal
-    const storedLogs = localStorage.getItem(`fileLogs_${channelId}`)
-    if (storedLogs) {
-      try {
-        const parsedLogs = JSON.parse(storedLogs)
-        // Ordenar por timestamp descendente (más recientes primero)
-        parsedLogs.sort((a: FileLogEntry, b: FileLogEntry) => 
-          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-        )
-        setLogs(parsedLogs)
-        applyFilter(parsedLogs, typeFilter)
-      } catch (error) {
-        console.error('Error parsing file logs:', error)
-        setLogs([])
-        setFilteredLogs([])
-      }
-    } else {
-      setLogs([])
-      setFilteredLogs([])
-    }
-    
-    setLoading(false)
-  }
-
-  const applyFilter = (logsToFilter: FileLogEntry[], filter: string) => {
-    let filtered = logsToFilter
-    
-    if (filter !== 'all') {
-      filtered = logsToFilter.filter(log => log.type === filter)
-    }
-    
-    setFilteredLogs(filtered)
-  }
+  const filteredLogs = useMemo(() => {
+    if (typeFilter === 'all') return logs
+    return logs.filter((log) => log.type === typeFilter)
+  }, [logs, typeFilter])
 
   const handleFilterChange = (newFilter: string) => {
     setTypeFilter(newFilter)
-    applyFilter(logs, newFilter)
   }
 
   const handleViewDetail = (log: FileLogEntry) => {
@@ -74,7 +40,6 @@ const FileLogsModal: React.FC<FileLogsModalProps> = ({ isOpen, onClose, channelI
     if (confirm('¿Está seguro de que desea limpiar todos los logs?')) {
       localStorage.removeItem(`fileLogs_${channelId}`)
       setLogs([])
-      setFilteredLogs([])
       setSelectedDetail('')
     }
   }
@@ -118,9 +83,29 @@ const FileLogsModal: React.FC<FileLogsModalProps> = ({ isOpen, onClose, channelI
 
   useEffect(() => {
     if (isOpen) {
-      loadLogs()
+      setLoading(true)
+
+      // Cargar logs del localStorage específico para el canal
+      const storedLogs = localStorage.getItem(`fileLogs_${channelId}`)
+      if (storedLogs) {
+        try {
+          const parsedLogs = JSON.parse(storedLogs)
+          // Ordenar por timestamp descendente (más recientes primero)
+          parsedLogs.sort((a: FileLogEntry, b: FileLogEntry) =>
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+          )
+          setLogs(parsedLogs)
+        } catch (error) {
+          console.error('Error parsing file logs:', error)
+          setLogs([])
+        }
+      } else {
+        setLogs([])
+      }
+
+      setLoading(false)
     }
-  }, [isOpen, channelId, loadLogs])
+  }, [isOpen, channelId])
 
   if (!isOpen) return null
 

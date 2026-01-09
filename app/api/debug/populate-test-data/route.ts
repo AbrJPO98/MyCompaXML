@@ -39,12 +39,11 @@ export async function POST(request: NextRequest) {
       for (let i = 0; i < users.length; i++) {
         const user = users[i]
         const channel = channels[i % channels.length] // Rotar canales
-        const isAdmin = i === 0 // Primer usuario es admin
 
         testData.push({
           user: user._id,
           channel: channel._id,
-          is_admin: isAdmin
+          role: null
         })
       }
 
@@ -57,7 +56,7 @@ export async function POST(request: NextRequest) {
         data: created.map(item => ({
           user: item.user,
           channel: item.channel,
-          is_admin: item.is_admin
+          role: (item as any).role || null
         }))
       }
     })
@@ -106,7 +105,7 @@ export async function GET(request: NextRequest) {
           id: record._id,
           user: record.user,
           channel: record.channel,
-          is_admin: record.is_admin,
+          role: (record as any).role || null,
           createdAt: record.createdAt
         }))
       }

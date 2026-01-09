@@ -97,11 +97,11 @@ export const COLUMN_DEFINITIONS: ColumnDefinition[] = [
   { header: "Condición de la venta", systemName: "condicionVentaCon", visible: true },
   { header: "Condición de la venta (Otros)", systemName: "condicionVentaOtrosCon", visible: true },
   { header: "Plazo de crédito", systemName: "plazoCreditoCon", visible: true },
-  { header: "Medio de pago", systemName: "medioPagoCon", visible: true },
   { header: "Tipo medio de pago", systemName: "tipoMedioPagoCon", visible: true },
   { header: "Medio de pago OTROS", systemName: "medioPagoOtroCon", visible: true },
   { header: "Total medio de pago", systemName: "totalMedioPago", visible: true },
   { header: "Tipo de moneda", systemName: "tipoMonedaLinea", visible: false },
+  /*
   { header: "Número de línea", systemName: "numeroLineaCon", visible: true },
   { header: "Partida arancelaria", systemName: "partidaArancelariaCon", visible: true },
   { header: "CABYS", systemName: "codigoCon", visible: true },
@@ -161,6 +161,7 @@ export const COLUMN_DEFINITIONS: ColumnDefinition[] = [
   { header: "Impuesto asumido emisor fábrica", systemName: "impuestoAsumidoEmisorFabrica", visible: true },
   { header: "Impuesto neto (producto o servicio)", systemName: "impuestoNetoCon", visible: true },
   { header: "Monto total línea (producto o servicio)", systemName: "montoTotalLineaCon", visible: true },
+   */
   { header: "Tipo documento (otros cargos)", systemName: "tipoDocumento2Con", visible: true },
   { header: "Tipo documento otros (otros cargos)", systemName: "tipoDocumentoOtros2Con", visible: true },
   { header: "Tipo identidad tercero (otros cargos)", systemName: "tipoIdentidadTerceroCon", visible: true },
@@ -422,15 +423,16 @@ export default function BillsTable({ channelId }: { channelId: string }) {
         const lineaDetalleData: any = {}
 
         // Codigo (prioridad 1)
-        const codigo = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'Codigo')
+        const codigo = lineaDetalleElement.querySelector('Codigo')
         if (codigo && codigo.textContent?.trim()) {
+          console.log(codigo.textContent.trim())
           lineaDetalleData.codigoCon = codigo.textContent.trim()
         }
         // CodigoCABYS (prioridad 2, solo si no hay Codigo)
         else {
-          const codigoCABYS = Array.from(lineaDetalleElement.children).find((child: any) => child.nodeName === 'CodigoCABYS')
+          const codigoCABYS = lineaDetalleElement.querySelector('CodigoCABYS')
           if (codigoCABYS && codigoCABYS.textContent?.trim()) {
-            lineaDetalleData.codigoCon = codigoCABYS.textContent.trim()
+            lineaDetalleData.codigoCon = "Gay fish"
           }
         }
 
@@ -929,14 +931,26 @@ export default function BillsTable({ channelId }: { channelId: string }) {
     
     try {
       // Cargar datos del canal primero
-      const channelResponse = await fetch(`/api/channels/current?channelId=${channelId}`)
+      const channelResponse = await fetch(`/api/channels/current?channelId=${channelId}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-store',
+          'Pragma': 'no-cache'
+        }
+      })
       let channelData = null
       if (channelResponse.ok) {
         const channelResult = await channelResponse.json()
         channelData = channelResult.channel
       }
 
-      const response = await fetch(`/api/facturas?channelId=${channelId}`)
+      const response = await fetch(`/api/facturas?channelId=${channelId}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-store',
+          'Pragma': 'no-cache'
+        }
+      })
       if (response.ok) {
         const data = await response.json()
         const items = Array.isArray(data.data) ? data.data : Array.isArray(data.facturas) ? data.facturas : []
@@ -1508,7 +1522,13 @@ export default function BillsTable({ channelId }: { channelId: string }) {
 
     try {
       // Obtener la factura completa desde la base de datos
-      const response = await fetch(`/api/facturas?channelId=${channelId}&clave=${encodeURIComponent(clave)}`)
+      const response = await fetch(`/api/facturas?channelId=${channelId}&clave=${encodeURIComponent(clave)}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-store',
+          'Pragma': 'no-cache'
+        }
+      })
       
       if (!response.ok) {
         throw new Error('Error al obtener la factura')
@@ -1824,7 +1844,13 @@ export default function BillsTable({ channelId }: { channelId: string }) {
           }
 
           // Hacer consulta a la base de datos para obtener el registro completo
-          const response = await fetch(`/api/facturas?channelId=${channelId}&clave=${encodeURIComponent(bill.clave)}`)
+          const response = await fetch(`/api/facturas?channelId=${channelId}&clave=${encodeURIComponent(bill.clave)}`, {
+            cache: 'no-store',
+            headers: {
+              'Cache-Control': 'no-store',
+              'Pragma': 'no-cache'
+            }
+          })
           
           if (!response.ok) {
             throw new Error('Error al obtener el registro de la base de datos')

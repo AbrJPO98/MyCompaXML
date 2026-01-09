@@ -98,7 +98,9 @@ const ElectronicBillingPage: React.FC = () => {
         },
         body: JSON.stringify({
           userId: user._id,
-          channelCode: channelCode
+          channelCode: channelCode,
+          checkPerm: true,
+          perm: 'Facturador'
         })
       })
 

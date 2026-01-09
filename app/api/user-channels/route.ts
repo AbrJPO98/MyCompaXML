@@ -5,6 +5,7 @@ import User from '@/lib/models/User'
 import Actividad from '@/lib/models/Actividad'
 import Sucursal from '@/lib/models/Sucursal'
 import Caja from '@/lib/models/Caja'
+import Roles, { ROLE_PERMISSION_NAMES } from '@/lib/models/Roles'
 import { withDB, sanitizeInput, isValidObjectId } from '@/lib/dbUtils'
 
 export async function GET(request: NextRequest) {
@@ -57,6 +58,7 @@ export async function GET(request: NextRequest) {
       const userChannels = await UserChannel.find(query)
         .populate('channel', 'code name ident ident_type phone phone_code registro_fiscal_IVA email commercial_name isActive createdAt')
         .populate('user', 'first_name last_name email ident type_ident phone phone_code')
+        .populate('role', 'nombre permisos deletable channel_id')
         .populate('act_eco', 'codigo nombre_personal')
         .populate('sucursal', 'codigo nombre')
         .populate('caja', 'numero')
@@ -67,7 +69,7 @@ export async function GET(request: NextRequest) {
         _id: userChannel._id,
         user: userChannel.user,
         channel: userChannel.channel,
-        is_admin: userChannel.is_admin,
+        role: userChannel.role || null,
         isActive: userChannel.isActive,
         createdAt: userChannel.createdAt,
         updatedAt: userChannel.updatedAt,
@@ -179,10 +181,67 @@ export async function PUT(request: NextRequest) {
     }
 
     const result = await withDB(async () => {
+      // Validación especial para role (debe pertenecer al mismo canal)
+      if (body?.role !== undefined && body?.role !== null) {
+        if (!isValidObjectId(String(body.role))) {
+          throw new Error('Formato de role inválido')
+        }
+      }
+
+      const existingUserChannel = await UserChannel.findById(userChannelId).lean()
+      if (!existingUserChannel) {
+        throw new Error('User-channel no encontrado')
+      }
+
+      const updateBody: any = { ...body }
+
+      // Si se activa un miembro y no se especifica rol, asignar rol "Miembro" por defecto
+      if (updateBody?.isActive === true && (updateBody?.role === undefined || updateBody?.role === null)) {
+        if (!(existingUserChannel as any).role) {
+          let memberRole = await Roles.findOne({ channel_id: (existingUserChannel as any).channel, nombre: 'Miembro' }).lean()
+          if (!memberRole) {
+            // Si no hay roles aún, forzar seed mínimo llamando la misma lógica (crear Admin/Miembro)
+            const existing = await Roles.find({ channel_id: (existingUserChannel as any).channel }).lean()
+            if (existing.length === 0) {
+              // Importante: permisos completos para Administrador
+              await Roles.create([
+                {
+                  nombre: 'Administrador',
+                  channel_id: (existingUserChannel as any).channel,
+                  deletable: true,
+                  permisos: ROLE_PERMISSION_NAMES.map((n: any) => ({ nombre: n }))
+                },
+                {
+                  nombre: 'Miembro',
+                  channel_id: (existingUserChannel as any).channel,
+                  deletable: true,
+                  permisos: []
+                }
+              ])
+            }
+            memberRole = await Roles.findOne({ channel_id: (existingUserChannel as any).channel, nombre: 'Miembro' }).lean()
+          }
+
+          if (memberRole?._id) {
+            updateBody.role = memberRole._id
+          }
+        }
+      }
+
+      if (body?.role) {
+        const roleDoc = await Roles.findById(body.role).lean()
+        if (!roleDoc) {
+          throw new Error('Rol no encontrado')
+        }
+        if (String(roleDoc.channel_id) !== String(existingUserChannel.channel)) {
+          throw new Error('El rol no pertenece a este canal')
+        }
+      }
+
       // Actualizar el user-channel
       const updatedUserChannel = await UserChannel.findByIdAndUpdate(
         userChannelId,
-        { $set: body },
+        { $set: updateBody },
         { new: true }
       )
       

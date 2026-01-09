@@ -14,7 +14,10 @@ interface UserChannel {
   _id: string
   user_id: string
   channel_id: string
-  is_admin: boolean
+  role?: {
+    _id: string
+    nombre: string
+  } | string | null
   createdAt: string
   updatedAt: string
   channel: {
@@ -221,7 +224,7 @@ export default function HomePage() {
                         <th>Nombre del Canal</th>
                         <th>Código</th>
                         <th>Fecha de Creación</th>
-                        <th>Es Administrador</th>
+                        <th>Rol</th>
                         <th>Estado del Canal</th>
                         <th>Ingresar</th>
                       </tr>
@@ -247,8 +250,8 @@ export default function HomePage() {
                             }
                           </td>
                           <td>
-                            <span className={`${styles.adminBadge} ${userChannel.is_admin ? styles.isAdmin : styles.notAdmin}`}>
-                              {userChannel.is_admin ? '✅ Sí' : '❌ No'}
+                            <span className={styles.channelCode}>
+                              {typeof userChannel.role === 'object' && userChannel.role ? userChannel.role.nombre : '-'}
                             </span>
                           </td>
                           <td>

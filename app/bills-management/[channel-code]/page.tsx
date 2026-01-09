@@ -88,7 +88,9 @@ const BillsManagementPage: React.FC = () => {
         },
         body: JSON.stringify({
           userId: user._id,
-          channelCode: channelCode
+          channelCode: channelCode,
+          checkPerm: true,
+          perm: 'Gestor de facturas'
         })
       })
 

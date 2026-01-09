@@ -20,6 +20,7 @@ interface Channel {
 interface UserChannelAccess {
   hasAccess: boolean
   isAdmin: boolean
+  permisos: string[]
   channel: Channel | null
 }
 
@@ -85,7 +86,9 @@ export default function ChannelHomePage() {
         },
         body: JSON.stringify({
           userId: user._id,
-          channelCode: channelCode
+          channelCode: channelCode,
+          checkPerm: false,
+          perm: 'Canal'
         })
       })
 
@@ -213,6 +216,55 @@ export default function ChannelHomePage() {
   }
 
   const channel = channelAccess.channel
+  const hasPerm = (perm: string) => Boolean(channelAccess?.permisos?.includes(perm))
+
+  const actionItems = [
+    {
+      key: 'members',
+      icon: '👥',
+      title: 'Miembros del canal',
+      description: 'Administra los usuarios asociados al canal y asigna sus roles.',
+      perm: 'Usuarios',
+      disabled: !hasPerm('Usuarios'),
+      onClick: handleGoToChannelMembers
+    },
+    {
+      key: 'channel',
+      icon: '✏️',
+      title: 'Canal y actividades económicas',
+      description: 'Edita datos del canal, gestiona actividades económicas y sincroniza con Hacienda.',
+      perm: 'Canal',
+      disabled: !hasPerm('Canal'),
+      onClick: handleGoToChannelEdit
+    },
+    {
+      key: 'inventory',
+      icon: '📦',
+      title: 'Inventario',
+      description: 'Crea y administra productos/servicios, precios y configuraciones para facturación.',
+      perm: 'Inventario',
+      disabled: !hasPerm('Inventario'),
+      onClick: handleGoToInventory
+    },
+    {
+      key: 'bills',
+      icon: '📄',
+      title: 'Gestor de facturas',
+      description: 'Gestiona facturas, archivos y flujos del comprobante dentro del canal.',
+      perm: 'Gestor de facturas',
+      disabled: !hasPerm('Gestor de facturas'),
+      onClick: handleGoToBillsManagement
+    },
+    {
+      key: 'ebilling',
+      icon: '⚡',
+      title: 'Facturador / Facturación electrónica',
+      description: 'Emite comprobantes electrónicos y gestiona procesos relacionados.',
+      perm: 'Facturador',
+      disabled: !hasPerm('Facturador'),
+      onClick: handleGoToElectronicBilling
+    }
+  ]
 
   return (
     <main className={styles.main}>
@@ -283,59 +335,39 @@ export default function ChannelHomePage() {
               <h2 className={styles.sectionTitle}>⚙️ Acciones del Canal</h2>
               
               <div className={styles.actions}>
-                <div className={channelAccess?.isAdmin ? styles.actionsGridAdmin : styles.actionsGrid}>
-                  {channelAccess?.isAdmin && (
-                    <button 
-                      onClick={handleGoToChannelMembers} 
-                      className={styles.actionButton}
-                    >
-                      👥 Miembros del Canal
-                    </button>
-                  )}
-                  <button 
-                    onClick={handleGoToChannelEdit} 
-                    className={styles.actionButton}
-                  >
-                    ✏️ Gestionar Canal y Actividades
-                  </button>
-                  
-                  <button 
-                    onClick={handleGoToInventory} 
-                    className={styles.actionButton}
-                  >
-                    📦 Gestionar Inventario
-                  </button>
-                </div>
-                <div className={ styles.actionsGrid}>
-                  <button 
-                    onClick={handleGoToBillsManagement} 
-                    className={styles.actionButton}
-                  >
-                    📄 Gestionar Facturas
-                  </button>
-                  
-                  <button 
-                    onClick={handleGoToElectronicBilling} 
-                    className={styles.actionButton}
-                  >
-                    ⚡ Facturación Electrónica
-                  </button>
-                </div>
-                
-                <div className={styles.actionDescription}>
-                  <p>Desde aquí puedes acceder a la gestión completa del canal, incluyendo:</p>
-                  <ul>
-                    <li>📝 Editar información del canal</li>
-                    <li>📊 Gestionar actividades económicas</li>
-                    <li>🔄 Sincronizar con Hacienda</li>
-                    <li>📋 Ver y administrar datos</li>
-                    <li>📦 Gestionar inventario de productos</li>
-                    <li>📄 Administrar facturas y comprobantes</li>
-                    <li>⚡ Gestionar facturación electrónica</li>
-                    {channelAccess?.isAdmin && (
-                      <li>👥 Gestionar miembros del canal</li>
-                    )}
-                  </ul>
+                <div className={styles.actionsDropdown}>
+                  <div className={styles.actionsMenu}>
+                    {actionItems
+                      .filter((item) => (item.key === 'members' ? hasPerm('Usuarios') : true))
+                      .map((item) => {
+                        const allowed = hasPerm(item.perm)
+                        return (
+                          <div key={item.key} className={styles.actionItem}>
+                            <div className={styles.actionItemLeft}>
+                              <div className={styles.actionItemTitleRow}>
+                                <span className={styles.actionItemIcon}>{item.icon}</span>
+                                <span className={styles.actionItemTitle}>{item.title}</span>
+                              </div>
+                              <div className={styles.actionItemDescription}>{item.description}</div>
+                              {!allowed && (
+                                <div className={styles.actionItemDenied}>Sin permiso ({item.perm})</div>
+                              )}
+                            </div>
+
+                            <div className={styles.actionItemRight}>
+                              <button
+                                type="button"
+                                className={styles.actionAccessButton}
+                                onClick={item.onClick}
+                                disabled={!allowed}
+                              >
+                                Acceder
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                  </div>
                 </div>
               </div>
             </div>

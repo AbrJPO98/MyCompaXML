@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   try {
     await connectDB()
 
-    const { userId, channelId, is_admin = false, isActive = false } = await request.json()
+    const { userId, channelId, role = null, isActive = false } = await request.json()
 
     // Validar campos requeridos
     if (!userId || !channelId) {
@@ -66,14 +66,14 @@ export async function POST(request: NextRequest) {
     console.log('Creating UserChannel with:', {
       user: userId,
       channel: channelId,
-      is_admin: is_admin,
+      role: role,
       isActive: isActive
     })
 
     const newUserChannel = new UserChannel({
       user: userId,
       channel: channelId,
-      is_admin: is_admin,
+      role: role,
       isActive: isActive // false por defecto (pendiente de aprobación)
     })
 
@@ -85,9 +85,10 @@ export async function POST(request: NextRequest) {
 
     // Poblar los datos para la respuesta
     const populatedUserChannel = await UserChannel.findById(newUserChannel._id)
-      .select('user channel is_admin isActive createdAt updatedAt')
+      .select('user channel role isActive createdAt updatedAt')
       .populate('user', 'first_name last_name email')
       .populate('channel', 'name code ident')
+      .populate('role', 'nombre permisos deletable channel_id')
       .lean()
       
     console.log('Populated UserChannel:', populatedUserChannel)

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import styles from './ChannelMembersTable.module.css'
 import PendingMembersModal from './PendingMembersModal'
 import PosicionModal from './PosicionModal'
+import RolesModal from './RolesModal'
 
 // Definición de columnas para la tabla de miembros
 export interface MemberColumnDefinition {
@@ -17,7 +18,7 @@ export const MEMBER_COLUMN_DEFINITIONS: MemberColumnDefinition[] = [
   { header: "Cédula", systemName: "cedula", visible: true },
   { header: "Correo electrónico", systemName: "email", visible: true },
   { header: "Número de teléfono", systemName: "telefono", visible: true },
-  { header: "¿Es admin?", systemName: "esAdmin", visible: true },
+  { header: "Rol", systemName: "role", visible: true },
   { header: "Posición", systemName: "posicion", visible: true },
   { header: "Eliminar", systemName: "eliminar", visible: true }
 ]
@@ -32,10 +33,11 @@ export const PENDING_MEMBER_COLUMN_DEFINITIONS: MemberColumnDefinition[] = [
 ]
 
 interface ChannelMembersTableProps {
-  channelId: string
+  channelId: string,
+  perms: string[]
 }
 
-export default function ChannelMembersTable({ channelId }: ChannelMembersTableProps) {
+export default function ChannelMembersTable({ channelId, perms }: ChannelMembersTableProps) {
   const [columns, setColumns] = useState<MemberColumnDefinition[]>(MEMBER_COLUMN_DEFINITIONS)
   const [members, setMembers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -44,6 +46,8 @@ export default function ChannelMembersTable({ channelId }: ChannelMembersTablePr
   const [pendingCount, setPendingCount] = useState<number>(0)
   const [showPosicionModal, setShowPosicionModal] = useState(false)
   const [selectedMember, setSelectedMember] = useState<any>(null)
+  const [showRolesModal, setShowRolesModal] = useState(false)
+  const [roles, setRoles] = useState<Array<{ _id: string; nombre: string }>>([])
 
   // Obtener columnas visibles
   const visibleColumns = columns.filter(col => col.visible)
@@ -53,7 +57,10 @@ export default function ChannelMembersTable({ channelId }: ChannelMembersTablePr
     setError(null)
     
     try {
-      const response = await fetch(`/api/user-channels?channelId=${channelId}`)
+      const response = await fetch(`/api/user-channels?channelId=${channelId}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-store', 'Pragma': 'no-cache' }
+      })
       if (response.ok) {
         const data = await response.json()
         const userChannels = Array.isArray(data.data) ? data.data : []
@@ -63,6 +70,8 @@ export default function ChannelMembersTable({ channelId }: ChannelMembersTablePr
           .filter((userChannel: any) => userChannel.isActive) // Solo miembros activos
           .map((userChannel: any) => {
             const userInfo = userChannel.userInfo
+            const roleObj = userChannel.role && typeof userChannel.role === 'object' ? userChannel.role : null
+            const roleId = roleObj?._id || (typeof userChannel.role === 'string' ? userChannel.role : null)
             
           let tipoCedula = "Física";
           switch (userInfo?.type_ident) {
@@ -92,7 +101,8 @@ export default function ChannelMembersTable({ channelId }: ChannelMembersTablePr
               cedula: userInfo?.ident || '',
               email: userInfo?.email || '',
               telefono: userInfo?.phone_code && userInfo?.phone ? `+${userInfo.phone_code} ${userInfo.phone}` : '',
-              esAdmin: userChannel.is_admin || false,
+              roleId: roleId,
+              roleName: roleObj?.nombre || '',
               isActive: userChannel.isActive,
               createdAt: userChannel.createdAt,
               // Información de posición
@@ -109,6 +119,25 @@ export default function ChannelMembersTable({ channelId }: ChannelMembersTablePr
       setError(error.message || 'Error cargando miembros del canal')
     } finally {
       setLoading(false)
+    }
+  }, [channelId])
+
+  const loadRoles = useCallback(async () => {
+    if (!channelId) return
+    try {
+      const res = await fetch(`/api/roles?channelId=${channelId}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-store', 'Pragma': 'no-cache' }
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        const items = Array.isArray(data.data) ? data.data : []
+        setRoles(items.map((r: any) => ({ _id: r._id, nombre: r.nombre })))
+      } else {
+        setRoles([])
+      }
+    } catch (e) {
+      setRoles([])
     }
   }, [channelId])
 
@@ -132,7 +161,8 @@ export default function ChannelMembersTable({ channelId }: ChannelMembersTablePr
   useEffect(() => {
     loadMembers()
     loadPendingCount()
-  }, [loadMembers, loadPendingCount])
+    loadRoles()
+  }, [loadMembers, loadPendingCount, loadRoles])
 
   const renderTableHeader = () => {
     return (
@@ -240,14 +270,45 @@ export default function ChannelMembersTable({ channelId }: ChannelMembersTablePr
         )
     }
 
-    // Columna de es admin con colores
-    if (column.systemName === 'esAdmin') {
-      const adminClass = value ? styles.roleAdmin : styles.roleMember
-      
+    if (column.systemName === 'role') {
+      const currentRoleId = member.roleId || ''
+
+      const onChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newRoleId = e.target.value || null
+        try {
+          const res = await fetch(`/api/user-channels?id=${member.userChannelId}`, {
+            method: 'PUT',
+            cache: 'no-store',
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-store',
+              'Pragma': 'no-cache'
+            },
+            body: JSON.stringify({ role: newRoleId })
+          })
+          const data = await res.json()
+          if (!res.ok || !data.success) {
+            throw new Error(data.message || 'Error actualizando rol')
+          }
+
+          const roleName = roles.find((r) => r._id === newRoleId)?.nombre || ''
+          setMembers((prev) =>
+            prev.map((m) => (m.userChannelId === member.userChannelId ? { ...m, roleId: newRoleId, roleName } : m))
+          )
+        } catch (err: any) {
+          alert(err?.message || 'Error actualizando rol')
+        }
+      }
+
       return (
-        <span className={adminClass}>
-          {value ? 'Sí' : 'No'}
-        </span>
+        <select className={styles.roleSelect} value={currentRoleId} onChange={onChange}>
+          <option value="">-- Seleccionar --</option>
+          {roles.map((r) => (
+            <option key={r._id} value={r._id}>
+              {r.nombre}
+            </option>
+          ))}
+        </select>
       )
     }
 
@@ -323,14 +384,24 @@ export default function ChannelMembersTable({ channelId }: ChannelMembersTablePr
             {loading ? 'Cargando...' : `${members.length} miembros`}
           </span>
         </div>
-        <div className={styles.headerRight}>
-          <button 
-            className={styles.pendingButton}
-            onClick={() => setShowPendingModal(true)}
-          >
-            ⏳ Pendientes {pendingCount > 0 && `(${pendingCount})`}
-          </button>
-        </div>
+          <div className={styles.headerRight}>
+            {perms.includes('Roles') && (
+              <button
+                className={styles.rolesButton}
+                onClick={() => setShowRolesModal(true)}
+                type="button"
+                title="Gestionar roles"
+              >
+                🛡️ Roles
+              </button>
+            )}
+            <button 
+              className={styles.pendingButton}
+              onClick={() => setShowPendingModal(true)}
+            >
+              ⏳ Pendientes {pendingCount > 0 && `(${pendingCount})`}
+            </button>
+          </div>
       </div>
 
       <div className={styles.tableContainer}>
@@ -358,6 +429,16 @@ export default function ChannelMembersTable({ channelId }: ChannelMembersTablePr
           onUpdate={handlePositionUpdate}
         />
       )}
+
+      <RolesModal
+        isOpen={showRolesModal}
+        onClose={() => setShowRolesModal(false)}
+        channelId={channelId}
+        onRolesChanged={() => {
+          loadRoles()
+          loadMembers()
+        }}
+      />
     </div>
   )
 }

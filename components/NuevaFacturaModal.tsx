@@ -122,9 +122,6 @@ const TIPOS_DOCUMENTO = [
   { value: '02', label: '02 - Nota de débito electrónica' },
   { value: '03', label: '03 - Nota de crédito electrónica' },
   { value: '04', label: '04 - Tiquete electrónico' },
-  { value: '05', label: '05 - Confirmación de aceptación del comprobante electrónico' },
-  { value: '06', label: '06 - Confirmación de aceptación parcial del comprobante electrónico' },
-  { value: '07', label: '07 - Confirmación de rechazo del comprobante electrónico' },
   { value: '08', label: '08 - Factura electrónica de compras' },
   { value: '09', label: '09 - Factura electrónica de exportación' },
   { value: '10', label: '10 - Recibo Electrónico de Pago' }
@@ -955,6 +952,65 @@ const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: 
       })
       onClose()
     }
+  }
+
+  const buildAndDownloadXml = () => {
+    const map: Record<string, { header: string; tipo: string }> = {
+      '01': { header: 'FacturaElectronica', tipo: 'facturaElectronica' },
+      '02': { header: 'NotaDebitoElectronica', tipo: 'notaDebitoElectronica' },
+      '03': { header: 'NotaCreditoElectronica', tipo: 'notaCreditoElectronica' },
+      '04': { header: 'TiqueteElectronico', tipo: 'tiqueteElectronico' },
+      '08': { header: 'FacturaElectronicaCompra', tipo: 'facturaElectronicaCompra' },
+      '09': { header: 'FacturaElectronicaExportacion', tipo: 'facturaElectronicaExportacion' },
+      '10': { header: 'ReciboElectronicoPago', tipo: 'reciboElectronicoPago' }
+    }
+
+    const normalizedTipoDocumento = (tipoDocumento || '').padStart(2, '0')
+    const def = map[normalizedTipoDocumento]
+    if (!def) {
+      alert('Tipo de documento no soportado para generación XML')
+      return
+    }
+
+    const now = new Date()
+    const day = String(now.getDate()).padStart(2, '0')
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const year2 = String(now.getFullYear()).slice(-2)
+
+    const canalIdentRaw = String(invoiceData?.channel?.ident || '').replace(/\D/g, '')
+    if (!canalIdentRaw) {
+      alert('No se encontró la identificación (ident) del canal para construir la clave')
+      return
+    }
+    const canalIdent12 = canalIdentRaw.padStart(12, '0').slice(-12)
+
+    const consec = String(consecutivo || '').trim()
+    if (!consec) {
+      alert('No se encontró el consecutivo para construir la clave')
+      return
+    }
+
+    const random8 = Array.from({ length: 8 }, () => Math.floor(Math.random() * 10)).join('')
+    const clave = `506${day}${month}${year2}${canalIdent12}${consec}1${random8}`
+    const xmlns = `https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.4/${def.tipo}`
+    const schemaLocation = `${xmlns} ${xmlns}.xsd`
+
+    const xml =
+      `<?xml version="1.0" encoding="utf-8"?>\n\n` +
+      `<${def.header} xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="${xmlns}" xsi:schemaLocation="${schemaLocation}">\n\n` +
+      `<Clave>${clave}</Clave>\n\n` +
+      `</${def.header}>\n`
+
+    const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${def.header}_${clave}.xml`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
   }
 
   if (!isOpen) return null
@@ -2196,8 +2252,9 @@ const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: 
             type="button"
             className={styles.saveButton}
             disabled={loading}
+            onClick={buildAndDownloadXml}
           >
-            Continuar
+            Confirmar
           </button>
         </div>
       </div>

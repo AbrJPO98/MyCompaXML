@@ -21,6 +21,7 @@ interface Channel {
 interface UserChannelAccess {
   hasAccess: boolean
   isAdmin: boolean
+  permisos: string[]
   channel: Channel | null
 }
 
@@ -86,7 +87,9 @@ export default function ChannelMembersPage() {
         },
         body: JSON.stringify({
           userId: user._id,
-          channelCode: channelCode
+          channelCode: channelCode,
+          checkPerm: true,
+          perm: 'Usuarios'
         })
       })
 
@@ -167,12 +170,12 @@ export default function ChannelMembersPage() {
   }
 
   // Verificar que el usuario sea administrador para acceder a la gestión de miembros
-  if (!channelAccess.isAdmin) {
+  if (!channelAccess.permisos.includes('Usuarios')) {
     return (
       <div className={styles.accessDenied}>
         <div className={styles.card}>
           <h2>🚫 Permisos Insuficientes</h2>
-          <p>Solo los administradores del canal pueden gestionar los miembros</p>
+          <p>Solo los administradores o miembros con permisos de gestión de usuarios pueden gestionar los miembros</p>
           <button onClick={handleBackToChannel} className={styles.backButton}>
             ← Volver al Canal
           </button>
@@ -204,7 +207,7 @@ export default function ChannelMembersPage() {
       </div>
 
       <div className={styles.content}>
-        <ChannelMembersTable channelId={channel._id} />
+        <ChannelMembersTable channelId={channel._id} perms={channelAccess.permisos} />
       </div>
     </div>
   )

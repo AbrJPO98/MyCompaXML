@@ -5,13 +5,14 @@ import './Channel'
 import './Actividad'
 import './Sucursal'
 import './Caja'
+import './Roles'
 
 // Interfaz para el documento de Users_channels
 export interface IUserChannel extends Document {
   _id: string
   user: mongoose.Types.ObjectId // ID del usuario
   channel: mongoose.Types.ObjectId // ID del canal
-  is_admin: boolean // Si el usuario es admin en este canal
+  role?: mongoose.Types.ObjectId | null // Rol asignado en este canal
   isActive: boolean // Si la relación usuario-canal está activa
   act_eco?: mongoose.Types.ObjectId // ID de la actividad económica (opcional)
   sucursal?: mongoose.Types.ObjectId // ID de la sucursal (opcional)
@@ -32,10 +33,11 @@ const UserChannelSchema: Schema<IUserChannel> = new Schema({
     ref: 'Channel',
     required: [true, 'El ID del canal es requerido']
   },
-  is_admin: {
-    type: Boolean,
-    default: false,
-    required: [true, 'El estado de administrador es requerido']
+  role: {
+    type: Schema.Types.ObjectId,
+    ref: 'Roles',
+    default: null,
+    required: false
   },
   isActive: {
     type: Boolean,
@@ -66,7 +68,7 @@ const UserChannelSchema: Schema<IUserChannel> = new Schema({
 UserChannelSchema.index({ user: 1 })
 UserChannelSchema.index({ channel: 1 })
 UserChannelSchema.index({ user: 1, channel: 1 }, { unique: true }) // Evitar duplicados
-UserChannelSchema.index({ is_admin: 1 })
+UserChannelSchema.index({ role: 1 })
 UserChannelSchema.index({ isActive: 1 })
 
 // Métodos del schema

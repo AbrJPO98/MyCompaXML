@@ -26,7 +26,10 @@ interface UserChannel {
   _id: string
   user_id: string
   channel_id: string
-  is_admin: boolean
+  role?: {
+    _id: string
+    nombre: string
+  } | string | null
   createdAt: string
   updatedAt: string
   channel: Channel | null
@@ -122,11 +125,12 @@ export default function ChannelsPage() {
       const data = await response.json()
 
       if (response.ok && data.success) {
-        setUserChannels(data.channels)
+        const rows = Array.isArray(data.data) ? data.data : []
+        setUserChannels(rows)
         
         // Auto-select first channel if available
-        if (data.channels.length > 0) {
-          const firstChannel = data.channels[0]
+        if (rows.length > 0) {
+          const firstChannel = rows[0]
           setSelectedChannelId(firstChannel.channel?._id || '')
           setSelectedChannel(firstChannel.channel)
         }
@@ -465,7 +469,7 @@ export default function ChannelsPage() {
                   </div>
                   <div className={styles.channelCardInfo}>
                     <p>Identificación: {userChannel.channel?.ident}</p>
-                    <p>Rol: {userChannel.is_admin ? 'Administrador' : 'Usuario'}</p>
+                    <p>Rol: {typeof userChannel.role === 'object' && userChannel.role ? userChannel.role.nombre : '-'}</p>
                     <span className={`${styles.status} ${userChannel.channel?.isActive ? styles.active : styles.inactive}`}>
                       {userChannel.channel?.isActive ? 'Activo' : 'Inactivo'}
                     </span>
