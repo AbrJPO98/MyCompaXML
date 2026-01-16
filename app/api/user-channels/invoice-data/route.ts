@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
       if (actividad) {
         actividadEconomica = {
           _id: String(actividad._id),
+          codigo: actividad.codigo,
           nombre_personal: actividad.nombre_personal
         }
       }

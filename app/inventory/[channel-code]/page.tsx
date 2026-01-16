@@ -27,6 +27,7 @@ interface Inventario {
   descripcion: string
   titulo?: string
   tipo: string
+  tipoMercancia?: string
   precio: number
   cantidad: number
   channel_id: string
@@ -341,6 +342,7 @@ export default function InventoryPage() {
                       <th>CABYS</th>
                       <th>Título</th>
                       <th>Tipo</th>
+                      <th>Tipo de mercancía</th>
                       <th>Precio</th>
                       <th>Cantidad</th>
                       <th>Acciones</th>
@@ -349,7 +351,7 @@ export default function InventoryPage() {
                   <tbody>
                     {filteredInventario.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className={styles.noData}>
+                        <td colSpan={7} className={styles.noData}>
                           {searchTerm ? 'No se encontraron artículos con ese criterio de búsqueda' : 'No hay artículos en el inventario'}
                         </td>
                       </tr>
@@ -361,6 +363,9 @@ export default function InventoryPage() {
                             {item.titulo ? item.titulo : item.descripcion}
                           </td>
                           <td className={styles.tipo}>{item.tipo}</td>
+                          <td className={styles.tipoMercancia}>
+                            {item.tipoMercancia || 'Normal'}
+                          </td>
                           <td className={styles.precio}>₡{item.precio.toLocaleString()}</td>
                           <td className={styles.cantidad}>{item.cantidad}</td>
                           <td className={styles.actions}>

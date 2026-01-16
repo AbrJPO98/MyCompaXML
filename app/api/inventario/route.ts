@@ -118,7 +118,8 @@ export async function POST(request: NextRequest) {
       detalleInstitucionExoneracion,
       fechaAutorizacionExoneracion,
       porcentajeExoneracion,
-      montoExportacion
+      montoExportacion,
+      detalleSurtido
     } = sanitizedData
 
     // Validaciones básicas de campos requeridos
@@ -226,6 +227,36 @@ export async function POST(request: NextRequest) {
       fechaAutorizacionExoneracion: String(fechaAutorizacionExoneracion || '').trim(),
       porcentajeExoneracion: toNumber(porcentajeExoneracion, 0),
       montoExportacion: toNumber(montoExportacion, 0)
+    }
+
+    // Agregar detalleSurtido si se proporciona
+    if (detalleSurtido && Array.isArray(detalleSurtido)) {
+      inventarioData.detalleSurtido = detalleSurtido.map((item: any) => ({
+        cabys: String(item.cabys || '').trim(),
+        titulo: String(item.titulo || '').trim(),
+        descripcion: String(item.descripcion || '').trim(),
+        tipo: String(item.tipo || '').trim(),
+        precio: typeof item.precio === 'number' ? item.precio : parseFloat(String(item.precio || 0)),
+        cantidad: typeof item.cantidad === 'number' ? item.cantidad : parseInt(String(item.cantidad || 0)),
+        codigoComercial: String(item.codigoComercial || '').trim(),
+        tipoCodigoComercial: String(item.tipoCodigoComercial || '').trim(),
+        unidadMedida: String(item.unidadMedida || '').trim(),
+        unidadMedidaComercial: String(item.unidadMedidaComercial || '').trim(),
+        montoDescuento: typeof item.montoDescuento === 'number' ? item.montoDescuento : parseFloat(String(item.montoDescuento || 0)),
+        codigoDescuento: String(item.codigoDescuento || '').trim(),
+        detalleDescuento: String(item.detalleDescuento || '').trim(),
+        ivaCobradoFabrica: typeof item.ivaCobradoFabrica === 'number' ? item.ivaCobradoFabrica : parseFloat(String(item.ivaCobradoFabrica || 0)),
+        baseImponible: typeof item.baseImponible === 'number' ? item.baseImponible : parseFloat(String(item.baseImponible || 0)),
+        codigoImpuesto: String(item.codigoImpuesto || '').trim(),
+        detalleImpuesto: String(item.detalleImpuesto || '').trim(),
+        tipoTarifa: String(item.tipoTarifa || '').trim(),
+        tarifa: typeof item.tarifa === 'number' ? item.tarifa : parseFloat(String(item.tarifa || 0)),
+        cantidadUnidadMedida: typeof item.cantidadUnidadMedida === 'number' ? item.cantidadUnidadMedida : parseFloat(String(item.cantidadUnidadMedida || 0)),
+        porcentajeEspecifico: typeof item.porcentajeEspecifico === 'number' ? item.porcentajeEspecifico : parseFloat(String(item.porcentajeEspecifico || 0)),
+        proporcion: typeof item.proporcion === 'number' ? item.proporcion : parseFloat(String(item.proporcion || 0)),
+        volumenPorUnidadConsumo: typeof item.volumenPorUnidadConsumo === 'number' ? item.volumenPorUnidadConsumo : parseFloat(String(item.volumenPorUnidadConsumo || 0)),
+        impuestoPorUnidad: typeof item.impuestoPorUnidad === 'number' ? item.impuestoPorUnidad : parseFloat(String(item.impuestoPorUnidad || 0))
+      }))
     }
 
     const result = await withDB(async () => {

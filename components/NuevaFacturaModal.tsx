@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import styles from './NuevaFacturaModal.module.css'
 import AdditionalInfoEditor, { type AdditionalInfoNode } from './AdditionalInfoEditor'
 
@@ -14,6 +14,7 @@ interface InvoiceData {
   actividadEconomica: {
     _id: string
     nombre_personal: string
+    codigo: string
   } | null
   sucursal: {
     _id: string
@@ -221,6 +222,7 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
   const [actividadEconomicaFiltrada, setActividadEconomicaFiltrada] = useState<ActividadEconomica[]>([])
   const [actividadEconomicaSeleccionada, setActividadEconomicaSeleccionada] = useState<string>('')
   const [showActividadEconomicaDropdown, setShowActividadEconomicaDropdown] = useState(false)
+  const actividadEconomicaInputRef = useRef<HTMLInputElement | null>(null)
   
   // Estados para campos del receptor
   const [nombreReceptor, setNombreReceptor] = useState('')
@@ -620,6 +622,15 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
     setActividadEconomicaSearch(`${actividad.name} - ${actividad.description}`)
     setActividadEconomicaSeleccionada(String(actividad.name))
     setShowActividadEconomicaDropdown(false)
+    setActividadEconomicaFiltrada([])
+  }
+
+  const clearActividadEconomicaSelection = () => {
+    setActividadEconomicaSearch('')
+    setActividadEconomicaSeleccionada('')
+    setActividadEconomicaFiltrada([])
+    setShowActividadEconomicaDropdown(false)
+    setTimeout(() => actividadEconomicaInputRef.current?.focus(), 0)
   }
 
 const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: number) => {
@@ -994,12 +1005,92 @@ const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: 
     const clave = `506${day}${month}${year2}${canalIdent12}${consec}1${random8}`
     const xmlns = `https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.4/${def.tipo}`
     const schemaLocation = `${xmlns} ${xmlns}.xsd`
+    const codigoActividadReceptor = actividadEconomicaSearch.split(' - ')[0]
+    let fechaEmision = new Date().toISOString();
+    fechaEmision = fechaEmision.split('.')[0];
+    const registroFiscal = invoiceData?.channel?.registro_fiscal_IVA;
+    let registroFiscalNode = '';
+    if (registroFiscal && registroFiscal.trim() !== '') {
+      registroFiscalNode = `<Registrofiscal8707>${registroFiscal}</Registrofiscal8707>`;
+    }
+    let ubicacionEmisor = `<Ubicacion>`;
+    if (invoiceData?.sucursal?.provincia){ // Provincia de la sucursal
+      ubicacionEmisor += `<Provincia>${invoiceData?.sucursal?.provincia}</Provincia>`;
+      if (invoiceData?.sucursal?.canton){ // Cantón de la sucursal
+        ubicacionEmisor += `<Canton>${invoiceData?.sucursal?.canton}</Canton>`;
+        if (invoiceData?.sucursal?.distrito){ // Distrito de la sucursal
+          ubicacionEmisor += `<Distrito>${invoiceData?.sucursal?.distrito}</Distrito>`;
+          if (invoiceData?.sucursal?.direccion){ // Dirección de la sucursal
+            ubicacionEmisor += `<OtrasSenas>${invoiceData?.sucursal?.direccion}</OtrasSenas>`;
+          }
+        }
+      }
+    }
+    ubicacionEmisor += `</Ubicacion>`;
+
+    let ubicacionReceptor = `<Ubicacion>`;
+    if (provinciaReceptor){ // Provincia del receptor
+      ubicacionReceptor += `<Provincia>${provinciaReceptor}</Provincia>`;
+      if (cantonReceptor){ // Cantón del receptor
+        ubicacionReceptor += `<Canton>${cantonReceptor}</Canton>`;
+        if (distritoReceptor){ // Distrito del receptor
+          ubicacionReceptor += `<Distrito>${distritoReceptor}</Distrito>`;
+          if (otrasSenasReceptor){ // Otras senas del receptor
+            ubicacionReceptor += `<OtrasSenas>${otrasSenasReceptor}</OtrasSenas>`;
+          }
+        }
+      }
+    }
+    ubicacionReceptor += `</Ubicacion>`;
+
+    const condicionVentaText = condicionVenta.split(' - ')[0];
+    let condicionVentaEspecificacionNode = '';
+    if (condicionVentaText && condicionVentaText.trim() === '99') {
+      condicionVentaEspecificacionNode = `<CondicionVentaOtros>${especificacion}</CondicionVentaOtros>`;
+    }
 
     const xml =
-      `<?xml version="1.0" encoding="utf-8"?>\n\n` +
-      `<${def.header} xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="${xmlns}" xsi:schemaLocation="${schemaLocation}">\n\n` +
-      `<Clave>${clave}</Clave>\n\n` +
-      `</${def.header}>\n`
+      `<?xml version="1.0" encoding="utf-8"?>
+      <${def.header} xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="${xmlns}" xsi:schemaLocation="${schemaLocation}">
+        <Clave>${clave}</Clave>
+        <ProveedorSistemas>000000</ProveedorSistemas>
+        <CodigoActividadEmisor>${invoiceData?.actividadEconomica?.codigo}</CodigoActividadEmisor>
+        <CodigoActividadReceptor>${codigoActividadReceptor}</CodigoActividadReceptor>
+        <NumeroConsecutivo>${consec}</NumeroConsecutivo>
+        <FechaEmision>${fechaEmision}</FechaEmision>
+        <Emisor>
+          <Nombre>${invoiceData?.channel?.name}</Nombre>
+          <Identificacion>
+            <Tipo>${invoiceData?.channel?.ident_type}</Tipo>
+            <Numero>${invoiceData?.channel?.ident}</Numero>
+          </Identificacion>
+          ${registroFiscalNode}
+          <NombreComercial>${invoiceData?.channel?.commercial_name}</NombreComercial>
+          ${ubicacionEmisor}
+          <Telefono>
+            <CodigoPais>${invoiceData?.channel?.phone_code}</CodigoPais>
+            <NumTelefono>${invoiceData?.channel?.phone}</NumTelefono>
+          </Telefono>
+          <CorreoElectronico>${invoiceData?.channel?.email}</CorreoElectronico>
+        </Emisor>
+        <Receptor>
+          <Nombre>${nombreReceptor}</Nombre>
+          <Identificacion>
+            <Tipo>${tipoIdentificacionReceptor}</Tipo>
+            <Numero>${numeroIdentificacionReceptor}</Numero>
+          </Identificacion>
+          <NombreComercial>${nombreComercialReceptor}</NombreComercial>
+          ${ubicacionReceptor}
+          <Telefono>
+            <CodigoPais>${codigoPaisReceptor}</CodigoPais>
+            <NumTelefono>${numeroTelefonoReceptor}</NumTelefono>
+          </Telefono>
+          <CorreoElectronico>${correoElectronicoReceptor}</CorreoElectronico>
+        </Receptor>
+        <CondicionVenta>${condicionVentaText}</CondicionVenta>
+        ${condicionVentaEspecificacionNode}
+        <PlazoCredito>${plazoCredito}</PlazoCredito>
+      </${def.header}>`
 
     const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' })
     const url = URL.createObjectURL(blob)
@@ -1354,27 +1445,50 @@ const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: 
                       </select>
                     ) : (
                       <div className={styles.autocompleteContainer}>
-                        <input
-                          type="text"
-                          id="actividadEconomicaReceptor"
-                          value={actividadEconomicaSearch}
-                          onChange={(e) => {
-                            setActividadEconomicaSearch(e.target.value)
-                            setActividadEconomicaSeleccionada('')
-                          }}
-                          onFocus={() => {
-                            if (actividadEconomicaSearch) {
-                              setShowActividadEconomicaDropdown(true)
-                            }
-                          }}
-                          onBlur={() => {
-                            // Cerrar dropdown después de un pequeño delay para permitir el click
-                            setTimeout(() => setShowActividadEconomicaDropdown(false), 200)
-                          }}
-                          className={styles.textInput}
-                          placeholder="Buscar por código o descripción"
-                        />
-                        {showActividadEconomicaDropdown && actividadEconomicaFiltrada.length > 0 && (
+                        {(() => {
+                          const isLocked = Boolean(actividadEconomicaSeleccionada)
+                          return (
+                            <>
+                              <div className={styles.inputWithButton}>
+                                <input
+                                  ref={actividadEconomicaInputRef}
+                                  type="text"
+                                  id="actividadEconomicaReceptor"
+                                  value={actividadEconomicaSearch}
+                                  readOnly={isLocked}
+                                  onChange={(e) => {
+                                    if (isLocked) return
+                                    setActividadEconomicaSearch(e.target.value)
+                                    setActividadEconomicaSeleccionada('')
+                                  }}
+                                  onFocus={() => {
+                                    if (isLocked) return
+                                    if (actividadEconomicaSearch) {
+                                      setShowActividadEconomicaDropdown(true)
+                                    }
+                                  }}
+                                  onBlur={() => {
+                                    // Cerrar dropdown después de un pequeño delay para permitir el click
+                                    setTimeout(() => setShowActividadEconomicaDropdown(false), 200)
+                                  }}
+                                  className={styles.textInput}
+                                  placeholder="Buscar por código o descripción"
+                                />
+                                {isLocked && (
+                                  <button
+                                    type="button"
+                                    className={styles.clearButton}
+                                    onClick={clearActividadEconomicaSelection}
+                                    title="Borrar selección"
+                                    aria-label="Borrar selección"
+                                  >
+                                    🗑️
+                                  </button>
+                                )}
+                              </div>
+                              {!isLocked &&
+                                showActividadEconomicaDropdown &&
+                                actividadEconomicaFiltrada.length > 0 && (
                           <div 
                             className={styles.autocompleteDropdown}
                             onMouseDown={(e) => e.preventDefault()} // Prevenir blur al hacer click
@@ -1389,7 +1503,10 @@ const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: 
                               </div>
                             ))}
                           </div>
-                        )}
+                                )}
+                            </>
+                          )
+                        })()}
                       </div>
                     )}
                   </div>

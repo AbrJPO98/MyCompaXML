@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import CabysSelectionModal from './CabysSelectionModal'
 import CabysEditModal from './CabysEditModal'
+import AgregarProductoSurtidoModal, { ProductoSurtido } from './AgregarProductoSurtidoModal'
 import styles from './InventarioModal.module.css'
 
 // Constantes para opciones de selects
@@ -271,6 +272,15 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+  
+  // Estados para productos del surtido
+  const [productosSurtido, setProductosSurtido] = useState<ProductoSurtido[]>([])
+  const [showSurtidoModal, setShowSurtidoModal] = useState(false)
+  
+  // Función para agregar producto al surtido desde el modal
+  const handleAddProductoSurtido = (producto: ProductoSurtido) => {
+    setProductosSurtido(prev => [...prev, producto])
+  }
 
   // Initialize form data for editing
   useEffect(() => {
@@ -324,6 +334,41 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
         montoExportacion: (inventario as any).montoExportacion?.toString() || ''
       })
       setSelectedCabysInfo(inventario.cabys || '')
+      
+      // Cargar detalleSurtido si existe
+      if ((inventario as any).detalleSurtido && Array.isArray((inventario as any).detalleSurtido)) {
+        const productosCargados: ProductoSurtido[] = (inventario as any).detalleSurtido.map((item: any, index: number) => ({
+          id: `${Date.now()}-${index}`,
+          cabys: item.cabys || '',
+          titulo: item.titulo || '',
+          descripcion: item.descripcion || '',
+          tipo: item.tipo || '',
+          precio: item.precio || 0,
+          cantidad: item.cantidad || 0,
+          codigoComercial: item.codigoComercial || '',
+          tipoCodigoComercial: item.tipoCodigoComercial || '',
+          unidadMedida: item.unidadMedida || '',
+          unidadMedidaComercial: item.unidadMedidaComercial || '',
+          montoDescuento: item.montoDescuento || 0,
+          codigoDescuento: item.codigoDescuento || '',
+          detalleDescuento: item.detalleDescuento || '',
+          ivaCobradoFabrica: item.ivaCobradoFabrica || 0,
+          baseImponible: item.baseImponible || 0,
+          codigoImpuesto: item.codigoImpuesto || '',
+          detalleImpuesto: item.detalleImpuesto || '',
+          tipoTarifa: item.tipoTarifa || '',
+          tarifa: item.tarifa || 0,
+          cantidadUnidadMedida: item.cantidadUnidadMedida || 0,
+          porcentajeEspecifico: item.porcentajeEspecifico || 0,
+          proporcion: item.proporcion || 0,
+          volumenPorUnidadConsumo: item.volumenPorUnidadConsumo || 0,
+          impuestoPorUnidad: item.impuestoPorUnidad || 0
+        }))
+        setProductosSurtido(productosCargados)
+      } else {
+        setProductosSurtido([])
+      }
+      
       // Inicializar previsualización de imagen si existe
       if ((inventario as any).image) {
         setImagePreview(`/protected/inventory-images/${channelId}/${inventario._id}/${(inventario as any).image}`)
@@ -429,6 +474,7 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
   useEffect(() => {
     loadTiposDisponibles()
   }, [channelId, loadTiposDisponibles])
+
 
   const handleCabysSelect = (cabysItem: any) => {
     setFormData(prev => ({
@@ -643,6 +689,8 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
     }
   }
 
+  // Funciones para el modal de surtido
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -727,6 +775,36 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
         fechaAutorizacionExoneracion: formData.fechaAutorizacionExoneracion?.trim() || '',
         porcentajeExoneracion: toNumber(formData.porcentajeExoneracion, 0),
         montoExportacion: toNumber(formData.montoExportacion, 0)
+      }
+
+      // Si es tipo Surtido, agregar detalleSurtido
+      if (formData.tipoMercancia === 'Surtido') {
+        bodyWithNumbers.detalleSurtido = productosSurtido.map(p => ({
+          cabys: p.cabys,
+          titulo: p.titulo,
+          descripcion: p.descripcion,
+          tipo: p.tipo,
+          precio: p.precio,
+          cantidad: p.cantidad,
+          codigoComercial: p.codigoComercial,
+          tipoCodigoComercial: p.tipoCodigoComercial,
+          unidadMedida: p.unidadMedida,
+          unidadMedidaComercial: p.unidadMedidaComercial,
+          montoDescuento: p.montoDescuento,
+          codigoDescuento: p.codigoDescuento,
+          detalleDescuento: p.detalleDescuento,
+          ivaCobradoFabrica: p.ivaCobradoFabrica,
+          baseImponible: p.baseImponible,
+          codigoImpuesto: p.codigoImpuesto,
+          detalleImpuesto: p.detalleImpuesto,
+          tipoTarifa: p.tipoTarifa,
+          tarifa: p.tarifa,
+          cantidadUnidadMedida: p.cantidadUnidadMedida,
+          porcentajeEspecifico: p.porcentajeEspecifico,
+          proporcion: p.proporcion,
+          volumenPorUnidadConsumo: p.volumenPorUnidadConsumo,
+          impuestoPorUnidad: p.impuestoPorUnidad
+        }))
       }
 
       // Agregar channel_id solo si no es edición
@@ -1028,9 +1106,130 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
           </div>
 
 
-          {/* Sección: Información para facturación */}
-          <div className={styles.section}>
-            <h3 className={styles.sectionTitle}>Información para facturación</h3>
+          {/* Sección: Información para facturación o Detalles del surtido */}
+          {formData.tipoMercancia === 'Surtido' ? (
+            <div className={styles.section}>
+              <h3 className={styles.sectionTitle}>Detalles del surtido</h3>
+              
+              <div style={{ marginBottom: '20px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowSurtidoModal(true)}
+                  className={styles.submitButton}
+                  disabled={loading}
+                >
+                  Agregar al surtido
+                </button>
+              </div>
+
+              {productosSurtido.length > 0 && (
+                <>
+                  <div className={styles.summaryTableWrapper}>
+                    <table className={styles.summaryTable}>
+                      <thead>
+                        <tr>
+                          <th style={{ minWidth: '80px' }}>Eliminar</th>
+                          <th style={{ minWidth: '120px' }}>Código cabys</th>
+                          <th style={{ minWidth: '150px' }}>Título</th>
+                          <th style={{ minWidth: '200px' }}>Descripción</th>
+                          <th style={{ minWidth: '100px' }}>Tipo</th>
+                          <th style={{ minWidth: '100px' }}>Precio</th>
+                          <th style={{ minWidth: '90px' }}>Cantidad</th>
+                          <th style={{ minWidth: '130px' }}>Código comercial</th>
+                          <th style={{ minWidth: '150px' }}>Tipo código comercial</th>
+                          <th style={{ minWidth: '130px' }}>Unidad de medida</th>
+                          <th style={{ minWidth: '180px' }}>Unidad de medida comercial</th>
+                          <th style={{ minWidth: '130px' }}>Monto (Descuento)</th>
+                          <th style={{ minWidth: '130px' }}>Código (Descuento)</th>
+                          <th style={{ minWidth: '150px' }}>Detalle (Descuento)</th>
+                          <th style={{ minWidth: '150px' }}>IVA Cobrado fábrica</th>
+                          <th style={{ minWidth: '130px' }}>Base imponible</th>
+                          <th style={{ minWidth: '130px' }}>Código (Impuesto)</th>
+                          <th style={{ minWidth: '150px' }}>Detalle (Impuesto)</th>
+                          <th style={{ minWidth: '150px' }}>Tipo tarifa (Impuesto)</th>
+                          <th style={{ minWidth: '130px' }}>Tarifa (Impuesto)</th>
+                          <th style={{ minWidth: '220px' }}>Cantidad unidad de medida (Específico)</th>
+                          <th style={{ minWidth: '150px' }}>Porcentaje (Específico)</th>
+                          <th style={{ minWidth: '100px' }}>Proporción</th>
+                          <th style={{ minWidth: '250px' }}>Volumen por unidad de consumo (Específico)</th>
+                          <th style={{ minWidth: '200px' }}>Impuesto por unidad (Específico)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {productosSurtido.map((producto) => (
+                          <tr key={producto.id}>
+                            <td>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setProductosSurtido(prev => prev.filter(p => p.id !== producto.id))
+                                }}
+                                className={styles.summaryAction}
+                                disabled={loading}
+                              >
+                                Eliminar
+                              </button>
+                            </td>
+                            <td>{producto.cabys}</td>
+                            <td>{producto.titulo}</td>
+                            <td>{producto.descripcion}</td>
+                            <td>{producto.tipo}</td>
+                            <td>₡{producto.precio.toFixed(2)}</td>
+                            <td>{producto.cantidad}</td>
+                            <td>{producto.codigoComercial}</td>
+                            <td>{producto.tipoCodigoComercial}</td>
+                            <td>{producto.unidadMedida}</td>
+                            <td>{producto.unidadMedidaComercial}</td>
+                            <td>₡{producto.montoDescuento.toFixed(2)}</td>
+                            <td>{producto.codigoDescuento}</td>
+                            <td>{producto.detalleDescuento}</td>
+                            <td>₡{producto.ivaCobradoFabrica.toFixed(2)}</td>
+                            <td>₡{producto.baseImponible.toFixed(2)}</td>
+                            <td>{producto.codigoImpuesto}</td>
+                            <td>{producto.detalleImpuesto}</td>
+                            <td>{producto.tipoTarifa}</td>
+                            <td>{producto.tarifa}%</td>
+                            <td>{producto.cantidadUnidadMedida}</td>
+                            <td>{producto.porcentajeEspecifico}%</td>
+                            <td>{producto.proporcion}</td>
+                            <td>{producto.volumenPorUnidadConsumo}</td>
+                            <td>₡{producto.impuestoPorUnidad.toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className={styles.totalsGrid} style={{ marginTop: '20px' }}>
+                    <div className={styles.totalItem}>
+                      <div className={styles.totalLabel}>Total de descuentos</div>
+                      <div className={styles.totalValue}>
+                        ₡{productosSurtido.reduce((sum, p) => sum + p.montoDescuento, 0).toFixed(2)}
+                      </div>
+                    </div>
+                    <div className={styles.totalItem}>
+                      <div className={styles.totalLabel}>Total de impuestos</div>
+                      <div className={styles.totalValue}>
+                        ₡{productosSurtido.reduce((sum, p) => sum + p.ivaCobradoFabrica, 0).toFixed(2)}
+                      </div>
+                    </div>
+                    <div className={styles.totalItem}>
+                      <div className={styles.totalLabel}>Total del surtido</div>
+                      <div className={styles.totalValue}>
+                        ₡{productosSurtido.reduce((sum, p) => {
+                          const subtotal = (p.precio * p.cantidad) - p.montoDescuento
+                          const impuesto = p.ivaCobradoFabrica
+                          return sum + subtotal + impuesto
+                        }, 0).toFixed(2)}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className={styles.section}>
+              <h3 className={styles.sectionTitle}>Información para facturación</h3>
             
             {/* Subsección: Información general */}
             <div className={styles.subsection}>
@@ -1082,10 +1281,9 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Subsección: Datos del producto o servicio */}
-          <div className={styles.subsection}>
+            {/* Subsección: Datos del producto o servicio */}
+            <div className={styles.subsection}>
             <h4 className={styles.subsectionTitle}>Datos del producto o servicio</h4>
             
             {/* Información general */}
@@ -1789,7 +1987,9 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
                 </div>
               </div>
             </div>
+            </div>
           </div>
+          )}
           </form>
         </div>
 
@@ -1839,6 +2039,15 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
           channelId={channelId}
           onSave={handleCabysEditSave}
           onClose={handleCabysEditClose}
+        />
+      )}
+
+      {/* Modal para agregar producto al surtido */}
+      {showSurtidoModal && (
+        <AgregarProductoSurtidoModal
+          channelId={channelId}
+          onClose={() => setShowSurtidoModal(false)}
+          onAdd={handleAddProductoSurtido}
         />
       )}
     </div>

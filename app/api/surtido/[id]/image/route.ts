@@ -3,10 +3,10 @@ import { promises as fs } from 'fs'
 import path from 'path'
 import { v4 as uuidv4 } from 'uuid'
 import connectDB from '@/lib/mongodb'
-import Inventario from '@/lib/models/Inventario'
+import Surtido from '@/lib/models/Surtido'
 import { isValidObjectId } from '@/lib/dbUtils'
 
-// POST /api/inventario/[id]/image - Subir/actualizar imagen de un artículo de inventario
+// POST /api/surtido/[id]/image - Subir/actualizar imagen de un surtido
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -15,7 +15,7 @@ export async function POST(
 
   if (!isValidObjectId(id)) {
     return NextResponse.json(
-      { error: 'ID de inventario inválido' },
+      { error: 'ID de surtido inválido' },
       { status: 400 }
     )
   }
@@ -57,32 +57,32 @@ export async function POST(
 
     await connectDB()
 
-    const inventario = await Inventario.findById(id)
+    const surtido = await Surtido.findById(id)
 
-    if (!inventario) {
+    if (!surtido) {
       return NextResponse.json(
-        { error: 'Artículo de inventario no encontrado' },
+        { error: 'Surtido no encontrado' },
         { status: 404 }
       )
     }
 
-    // Generar ruta base: protected/inventory-images/[channel-id]/[inventory-id]
+    // Generar ruta base: protected/surtido-images/[channel-id]/[surtido-id]
     const protectedDir = path.join(process.cwd(), 'protected')
-    const inventoryImagesDir = path.join(protectedDir, 'inventory-images')
-    const channelDir = path.join(inventoryImagesDir, String(channelId))
+    const surtidoImagesDir = path.join(protectedDir, 'surtido-images')
+    const channelDir = path.join(surtidoImagesDir, String(channelId))
     const itemDir = path.join(channelDir, String(id))
 
     // Crear directorios si no existen
     await fs.mkdir(itemDir, { recursive: true })
 
     // Si ya hay una imagen previa, intentar eliminarla
-    if (inventario.image) {
+    if (surtido.image) {
       try {
-        const previousImagePath = path.join(protectedDir, inventario.image)
+        const previousImagePath = path.join(protectedDir, surtido.image)
         await fs.unlink(previousImagePath)
       } catch {
         // Si falla la eliminación, solo registrar en consola y continuar
-        console.warn('No se pudo eliminar la imagen anterior de inventario (puede que no exista).')
+        console.warn('No se pudo eliminar la imagen anterior de surtido (puede que no exista).')
       }
     }
 
@@ -100,28 +100,28 @@ export async function POST(
 
     // Guardar ruta relativa en la base de datos
     const relativePath = path.relative(protectedDir, finalPath).replace(/\\/g, '/')
-    inventario.image = relativePath
+    surtido.image = relativePath
 
-    await inventario.save()
+    await surtido.save()
 
     return NextResponse.json({
       success: true,
-      message: 'Imagen de inventario guardada exitosamente',
+      message: 'Imagen de surtido guardada exitosamente',
       image: relativePath
     })
   } catch (error: any) {
-    console.error('Error al subir imagen de inventario:', error)
+    console.error('Error al subir imagen de surtido:', error)
     return NextResponse.json(
       {
         error: 'Error interno del servidor',
-        message: error?.message || 'Error al guardar la imagen de inventario'
+        message: error?.message || 'Error al guardar la imagen de surtido'
       },
       { status: 500 }
     )
   }
 }
 
-// GET /api/inventario/[id]/image - Obtener imagen de un artículo de inventario
+// GET /api/surtido/[id]/image - Obtener imagen de un surtido
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -130,7 +130,7 @@ export async function GET(
 
   if (!isValidObjectId(id)) {
     return NextResponse.json(
-      { error: 'ID de inventario inválido' },
+      { error: 'ID de surtido inválido' },
       { status: 400 }
     )
   }
@@ -138,24 +138,24 @@ export async function GET(
   try {
     await connectDB()
 
-    const inventario = await Inventario.findById(id)
+    const surtido = await Surtido.findById(id)
 
-    if (!inventario) {
+    if (!surtido) {
       return NextResponse.json(
-        { error: 'Artículo de inventario no encontrado' },
+        { error: 'Surtido no encontrado' },
         { status: 404 }
       )
     }
 
-    if (!inventario.image) {
+    if (!surtido.image) {
       return NextResponse.json(
-        { error: 'El artículo no tiene imagen' },
+        { error: 'El surtido no tiene imagen' },
         { status: 404 }
       )
     }
 
     const protectedDir = path.join(process.cwd(), 'protected')
-    const imagePath = path.join(protectedDir, inventario.image)
+    const imagePath = path.join(protectedDir, surtido.image)
 
     // Verificar que el archivo existe
     try {
@@ -171,7 +171,7 @@ export async function GET(
     const imageBuffer = await fs.readFile(imagePath)
     
     // Determinar el tipo MIME basado en la extensión
-    const ext = path.extname(inventario.image).toLowerCase()
+    const ext = path.extname(surtido.image).toLowerCase()
     const mimeTypes: Record<string, string> = {
       '.jpg': 'image/jpeg',
       '.jpeg': 'image/jpeg',
@@ -188,15 +188,14 @@ export async function GET(
       }
     })
   } catch (error: any) {
-    console.error('Error al obtener imagen de inventario:', error)
+    console.error('Error al obtener imagen de surtido:', error)
     return NextResponse.json(
       {
         error: 'Error interno del servidor',
-        message: error?.message || 'Error al obtener la imagen de inventario'
+        message: error?.message || 'Error al obtener la imagen de surtido'
       },
       { status: 500 }
     )
   }
 }
-
 

@@ -584,6 +584,95 @@
   cursor: not-allowed;
 }
 
+/* Summary Table Styles (similar to NuevaFacturaModal) */
+.summaryTableWrapper {
+  overflow-x: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.summaryTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  background-color: #ffffff;
+}
+
+.summaryTable th,
+.summaryTable td {
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.summaryTable th {
+  background-color: #f9fafb;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.summaryTable td {
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+.summaryAction {
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  color: #dc2626;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.summaryAction:hover:not(:disabled) {
+  background-color: #fee2e2;
+  border-radius: 4px;
+}
+
+.summaryAction:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Totals Grid Styles (similar to NuevaFacturaModal) */
+.totalsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.totalItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+.totalLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.totalValue {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  font-family: 'Courier New', monospace;
+  text-align: right;
+}
+
 /* Responsive */
 @media (max-width: 640px) {
   .modalOverlay {
