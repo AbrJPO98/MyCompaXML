@@ -152,10 +152,20 @@ const InventarioSchema = new mongoose.Schema({
   },
   tipoTarifa: {
     type: String,
-    enum: ['01', '02', '03', '04', '05', '06', '07', '08', '09', ''],
+    enum: ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', ''],
+    default: ''
+  },
+  tipoTarifaGeneral: {
+    type: String,
+    enum: ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', ''],
     default: ''
   },
   tarifa: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  factorCalculoIVA: {
     type: Number,
     default: 0,
     min: 0
@@ -181,6 +191,11 @@ const InventarioSchema = new mongoose.Schema({
     min: 0
   },
   volumenPorUnidadConsumo: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  proporcion: {
     type: Number,
     default: 0,
     min: 0

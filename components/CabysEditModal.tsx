@@ -12,6 +12,16 @@ interface CabysItem {
   actEconomica: string
   vidaUtil: string | number
   importado: string
+  otras_ventas_sin_iva_con_derecho_credito_pleno?: {
+    total_ventas_exentas: number
+    total_ventas_exonerados: number
+    total_ventas_no_sujetas: number
+  }
+  otras_ventas_sin_iva_sin_derecho_credito?: {
+    total_ventas_exentas: number
+    total_ventas_exonerados: number
+    total_ventas_no_sujetas: number
+  }
 }
 
 interface Actividad {
@@ -39,12 +49,22 @@ const CabysEditModal: React.FC<CabysEditModalProps> = ({ codigo, channelId, onSa
     categoria: '',
     actEconomica: '',
     vidaUtil: '',
-    importado: ''
+    importado: '',
+    otras_ventas_sin_iva_con_derecho_credito_pleno: {
+      total_ventas_exentas: 0,
+      total_ventas_exonerados: 0,
+      total_ventas_no_sujetas: 0
+    },
+    otras_ventas_sin_iva_sin_derecho_credito: {
+      total_ventas_exentas: 0,
+      total_ventas_exonerados: 0,
+      total_ventas_no_sujetas: 0
+    }
   })
 
   const [loading, setLoading] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
-  
+
   // Options for select inputs
   const [descripGasInvOptions, setDescripGasInvOptions] = useState<string[]>([])
   const [bienoservOptions, setBienoservOptions] = useState<string[]>([])
@@ -64,7 +84,7 @@ const CabysEditModal: React.FC<CabysEditModalProps> = ({ codigo, channelId, onSa
       // 1. Buscar en la base de datos (cabys_personales)
       const dbResponse = await fetch(`/api/cabys-personales?codigo=${codigo}&channelId=${channelId}`)
       let dbData = null
-      
+
       if (dbResponse.ok) {
         const result = await dbResponse.json()
         if (result.success && result.cabys) {
@@ -98,7 +118,17 @@ const CabysEditModal: React.FC<CabysEditModalProps> = ({ codigo, channelId, onSa
           categoria: dbData?.categoria || jsonData?.categoria || '',
           actEconomica: dbData?.actEconomica || '',  // actEconomica solo viene de DB
           vidaUtil: dbData?.vidaUtil || jsonData?.vidaUtil || '',
-          importado: dbData?.importado || jsonData?.importado || ''
+          importado: dbData?.importado || jsonData?.importado || '',
+          otras_ventas_sin_iva_con_derecho_credito_pleno: dbData?.otras_ventas_sin_iva_con_derecho_credito_pleno || {
+            total_ventas_exentas: 0,
+            total_ventas_exonerados: 0,
+            total_ventas_no_sujetas: 0
+          },
+          otras_ventas_sin_iva_sin_derecho_credito: dbData?.otras_ventas_sin_iva_sin_derecho_credito || {
+            total_ventas_exentas: 0,
+            total_ventas_exonerados: 0,
+            total_ventas_no_sujetas: 0
+          }
         })
       } else {
         // Si no se encuentra en ninguno, usar valores por defecto
@@ -162,7 +192,7 @@ const CabysEditModal: React.FC<CabysEditModalProps> = ({ codigo, channelId, onSa
     try {
       // Load existing CABYS data from database
       await loadExistingCabysData()
-      
+
       // Load options for select inputs
       await Promise.all([
         loadDescripGasInvOptions(),
@@ -185,6 +215,24 @@ const CabysEditModal: React.FC<CabysEditModalProps> = ({ codigo, channelId, onSa
     setFormData(prev => ({
       ...prev,
       [field]: value
+    }))
+  }
+
+  const handleNestedInputChange = (
+    parentField: 'otras_ventas_sin_iva_con_derecho_credito_pleno' | 'otras_ventas_sin_iva_sin_derecho_credito',
+    childField: 'total_ventas_exentas' | 'total_ventas_exonerados' | 'total_ventas_no_sujetas',
+    value: number
+  ) => {
+    setFormData(prev => ({
+      ...prev,
+      [parentField]: {
+        ...(prev[parentField] || {
+          total_ventas_exentas: 0,
+          total_ventas_exonerados: 0,
+          total_ventas_no_sujetas: 0
+        }),
+        [childField]: value
+      }
     }))
   }
 
@@ -230,15 +278,34 @@ const CabysEditModal: React.FC<CabysEditModalProps> = ({ codigo, channelId, onSa
     setLoading(true)
 
     try {
+      // Preparar los datos para enviar, asegurando que los campos anidados estén incluidos
+      const dataToSend: any = {
+        codigo: formData.codigo,
+        descripOf: formData.descripOf,
+        bienoserv: formData.bienoserv,
+        descripPer: formData.descripPer,
+        descripGasInv: formData.descripGasInv,
+        categoria: formData.categoria,
+        actEconomica: formData.actEconomica,
+        vidaUtil: formData.vidaUtil,
+        importado: formData.importado,
+        channel_id: channelId
+      }
+
+      // Incluir los nuevos campos siempre (incluso con valores por defecto)
+      if (formData.otras_ventas_sin_iva_con_derecho_credito_pleno !== undefined) {
+        dataToSend.otras_ventas_sin_iva_con_derecho_credito_pleno = formData.otras_ventas_sin_iva_con_derecho_credito_pleno
+      }
+      if (formData.otras_ventas_sin_iva_sin_derecho_credito !== undefined) {
+        dataToSend.otras_ventas_sin_iva_sin_derecho_credito = formData.otras_ventas_sin_iva_sin_derecho_credito
+      }
+
       const response = await fetch('/api/cabys-personales', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          ...formData,
-          channel_id: channelId
-        })
+        body: JSON.stringify(dataToSend)
       })
 
       if (response.ok) {
@@ -278,7 +345,7 @@ const CabysEditModal: React.FC<CabysEditModalProps> = ({ codigo, channelId, onSa
       <div className={styles.modal}>
         <div className={styles.modalHeader}>
           <h2>✏️ Editar CABYS</h2>
-          <button 
+          <button
             onClick={onClose}
             className={styles.closeButton}
             disabled={loading}
@@ -531,6 +598,86 @@ const CabysEditModal: React.FC<CabysEditModalProps> = ({ codigo, channelId, onSa
                 min="0"
                 step="1"
               />
+            </div>
+
+            {/* Otras ventas sin IVA con derecho crédito pleno */}
+            <div className={styles.formGroup}>
+              <label>💰 Otras ventas sin IVA con derecho crédito pleno</label>
+              <div className={styles.nestedFields}>
+                <div className={styles.formGroup}>
+                  <label htmlFor="otras_ventas_con_pleno_exentas">Total ventas exentas:</label>
+                  <input
+                    type="number"
+                    id="otras_ventas_con_pleno_exentas"
+                    value={formData.otras_ventas_sin_iva_con_derecho_credito_pleno?.total_ventas_exentas || 0}
+                    onChange={(e) => handleNestedInputChange('otras_ventas_sin_iva_con_derecho_credito_pleno', 'total_ventas_exentas', parseFloat(e.target.value) || 0)}
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label htmlFor="otras_ventas_con_pleno_exonerados">Total ventas exonerados:</label>
+                  <input
+                    type="number"
+                    id="otras_ventas_con_pleno_exonerados"
+                    value={formData.otras_ventas_sin_iva_con_derecho_credito_pleno?.total_ventas_exonerados || 0}
+                    onChange={(e) => handleNestedInputChange('otras_ventas_sin_iva_con_derecho_credito_pleno', 'total_ventas_exonerados', parseFloat(e.target.value) || 0)}
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label htmlFor="otras_ventas_con_pleno_no_sujetas">Total ventas no sujetas:</label>
+                  <input
+                    type="number"
+                    id="otras_ventas_con_pleno_no_sujetas"
+                    value={formData.otras_ventas_sin_iva_con_derecho_credito_pleno?.total_ventas_no_sujetas || 0}
+                    onChange={(e) => handleNestedInputChange('otras_ventas_sin_iva_con_derecho_credito_pleno', 'total_ventas_no_sujetas', parseFloat(e.target.value) || 0)}
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Otras ventas sin IVA sin derecho crédito */}
+            <div className={styles.formGroup}>
+              <label>💰 Otras ventas sin IVA sin derecho crédito</label>
+              <div className={styles.nestedFields}>
+                <div className={styles.formGroup}>
+                  <label htmlFor="otras_ventas_sin_pleno_exentas">Total ventas exentas:</label>
+                  <input
+                    type="number"
+                    id="otras_ventas_sin_pleno_exentas"
+                    value={formData.otras_ventas_sin_iva_sin_derecho_credito?.total_ventas_exentas || 0}
+                    onChange={(e) => handleNestedInputChange('otras_ventas_sin_iva_sin_derecho_credito', 'total_ventas_exentas', parseFloat(e.target.value) || 0)}
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label htmlFor="otras_ventas_sin_pleno_exonerados">Total ventas exonerados:</label>
+                  <input
+                    type="number"
+                    id="otras_ventas_sin_pleno_exonerados"
+                    value={formData.otras_ventas_sin_iva_sin_derecho_credito?.total_ventas_exonerados || 0}
+                    onChange={(e) => handleNestedInputChange('otras_ventas_sin_iva_sin_derecho_credito', 'total_ventas_exonerados', parseFloat(e.target.value) || 0)}
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label htmlFor="otras_ventas_sin_pleno_no_sujetas">Total ventas no sujetas:</label>
+                  <input
+                    type="number"
+                    id="otras_ventas_sin_pleno_no_sujetas"
+                    value={formData.otras_ventas_sin_iva_sin_derecho_credito?.total_ventas_no_sujetas || 0}
+                    onChange={(e) => handleNestedInputChange('otras_ventas_sin_iva_sin_derecho_credito', 'total_ventas_no_sujetas', parseFloat(e.target.value) || 0)}
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Buttons */}

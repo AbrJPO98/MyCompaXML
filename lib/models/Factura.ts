@@ -43,7 +43,23 @@ const FacturaSchema = new mongoose.Schema({
       categoria: String,
       actEconomica: String,
       vidaUtil: String,
-      importado: String
+      importado: String,
+      otras_ventas_sin_iva_con_derecho_credito_pleno: {
+        type: {
+          total_ventas_exentas: { type: Number, default: 0 },
+          total_ventas_exonerados: { type: Number, default: 0 },
+          total_ventas_no_sujetas: { type: String, default: '' }
+        },
+        required: false
+      },
+      otras_ventas_sin_iva_sin_derecho_credito: {
+        type: {
+          total_ventas_exentas: { type: Number, default: 0 },
+          total_ventas_exonerados: { type: Number, default: 0 },
+          total_ventas_no_sujetas: { type: String, default: '' }
+        },
+        required: false
+      }
     }],
     required: false,
     default: []

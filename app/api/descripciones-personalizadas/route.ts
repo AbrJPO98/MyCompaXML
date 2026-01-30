@@ -6,7 +6,7 @@ import { withDB, sanitizeInput, isValidObjectId } from '@/lib/dbUtils'
 // Función para generar slug a partir de desc_pers
 function generateSlug(text: string): string {
   if (!text) return ''
-  
+
   return text
     .toLowerCase() // Convertir a minúsculas
     .normalize('NFD') // Normalizar caracteres Unicode
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
 
   if (!result.success) {
     return NextResponse.json(
-      { 
+      {
         error: result.error,
         message: 'Error al obtener descripciones personalizadas'
       },
@@ -83,8 +83,8 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const sanitizedData = sanitizeInput(body)
-    
-    const { 
+
+    const {
       codigo,
       desc_pers,
       desc_fact,
@@ -94,7 +94,9 @@ export async function POST(request: NextRequest) {
       vidaUtil,
       importado,
       act_eco,
-      channel_id 
+      otras_ventas_sin_iva_con_derecho_credito_pleno,
+      otras_ventas_sin_iva_sin_derecho_credito,
+      channel_id
     } = sanitizedData
 
     // Validaciones básicas
@@ -122,7 +124,7 @@ export async function POST(request: NextRequest) {
       // Generar slug automáticamente a partir de desc_fact
       const slug = generateSlug(desc_fact || '')
 
-      const descripcionData = {
+      const descripcionData: any = {
         codigo,
         desc_pers: desc_pers || '',
         slug: slug,
@@ -135,6 +137,14 @@ export async function POST(request: NextRequest) {
         act_eco: act_eco || '',
         channel_id: new mongoose.Types.ObjectId(channel_id),
         updatedAt: new Date()
+      }
+
+      // Añadir los nuevos campos si existen
+      if (otras_ventas_sin_iva_con_derecho_credito_pleno) {
+        descripcionData.otras_ventas_sin_iva_con_derecho_credito_pleno = otras_ventas_sin_iva_con_derecho_credito_pleno
+      }
+      if (otras_ventas_sin_iva_sin_derecho_credito) {
+        descripcionData.otras_ventas_sin_iva_sin_derecho_credito = otras_ventas_sin_iva_sin_derecho_credito
       }
 
       if (existingDescripcion) {
@@ -173,10 +183,10 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Error saving descripción personalizada:', error)
     return NextResponse.json(
-      { 
+      {
         success: false,
         error: 'Error interno del servidor',
-        message: error.message 
+        message: error.message
       },
       { status: 500 }
     )

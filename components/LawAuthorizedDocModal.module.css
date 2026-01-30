@@ -30,6 +30,7 @@
     opacity: 0;
     transform: scale(0.9) translateY(-20px);
   }
+
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -170,6 +171,8 @@
   border-radius: 6px;
   font-size: 0.9rem;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  background-color: white;
+  color: black;
 }
 
 .formGroup input:focus,
@@ -268,8 +271,13 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Responsive */
@@ -278,35 +286,35 @@
     width: 95vw;
     max-height: 95vh;
   }
-  
+
   .modalHeader,
   .modalBody,
   .modalFooter {
     padding: 1rem;
   }
-  
+
   .formRow {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
-  
+
   .formRow:last-child {
     grid-template-columns: 1fr;
   }
-  
+
   .formRowFull {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
-  
+
   .userDetails {
     grid-template-columns: 1fr;
   }
-  
+
   .modalFooter {
     flex-direction: column;
   }
-  
+
   .formGroup input,
   .formGroup select {
     padding: 0.625rem;
@@ -317,16 +325,16 @@
   .modalHeader h2 {
     font-size: 1rem;
   }
-  
+
   .formGroup label {
     font-size: 0.8rem;
   }
-  
+
   .formGroup input,
   .formGroup select {
     font-size: 0.8rem;
   }
-  
+
   .cancelButton,
   .downloadButton {
     padding: 0.625rem 1rem;

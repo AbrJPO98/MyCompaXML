@@ -85,6 +85,8 @@
   font-size: 1rem;
   transition: border-color 0.2s, box-shadow 0.2s;
   box-sizing: border-box;
+  background-color: white;
+  color: black;
 }
 
 .formGroup input:focus,
@@ -725,29 +727,29 @@
   .container {
     padding: 1rem;
   }
-  
+
   .formContainer {
     padding: 1.5rem;
   }
-  
+
   .formRow {
     grid-template-columns: 1fr;
     gap: 0;
   }
-  
+
   .phoneInputGroup {
     flex-direction: column;
     gap: 0.5rem;
   }
-  
+
   .phoneCodeSelect {
     width: 100%;
   }
-  
+
   .formActions {
     justify-content: stretch;
   }
-  
+
   .submitButton {
     width: 100%;
   }
@@ -756,7 +758,7 @@
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .searchForm {
     max-width: none;
   }
@@ -765,30 +767,30 @@
     flex-direction: column;
     gap: 0.5rem;
   }
-  
+
   .table {
     font-size: 0.85rem;
   }
-  
+
   .table th,
   .table td {
     padding: 0.75rem 0.5rem;
   }
-  
+
   .actions {
     flex-direction: column;
     gap: 0.25rem;
   }
-  
+
   .pagination {
     flex-direction: column;
     gap: 0.5rem;
   }
-  
+
   .deleteModal {
     padding: 1.5rem;
   }
-  
+
   .deleteActions {
     flex-direction: column;
   }
@@ -796,23 +798,23 @@
   .selectorGrid {
     grid-template-columns: 1fr;
   }
-  
+
   .channelCardHeader {
     flex-direction: column;
     gap: 0.5rem;
   }
-  
+
   .actividadesHeader {
     flex-direction: column;
     gap: 1rem;
     align-items: flex-start;
   }
-  
+
   .actividadesActions {
     width: 100%;
     justify-content: space-between;
   }
-  
+
   .searchForm {
     max-width: 100%;
   }
@@ -822,22 +824,22 @@
   .container {
     padding: 0.5rem;
   }
-  
+
   .header h1 {
     font-size: 1.5rem;
   }
-  
+
   .formContainer {
     padding: 1rem;
   }
-  
+
   .actividadesActions {
     flex-direction: column;
     gap: 0.5rem;
   }
-  
+
   .syncButton,
   .addButton {
     justify-content: center;
   }
-} 
+}

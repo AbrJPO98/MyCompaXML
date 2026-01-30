@@ -28,6 +28,7 @@
     transform: translateY(-50px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -99,8 +100,13 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .loadingContainer p {
@@ -162,6 +168,8 @@
   padding: 10px 14px;
   border: 1px solid #d1d5db;
   border-radius: 8px;
+  background-color: white;
+  color: black;
   font-size: 15px;
   transition: all 0.2s;
   box-sizing: border-box;
@@ -207,7 +215,7 @@
   accent-color: #3b82f6;
 }
 
-.radioLabel input[type="radio"]:checked + span {
+.radioLabel input[type="radio"]:checked+span {
   font-weight: 600;
   color: #3b82f6;
 }
@@ -361,4 +369,3 @@
     width: 100%;
   }
 }
-

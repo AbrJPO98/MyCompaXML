@@ -104,6 +104,8 @@
   border-radius: 6px;
   font-size: 0.9rem;
   transition: border-color 0.2s;
+  background-color: white;
+  color: black;
 }
 
 .searchInput:focus {
@@ -292,31 +294,31 @@
     width: 95%;
     max-height: 85vh;
   }
-  
+
   .modalHeader {
     padding: 16px 20px;
   }
-  
+
   .modalBody {
     padding: 16px 20px;
   }
-  
+
   .modalFooter {
     padding: 12px 20px;
     flex-direction: column;
     gap: 12px;
   }
-  
+
   .footerLeft,
   .footerRight {
     width: 100%;
     justify-content: center;
   }
-  
+
   .selectionButtons {
     flex-direction: column;
   }
-  
+
   .selectButton,
   .removeFilterButton,
   .removeAllButton,

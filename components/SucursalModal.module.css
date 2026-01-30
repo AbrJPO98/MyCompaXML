@@ -30,6 +30,7 @@
     transform: translateY(-20px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -115,7 +116,8 @@
   border-radius: 8px;
   font-size: 1rem;
   transition: border-color 0.2s, box-shadow 0.2s;
-  background: white;
+  background-color: white;
+  color: black;
 }
 
 .formGroup input:focus,

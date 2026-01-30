@@ -4,12 +4,10 @@
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  background: linear-gradient(
-    135deg,
-    rgba(0, 112, 243, 0.1) 0%,
-    rgba(0, 112, 243, 0.05) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(135deg,
+      rgba(0, 112, 243, 0.1) 0%,
+      rgba(0, 112, 243, 0.05) 50%,
+      transparent 100%);
 }
 
 .container {
@@ -18,7 +16,8 @@
   padding: 2.5rem;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
   width: 100%;
-  max-width: 700px; /* Más ancho que login para acomodar más campos */
+  max-width: 700px;
+  /* Más ancho que login para acomodar más campos */
   border: 1px solid rgba(0, 112, 243, 0.1);
 }
 
@@ -110,6 +109,7 @@
   font-size: 1rem;
   transition: all 0.2s ease;
   background-color: white;
+  color: black;
   box-sizing: border-box;
 }
 
@@ -250,31 +250,31 @@
   .main {
     padding: 1rem;
   }
-  
+
   .container {
     padding: 2rem;
     max-width: 100%;
     border-radius: 12px;
   }
-  
+
   .title {
     font-size: 1.5rem;
   }
-  
+
   .formRow {
     flex-direction: column;
     gap: 0;
   }
-  
+
   .formRow .formGroup {
     margin-bottom: 1.5rem;
   }
-  
+
   .formActions {
     flex-direction: column-reverse;
     gap: 1rem;
   }
-  
+
   .backButton,
   .submitButton {
     width: 100%;
@@ -286,11 +286,11 @@
   .container {
     padding: 1.5rem;
   }
-  
+
   .title {
     font-size: 1.25rem;
   }
-  
+
   .input,
   .select {
     padding: 0.75rem;

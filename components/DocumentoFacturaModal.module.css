@@ -28,6 +28,7 @@
     transform: translateY(-50px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -95,8 +96,13 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .loadingContainer p {
@@ -298,6 +304,8 @@
   font-size: 15px;
   transition: all 0.2s;
   box-sizing: border-box;
+  background-color: white;
+  color: black;
 }
 
 .input:focus {
@@ -647,4 +655,3 @@
     width: 100%;
   }
 }
-

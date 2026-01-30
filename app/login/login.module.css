@@ -4,12 +4,10 @@
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  background: linear-gradient(
-    135deg,
-    rgba(0, 112, 243, 0.1) 0%,
-    rgba(0, 112, 243, 0.05) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(135deg,
+      rgba(0, 112, 243, 0.1) 0%,
+      rgba(0, 112, 243, 0.05) 50%,
+      transparent 100%);
 }
 
 .container {
@@ -87,6 +85,8 @@
   font-size: 1rem;
   transition: all 0.2s;
   outline: none;
+  background-color: white;
+  color: black;
 }
 
 .input:focus {
@@ -259,4 +259,4 @@
   .testAccounts p {
     color: #ccc;
   }
-} 
+}

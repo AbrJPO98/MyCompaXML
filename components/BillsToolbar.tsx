@@ -119,7 +119,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
 
   const handleCategorizeAllBills = async () => {
     setShowCategorizacionesMenu(false)
-    
+
     // Confirmación
     const confirmed = window.confirm('¿Categorizar todas las facturas? Esto puede tardar unos minutos')
     if (!confirmed) {
@@ -165,11 +165,11 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
         }
 
         const factura = facturas[i]
-        
+
         try {
           // Decodificar XML
           const xmlString = factura.xml ? fromBase64(factura.xml) : ''
-          
+
           if (!xmlString) {
             console.warn(`⚠️ Factura ${factura.clave} no tiene XML válido`)
             processed++
@@ -203,7 +203,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
           }
 
           processed++
-          
+
           // Actualizar progreso
           if (onShowProgress) {
             onShowProgress(true, processed, facturas.length, 'Categorizando facturas...')
@@ -212,7 +212,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
           console.error(`❌ Error procesando factura ${factura.clave}:`, error)
           errors++
           processed++
-          
+
           // Actualizar progreso incluso si hay error
           if (onShowProgress) {
             onShowProgress(true, processed, facturas.length, 'Categorizando facturas...')
@@ -237,7 +237,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
     } catch (error) {
       console.error('Error en categorización masiva:', error)
       alert('Error al categorizar las facturas')
-      
+
       // Ocultar barra de progreso en caso de error
       if (onShowProgress) {
         onShowProgress(false, 0, 0, '')
@@ -265,11 +265,11 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
 
   const handleCabysEditSave = async (updatedCabys: any) => {
     console.log('CABYS editado y guardado:', updatedCabys)
-    
+
     // Buscar facturas que contengan este código CABYS en su categorización
     try {
       const codigo = updatedCabys.codigo
-      
+
       // Buscar facturas con este código CABYS en la categorización
       const response = await fetch(`/api/facturas?channelId=${channelId}`)
       if (!response.ok) {
@@ -282,16 +282,16 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
       // Filtrar facturas que contengan el código CABYS en su categorización
       const facturasConCabys = facturas.filter((factura: any) => {
         if (!factura.categorizacion) return false
-        
+
         // Si categorizacion es un array
         if (Array.isArray(factura.categorizacion)) {
           return factura.categorizacion.some((cat: any) => cat.cabys === codigo)
         }
-        
+
         // Si categorizacion es un string (compatibilidad con datos antiguos)
         try {
-          const categorizacionParsed = typeof factura.categorizacion === 'string' 
-            ? JSON.parse(factura.categorizacion) 
+          const categorizacionParsed = typeof factura.categorizacion === 'string'
+            ? JSON.parse(factura.categorizacion)
             : factura.categorizacion
           if (Array.isArray(categorizacionParsed)) {
             return categorizacionParsed.some((cat: any) => cat.cabys === codigo)
@@ -299,7 +299,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
         } catch (e) {
           return false
         }
-        
+
         return false
       })
 
@@ -319,11 +319,11 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
       // Recategorizar cada factura
       for (let i = 0; i < facturasConCabys.length; i++) {
         const factura = facturasConCabys[i]
-        
+
         try {
           // Decodificar XML
           const xmlString = factura.xml ? fromBase64(factura.xml) : ''
-          
+
           if (!xmlString) {
             console.warn(`⚠️ Factura ${factura.clave} no tiene XML válido`)
             processed++
@@ -362,7 +362,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
           }
 
           processed++
-          
+
           // Actualizar progreso
           if (onShowProgress) {
             onShowProgress(true, processed, facturasConCabys.length, 'Recategorizando facturas...')
@@ -371,7 +371,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
           console.error(`❌ Error procesando factura ${factura.clave}:`, error)
           errors++
           processed++
-          
+
           // Actualizar progreso incluso si hay error
           if (onShowProgress) {
             onShowProgress(true, processed, facturasConCabys.length, 'Recategorizando facturas...')
@@ -461,12 +461,12 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
 
   const handleDeleteAllFiles = async () => {
     setShowFilesMenu(false)
-    
+
     // Confirmar con el usuario
     const confirmDelete = window.confirm(
       '¿Está seguro de que desea eliminar TODOS los archivos de la tabla de facturas? Esta acción no se puede deshacer.'
     )
-    
+
     if (!confirmDelete) {
       return
     }
@@ -532,14 +532,14 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
     // Resultado: yymmddhhmmss
     const match = fechaIso.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/)
     if (!match) return ''
-    
+
     const year = match[1].slice(-2) // últimos 2 dígitos del año
     const month = match[2]
     const day = match[3]
     const hour = match[4]
     const minute = match[5]
     const second = match[6]
-    
+
     return `${year}${month}${day}${hour}${minute}${second}`
   }
 
@@ -561,7 +561,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
     for (let i = 0; i < fileArray.length; i++) {
       const file = fileArray[i]
       if (!file.name.toLowerCase().endsWith('.xml')) continue
-      
+
       try {
         const text = await file.text()
         const parser = new DOMParser()
@@ -587,7 +587,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
       } catch (error) {
         console.error('Error procesando archivo', file.name, ':', error)
       }
-      
+
       // Actualizar progreso
       if (onShowProgress) {
         onShowProgress(true, i + 1, fileArray.length, "Procesando archivos XML...")
@@ -657,7 +657,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
         })
         continue
       }
-      
+
       try {
         const text = await file.text()
         const parser = new DOMParser()
@@ -682,11 +682,11 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
         const esRespuesta = rootNodeName === 'MensajeHacienda' || rootNodeName === 'MensajeReceptor'
         const esDocumentoImportacion = rootNodeName === 'MyCompaXMLDOCIMP'
         const esDocumentoMyCompaXML = rootNodeName === 'MyCompaXMLDOC'
-        
+
         if (esDocumentoImportacion) {
           // Procesar documento de importación MyCompaXMLDOCIMP
           const clave = extractTagValue(xmlDoc, 'Clave')
-          
+
           // Validación 3: Clave debe existir y ser válida
           if (!clave) {
             addFileLog(channelId, {
@@ -735,15 +735,15 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
 
           // Extraer FechaEmision para ordenamiento
           const fechaEmision = extractTagValue(xmlDoc, 'FechaEmision')
-          
+
           // Generar emision en formato YYMMDDHHMMSS para consistencia
           const emision = fechaEmision ? emisionFromFecha(fechaEmision) : null
 
           const xmlB64 = toBase64(text)
-          
+
           // Generar categorización automáticamente
           const categorizacion = await generateCategorizacion(text, channelId)
-          
+
           payload.push({
             clave,
             xml: xmlB64,
@@ -766,7 +766,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
           })
 
           // No agregar log de éxito aquí - se agregará después de verificar duplicados
-          
+
           console.log(`Documento de importación detectado: ${file.name}`)
           continue
         }
@@ -774,7 +774,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
         if (esDocumentoMyCompaXML) {
           // Procesar documento MyCompaXMLDOC
           const clave = extractTagValue(xmlDoc, 'Clave')
-          
+
           // Validación 3: Clave debe existir y ser válida
           if (!clave) {
             addFileLog(channelId, {
@@ -823,15 +823,15 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
 
           // Extraer FechaEmision para ordenamiento
           const fechaEmision = extractTagValue(xmlDoc, 'FechaEmision')
-          
+
           // Generar emision en formato YYMMDDHHMMSS para consistencia
           const emision = fechaEmision ? emisionFromFecha(fechaEmision) : null
 
           const xmlB64 = toBase64(text)
-          
+
           // Generar categorización automáticamente
           const categorizacion = await generateCategorizacion(text, channelId)
-          
+
           payload.push({
             clave,
             xml: xmlB64,
@@ -854,15 +854,15 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
           })
 
           // No agregar log de éxito aquí - se agregará después de verificar duplicados
-          
+
           console.log(`Documento MyCompaXMLDOC detectado: ${file.name}`)
           continue
         }
-        
+
         if (esRespuesta) {
           // Procesar archivo especial (documento de respuesta)
           const clave = extractTagValue(xmlDoc, 'Clave')
-          
+
           // Validación 3: Clave debe existir y ser válida
           if (!clave) {
             addFileLog(channelId, {
@@ -910,7 +910,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
           }
 
           const xmlB64 = toBase64(text)
-          
+
           specialPayload.push({
             clave,
             xml: xmlB64,
@@ -919,9 +919,9 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
             esRespuesta: true, // Marcar como documento de respuesta
             tipo: rootNodeName // Para identificar el tipo de mensaje
           })
-          
+
           // No agregar log de éxito aquí - se agregará después de verificar duplicados
-          
+
           console.log(`Documento de respuesta detectado: ${file.name} (${rootNodeName})`)
           continue
         }
@@ -1039,7 +1039,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
         if (specialResponse.ok) {
           specialResult = await specialResponse.json()
           console.log('Mensajes especiales subidos:', specialResult)
-          
+
           // Crear set de claves duplicadas para filtrar
           const duplicateSpecialClaves = new Set()
           if (specialResult.clavesDuplicadas) {
@@ -1127,7 +1127,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
           addFileLog(channelId, {
             fileName: row.path,
             summary: isImportDoc ? 'Documento de importación procesado exitosamente' : 'Factura procesada exitosamente',
-            detail: isImportDoc 
+            detail: isImportDoc
               ? `El documento de importación "${row.path}" con clave "${row.clave}" ha sido procesado exitosamente y agregado a la tabla.`
               : `La factura "${row.path}" con clave "${row.clave}" ha sido procesada exitosamente y agregada a la tabla.`,
             type: 'success'
@@ -1162,7 +1162,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
         message += `, ${normalDuplicates} duplicados ignorados`
       }
     }
-    
+
     if (specialInserted > 0) {
       if (message) message += '. '
       message += `${specialInserted} mensajes especiales subidos exitosamente`
@@ -1202,7 +1202,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
                 {showFilesMenu ? '▲' : '▼'}
               </span>
             </button>
-            
+
             {showFilesMenu && (
               <>
                 <div className={styles.backdrop} onClick={handleBackdropClick}></div>
@@ -1252,7 +1252,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
                 {showDataExtrasMenu ? '▲' : '▼'}
               </span>
             </button>
-            
+
             {showDataExtrasMenu && (
               <>
                 <div className={styles.backdrop} onClick={handleBackdropClick}></div>
@@ -1278,7 +1278,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
                 {showWorkspaceMenu ? '▲' : '▼'}
               </span>
             </button>
-            
+
             {showWorkspaceMenu && (
               <>
                 <div className={styles.backdrop} onClick={handleBackdropClick}></div>
@@ -1304,7 +1304,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
                 {showCabysMenu ? '▲' : '▼'}
               </span>
             </button>
-            
+
             {showCabysMenu && (
               <>
                 <div className={styles.backdrop} onClick={handleBackdropClick}></div>
@@ -1319,7 +1319,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
                     onClick={handleDescripcionesPersonalizadas}
                     className={styles.dropdownItem}
                   >
-                    📝 Descripciones personalizadas de CABYS
+                    📝 Descripciones personalizadas de cabys
                   </button>
                 </div>
               </>
@@ -1336,7 +1336,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
                 {showCategorizacionesMenu ? '▲' : '▼'}
               </span>
             </button>
-            
+
             {showCategorizacionesMenu && (
               <>
                 <div className={styles.backdrop} onClick={handleBackdropClick}></div>
@@ -1378,7 +1378,7 @@ const BillsToolbar: React.FC<BillsToolbarProps> = ({ onFilterColumns, onBillsAdd
                 {showProcessesMenu ? '▲' : '▼'}
               </span>
             </button>
-            
+
             {showProcessesMenu && (
               <>
                 <div className={styles.backdrop} onClick={handleBackdropClick}></div>

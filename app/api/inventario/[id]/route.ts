@@ -20,7 +20,7 @@ export async function GET(
 
   const result = await withDB(async () => {
     const inventario = await Inventario.findById(id)
-    
+
     if (!inventario) {
       throw new Error('Artículo de inventario no encontrado')
     }
@@ -54,26 +54,26 @@ export async function PUT(
 
   try {
     const body = await request.json()
-    
+
     // Log para debugging (solo en desarrollo)
     if (process.env.NODE_ENV === 'development') {
       console.log('Body recibido en PUT:', JSON.stringify(body, null, 2))
     }
-    
+
     const sanitizedData = sanitizeInput(body)
-    
+
     // Log para debugging (solo en desarrollo)
     if (process.env.NODE_ENV === 'development') {
       console.log('Datos sanitizados:', JSON.stringify(sanitizedData, null, 2))
     }
-    
-    const { 
-      cabys, 
-      descripcion, 
+
+    const {
+      cabys,
+      descripcion,
       titulo,
-      tipo, 
+      tipo,
       tipoMercancia,
-      precio, 
+      precio,
       cantidad,
       // Información para facturación - Información general
       partidaArancelaria,
@@ -103,13 +103,16 @@ export async function PUT(
       codigoImpuesto,
       detalleImpuesto,
       tipoTarifa,
+      tipoTarifaGeneral,
       tarifa,
+      factorCalculoIVA,
       // Impuesto específico
       esEspecifico,
       porcentajeEspecifico,
       impuestoPorUnidad,
       cantidadUnidadMedida,
       volumenPorUnidadConsumo,
+      proporcion,
       // Exoneración
       tieneExoneracion,
       documentoExoneracion,
@@ -203,13 +206,16 @@ export async function PUT(
       codigoImpuesto: codigoImpuesto || '',
       detalleImpuesto: String(detalleImpuesto || '').trim(),
       tipoTarifa: tipoTarifa || '',
+      tipoTarifaGeneral: tipoTarifaGeneral || tipoTarifa || '',
       tarifa: toNumber(tarifa, 0),
+      factorCalculoIVA: toNumber(factorCalculoIVA, 0),
       // Impuesto específico
       esEspecifico: Boolean(esEspecifico),
       porcentajeEspecifico: toNumber(porcentajeEspecifico, 0),
       impuestoPorUnidad: toNumber(impuestoPorUnidad, 0),
       cantidadUnidadMedida: toNumber(cantidadUnidadMedida, 0),
       volumenPorUnidadConsumo: toNumber(volumenPorUnidadConsumo, 0),
+      proporcion: toNumber(proporcion, 0),
       // Exoneración
       tieneExoneracion: Boolean(tieneExoneracion),
       documentoExoneracion: documentoExoneracion || '',
@@ -262,7 +268,7 @@ export async function PUT(
     const result = await withDB(async () => {
       // Verificar que el documento existe
       const existingInventario = await Inventario.findById(id)
-      
+
       if (!existingInventario) {
         throw new Error('Artículo de inventario no encontrado')
       }
@@ -272,8 +278,8 @@ export async function PUT(
       const updatedInventario = await Inventario.findByIdAndUpdate(
         id,
         { $set: updateData },
-        { 
-          new: true, 
+        {
+          new: true,
           runValidators: true,
           setDefaultsOnInsert: false,
           overwrite: false
@@ -285,12 +291,12 @@ export async function PUT(
       }
 
       const updatedData = updatedInventario.toObject()
-      
+
       // Log para debugging (solo en desarrollo)
       if (process.env.NODE_ENV === 'development') {
         console.log('Inventario actualizado:', JSON.stringify(updatedData, null, 2))
       }
-      
+
       return updatedData
     })
 
@@ -311,9 +317,9 @@ export async function PUT(
   } catch (error: any) {
     console.error('Error updating inventario:', error)
     return NextResponse.json(
-      { 
+      {
         error: 'Error interno del servidor',
-        message: error.message 
+        message: error.message
       },
       { status: 500 }
     )
@@ -336,7 +342,7 @@ export async function DELETE(
 
   const result = await withDB(async () => {
     const deletedInventario = await Inventario.findByIdAndDelete(id)
-    
+
     if (!deletedInventario) {
       throw new Error('Artículo de inventario no encontrado')
     }

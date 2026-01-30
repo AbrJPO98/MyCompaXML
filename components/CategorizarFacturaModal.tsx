@@ -106,10 +106,10 @@ interface CategorizarFacturaModalProps {
   onClose: () => void
 }
 
-const CategorizarFacturaModal: React.FC<CategorizarFacturaModalProps> = ({ 
+const CategorizarFacturaModal: React.FC<CategorizarFacturaModalProps> = ({
   clave,
-  channelId, 
-  onClose 
+  channelId,
+  onClose
 }) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -125,7 +125,7 @@ const CategorizarFacturaModal: React.FC<CategorizarFacturaModalProps> = ({
     if (!cabys || !detalle || categorizacionArray.length === 0) {
       return null
     }
-    
+
     const desc_fact = generateSlug(detalle)
     return categorizacionArray.find(
       (item: any) => item.cabys === cabys && item.desc_fact === desc_fact
@@ -146,14 +146,14 @@ const CategorizarFacturaModal: React.FC<CategorizarFacturaModalProps> = ({
       console.log('🔍 Buscando factura por clave y channelId:', { clave, channelId })
 
       const response = await fetch(url)
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
         throw new Error(errorData.error || 'Error al obtener la factura')
       }
 
       const data = await response.json()
-      
+
       if (!data.success || !data.factura || !data.factura.xml) {
         throw new Error('No se encontró el XML de la factura')
       }
@@ -193,11 +193,11 @@ const CategorizarFacturaModal: React.FC<CategorizarFacturaModalProps> = ({
 
       // Decodificar XML de Base64
       const decodedXML = decodeURIComponent(escape(window.atob(data.factura.xml)))
-      
+
       // Parsear XML y extraer LineaDetalle
       const parser = new DOMParser()
       const xmlDoc = parser.parseFromString(decodedXML, 'text/xml')
-      
+
       const lineasDetalle = extractLineasDetalle(xmlDoc)
       setLineasDetalle(lineasDetalle)
 
@@ -211,7 +211,7 @@ const CategorizarFacturaModal: React.FC<CategorizarFacturaModalProps> = ({
 
   const extractLineasDetalle = (xmlDoc: Document): LineaDetalle[] => {
     const lineas: LineaDetalle[] = []
-    
+
     // Buscar el nodo DetalleServicio
     const detalleServicio = xmlDoc.querySelector('DetalleServicio')
     if (!detalleServicio) {
@@ -220,7 +220,7 @@ const CategorizarFacturaModal: React.FC<CategorizarFacturaModalProps> = ({
 
     // Obtener todos los nodos LineaDetalle
     const lineaDetalleNodes = detalleServicio.querySelectorAll('LineaDetalle')
-    
+
     lineaDetalleNodes.forEach((lineaNode, index) => {
       const linea: LineaDetalle = {}
 
@@ -405,7 +405,7 @@ const CategorizarFacturaModal: React.FC<CategorizarFacturaModalProps> = ({
     if (value === undefined || value === null) return '-'
     if (typeof value === 'string') return value
     if (Array.isArray(value)) {
-      return value.length > 0 ? value.map(item => 
+      return value.length > 0 ? value.map(item =>
         typeof item === 'object' ? JSON.stringify(item) : String(item)
       ).join(', ') : '-'
     }
@@ -420,7 +420,7 @@ const CategorizarFacturaModal: React.FC<CategorizarFacturaModalProps> = ({
       <div className={styles.modal}>
         <div className={styles.modalHeader}>
           <h2>🏷️ Categorizar Factura - {clave}</h2>
-          <button 
+          <button
             onClick={onClose}
             className={styles.closeButton}
           >
@@ -453,7 +453,7 @@ const CategorizarFacturaModal: React.FC<CategorizarFacturaModalProps> = ({
                       <span className={styles.numeroLinea}>N° {linea.numeroLinea}</span>
                     )}
                   </div>
-                  
+
                   <div className={styles.lineaContent}>
                     {/* Campos básicos en columnas */}
                     <div className={styles.fieldGroup}>
@@ -546,6 +546,38 @@ const CategorizarFacturaModal: React.FC<CategorizarFacturaModalProps> = ({
                                 <label>📥 Cantidad importada:</label>
                                 <span>{categoriaData.importado && categoriaData.importado.trim() !== '' ? categoriaData.importado : <em>No definido</em>}</span>
                               </div>
+                              {(categoriaData.otras_ventas_sin_iva_con_derecho_credito_pleno !== undefined && categoriaData.otras_ventas_sin_iva_con_derecho_credito_pleno !== null) && (
+                                <>
+                                  <div className={styles.field}>
+                                    <label>💰 Otras ventas sin IVA con derecho crédito pleno - Total ventas exentas:</label>
+                                    <span>{categoriaData.otras_ventas_sin_iva_con_derecho_credito_pleno.total_ventas_exentas ?? 0}</span>
+                                  </div>
+                                  <div className={styles.field}>
+                                    <label>💰 Otras ventas sin IVA con derecho crédito pleno - Total ventas exonerados:</label>
+                                    <span>{categoriaData.otras_ventas_sin_iva_con_derecho_credito_pleno.total_ventas_exonerados ?? 0}</span>
+                                  </div>
+                                  <div className={styles.field}>
+                                    <label>💰 Otras ventas sin IVA con derecho crédito pleno - Total ventas no sujetas:</label>
+                                    <span>{categoriaData.otras_ventas_sin_iva_con_derecho_credito_pleno.total_ventas_no_sujetas ?? 0}</span>
+                                  </div>
+                                </>
+                              )}
+                              {(categoriaData.otras_ventas_sin_iva_sin_derecho_credito !== undefined && categoriaData.otras_ventas_sin_iva_sin_derecho_credito !== null) && (
+                                <>
+                                  <div className={styles.field}>
+                                    <label>💰 Otras ventas sin IVA sin derecho crédito - Total ventas exentas:</label>
+                                    <span>{categoriaData.otras_ventas_sin_iva_sin_derecho_credito.total_ventas_exentas ?? 0}</span>
+                                  </div>
+                                  <div className={styles.field}>
+                                    <label>💰 Otras ventas sin IVA sin derecho crédito - Total ventas exonerados:</label>
+                                    <span>{categoriaData.otras_ventas_sin_iva_sin_derecho_credito.total_ventas_exonerados ?? 0}</span>
+                                  </div>
+                                  <div className={styles.field}>
+                                    <label>💰 Otras ventas sin IVA sin derecho crédito - Total ventas no sujetas:</label>
+                                    <span>{categoriaData.otras_ventas_sin_iva_sin_derecho_credito.total_ventas_no_sujetas ?? 0}</span>
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </div>
                         )
@@ -606,7 +638,7 @@ const CategorizarFacturaModal: React.FC<CategorizarFacturaModalProps> = ({
                         {linea.detalleSurtido.lineaDetalleSurtido.map((lineaSurtido, lineaIndex) => (
                           <div key={lineaIndex} className={styles.surtidoItem}>
                             <h6>LineaDetalleSurtido {lineaIndex + 1}</h6>
-                            
+
                             {/* Información básica del surtido */}
                             <div className={styles.subFieldGroup}>
                               <h6>📋 Información Básica del Surtido</h6>
@@ -680,6 +712,38 @@ const CategorizarFacturaModal: React.FC<CategorizarFacturaModalProps> = ({
                                         <label>📥 Cantidad importada:</label>
                                         <span>{categoriaSurtidoData.importado && categoriaSurtidoData.importado.trim() !== '' ? categoriaSurtidoData.importado : <em>No definido</em>}</span>
                                       </div>
+                                      {(categoriaSurtidoData.otras_ventas_sin_iva_con_derecho_credito_pleno !== undefined && categoriaSurtidoData.otras_ventas_sin_iva_con_derecho_credito_pleno !== null) && (
+                                        <>
+                                          <div className={styles.field}>
+                                            <label>💰 Otras ventas sin IVA con derecho crédito pleno - Total ventas exentas:</label>
+                                            <span>{categoriaSurtidoData.otras_ventas_sin_iva_con_derecho_credito_pleno.total_ventas_exentas ?? 0}</span>
+                                          </div>
+                                          <div className={styles.field}>
+                                            <label>💰 Otras ventas sin IVA con derecho crédito pleno - Total ventas exonerados:</label>
+                                            <span>{categoriaSurtidoData.otras_ventas_sin_iva_con_derecho_credito_pleno.total_ventas_exonerados ?? 0}</span>
+                                          </div>
+                                          <div className={styles.field}>
+                                            <label>💰 Otras ventas sin IVA con derecho crédito pleno - Total ventas no sujetas:</label>
+                                            <span>{categoriaSurtidoData.otras_ventas_sin_iva_con_derecho_credito_pleno.total_ventas_no_sujetas ?? 0}</span>
+                                          </div>
+                                        </>
+                                      )}
+                                      {(categoriaSurtidoData.otras_ventas_sin_iva_sin_derecho_credito !== undefined && categoriaSurtidoData.otras_ventas_sin_iva_sin_derecho_credito !== null) && (
+                                        <>
+                                          <div className={styles.field}>
+                                            <label>💰 Otras ventas sin IVA sin derecho crédito - Total ventas exentas:</label>
+                                            <span>{categoriaSurtidoData.otras_ventas_sin_iva_sin_derecho_credito.total_ventas_exentas ?? 0}</span>
+                                          </div>
+                                          <div className={styles.field}>
+                                            <label>💰 Otras ventas sin IVA sin derecho crédito - Total ventas exonerados:</label>
+                                            <span>{categoriaSurtidoData.otras_ventas_sin_iva_sin_derecho_credito.total_ventas_exonerados ?? 0}</span>
+                                          </div>
+                                          <div className={styles.field}>
+                                            <label>💰 Otras ventas sin IVA sin derecho crédito - Total ventas no sujetas:</label>
+                                            <span>{categoriaSurtidoData.otras_ventas_sin_iva_sin_derecho_credito.total_ventas_no_sujetas ?? 0}</span>
+                                          </div>
+                                        </>
+                                      )}
                                     </div>
                                   </div>
                                 )
@@ -761,7 +825,7 @@ const CategorizarFacturaModal: React.FC<CategorizarFacturaModalProps> = ({
                                 {lineaSurtido.impuestoSurtido.map((is, isIndex) => (
                                   <div key={isIndex} className={styles.impuestoItem}>
                                     <h6>Impuesto Surtido {isIndex + 1}</h6>
-                                    
+
                                     {/* Información básica del impuesto surtido */}
                                     <div className={styles.subFieldGroup}>
                                       <h6>📋 Información Básica del Impuesto Surtido</h6>
@@ -925,7 +989,7 @@ const CategorizarFacturaModal: React.FC<CategorizarFacturaModalProps> = ({
                         {linea.impuesto.map((imp, impIndex) => (
                           <div key={impIndex} className={styles.impuestoItem}>
                             <h6>Impuesto {impIndex + 1}</h6>
-                            
+
                             {/* Información básica del impuesto */}
                             <div className={styles.subFieldGroup}>
                               <h6>📋 Información Básica del Impuesto</h6>

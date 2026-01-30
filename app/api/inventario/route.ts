@@ -33,11 +33,11 @@ export async function GET(request: NextRequest) {
 
   if (!result.success) {
     return NextResponse.json(
-      { 
+      {
         error: result.error,
         message: 'Error al obtener inventario'
       },
-      { 
+      {
         status: 500,
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
@@ -62,15 +62,15 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const sanitizedData = sanitizeInput(body)
-    
-    const { 
-      cabys, 
-      descripcion, 
+
+    const {
+      cabys,
+      descripcion,
       titulo,
-      tipo, 
+      tipo,
       tipoMercancia,
-      precio, 
-      cantidad, 
+      precio,
+      cantidad,
       channel_id,
       // Información para facturación - Información general
       partidaArancelaria,
@@ -100,13 +100,16 @@ export async function POST(request: NextRequest) {
       codigoImpuesto,
       detalleImpuesto,
       tipoTarifa,
+      tipoTarifaGeneral,
       tarifa,
+      factorCalculoIVA,
       // Impuesto específico
       esEspecifico,
       porcentajeEspecifico,
       impuestoPorUnidad,
       cantidadUnidadMedida,
       volumenPorUnidadConsumo,
+      proporcion,
       // Exoneración
       tieneExoneracion,
       documentoExoneracion,
@@ -208,13 +211,16 @@ export async function POST(request: NextRequest) {
       codigoImpuesto: codigoImpuesto || '',
       detalleImpuesto: String(detalleImpuesto || '').trim(),
       tipoTarifa: tipoTarifa || '',
+      tipoTarifaGeneral: tipoTarifaGeneral || tipoTarifa || '',
       tarifa: toNumber(tarifa, 0),
+      factorCalculoIVA: toNumber(factorCalculoIVA, 0),
       // Impuesto específico
       esEspecifico: Boolean(esEspecifico),
       porcentajeEspecifico: toNumber(porcentajeEspecifico, 0),
       impuestoPorUnidad: toNumber(impuestoPorUnidad, 0),
       cantidadUnidadMedida: toNumber(cantidadUnidadMedida, 0),
       volumenPorUnidadConsumo: toNumber(volumenPorUnidadConsumo, 0),
+      proporcion: toNumber(proporcion, 0),
       // Exoneración
       tieneExoneracion: Boolean(tieneExoneracion),
       documentoExoneracion: documentoExoneracion || '',
@@ -265,12 +271,12 @@ export async function POST(request: NextRequest) {
 
       const savedInventario = await newInventario.save()
       const savedData = savedInventario.toObject()
-      
+
       // Log para debugging (solo en desarrollo)
       if (process.env.NODE_ENV === 'development') {
         console.log('Inventario creado:', JSON.stringify(savedData, null, 2))
       }
-      
+
       return savedData
     })
 
@@ -291,9 +297,9 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Error creating inventario:', error)
     return NextResponse.json(
-      { 
+      {
         error: 'Error interno del servidor',
-        message: error.message 
+        message: error.message
       },
       { status: 500 }
     )

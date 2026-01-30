@@ -152,15 +152,17 @@ const CODIGOS_IMPUESTO = [
 ]
 
 const TIPOS_TARIFA = [
-  { value: '01', label: '01 - Tarifa 0% (Exento)', porcentaje: 0 },
+  { value: '01', label: '01 - Tarifa 0%', porcentaje: 0 },
   { value: '02', label: '02 - Tarifa reducida 1%', porcentaje: 1 },
   { value: '03', label: '03 - Tarifa reducida 2%', porcentaje: 2 },
   { value: '04', label: '04 - Tarifa reducida 4%', porcentaje: 4 },
   { value: '05', label: '05 - Transitorio 0%', porcentaje: 0 },
   { value: '06', label: '06 - Transitorio 4%', porcentaje: 4 },
-  { value: '07', label: '07 - Transitorio 8%', porcentaje: 8 },
+  { value: '07', label: '07 - Tarifa transitoria 8%', porcentaje: 8 },
   { value: '08', label: '08 - Tarifa general 13%', porcentaje: 13 },
-  { value: '09', label: '09 - Tarifa reducida 0.5%', porcentaje: 0.5 }
+  { value: '09', label: '09 - Tarifa reducida 0.5%', porcentaje: 0.5 },
+  { value: '10', label: '10 - Tarifa Exenta', porcentaje: 0 },
+  { value: '11', label: '11 - Tarifa 0% sin derecho a crédito', porcentaje: 0 }
 ]
 
 const DOCUMENTOS_EXONERACION = [
@@ -242,12 +244,15 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
     codigoImpuesto: '',
     detalleImpuesto: '',
     tipoTarifa: '',
+    tipoTarifaGeneral: '',
     tarifa: '',
+    factorCalculoIVA: '',
     esEspecifico: false,
     porcentajeEspecifico: '',
     impuestoPorUnidad: '',
     cantidadUnidadMedida: '',
     volumenPorUnidadConsumo: '',
+    proporcion: '',
     tieneExoneracion: false,
     documentoExoneracion: '',
     detalleExoneracion: '',
@@ -260,7 +265,7 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
     porcentajeExoneracion: '',
     montoExportacion: ''
   })
-  
+
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [tiposLoading, setTiposLoading] = useState(true)
@@ -272,15 +277,36 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
-  
+
   // Estados para productos del surtido
   const [productosSurtido, setProductosSurtido] = useState<ProductoSurtido[]>([])
   const [showSurtidoModal, setShowSurtidoModal] = useState(false)
-  
+
   // Función para agregar producto al surtido desde el modal
   const handleAddProductoSurtido = (producto: ProductoSurtido) => {
     setProductosSurtido(prev => [...prev, producto])
   }
+
+  // Calcular precio total del surtido (precio unitario * cantidad de cada producto)
+  const precioTotalSurtido = React.useMemo(() => {
+    if (formData.tipoMercancia !== 'Surtido') {
+      return 0
+    }
+
+    return productosSurtido.reduce((total, producto) => {
+      return total + (producto.precio * producto.cantidad)
+    }, 0)
+  }, [productosSurtido, formData.tipoMercancia])
+
+  // Actualizar el precio cuando cambien los productos del surtido o el tipo de mercancía
+  React.useEffect(() => {
+    if (formData.tipoMercancia === 'Surtido') {
+      setFormData(prev => ({
+        ...prev,
+        precio: precioTotalSurtido.toFixed(2)
+      }))
+    }
+  }, [precioTotalSurtido, formData.tipoMercancia])
 
   // Initialize form data for editing
   useEffect(() => {
@@ -315,12 +341,15 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
         codigoImpuesto: (inventario as any).codigoImpuesto || '',
         detalleImpuesto: (inventario as any).detalleImpuesto || '',
         tipoTarifa: (inventario as any).tipoTarifa || '',
+        tipoTarifaGeneral: (inventario as any).tipoTarifaGeneral || (inventario as any).tipoTarifa || '',
         tarifa: (inventario as any).tarifa?.toString() || '',
+        factorCalculoIVA: (inventario as any).factorCalculoIVA?.toString() || '',
         esEspecifico: (inventario as any).esEspecifico || false,
         porcentajeEspecifico: (inventario as any).porcentajeEspecifico?.toString() || '',
         impuestoPorUnidad: (inventario as any).impuestoPorUnidad?.toString() || '',
         cantidadUnidadMedida: (inventario as any).cantidadUnidadMedida?.toString() || '',
         volumenPorUnidadConsumo: (inventario as any).volumenPorUnidadConsumo?.toString() || '',
+        proporcion: (inventario as any).proporcion?.toString() || '',
         tieneExoneracion: (inventario as any).tieneExoneracion || false,
         documentoExoneracion: (inventario as any).documentoExoneracion || '',
         detalleExoneracion: (inventario as any).detalleExoneracion || '',
@@ -334,7 +363,7 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
         montoExportacion: (inventario as any).montoExportacion?.toString() || ''
       })
       setSelectedCabysInfo(inventario.cabys || '')
-      
+
       // Cargar detalleSurtido si existe
       if ((inventario as any).detalleSurtido && Array.isArray((inventario as any).detalleSurtido)) {
         const productosCargados: ProductoSurtido[] = (inventario as any).detalleSurtido.map((item: any, index: number) => ({
@@ -368,7 +397,7 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
       } else {
         setProductosSurtido([])
       }
-      
+
       // Inicializar previsualización de imagen si existe
       if ((inventario as any).image) {
         setImagePreview(`/protected/inventory-images/${channelId}/${inventario._id}/${(inventario as any).image}`)
@@ -407,12 +436,15 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
         codigoImpuesto: '',
         detalleImpuesto: '',
         tipoTarifa: '',
+        tipoTarifaGeneral: '',
         tarifa: '',
+        factorCalculoIVA: '',
         esEspecifico: false,
         porcentajeEspecifico: '',
         impuestoPorUnidad: '',
         cantidadUnidadMedida: '',
         volumenPorUnidadConsumo: '',
+        proporcion: '',
         tieneExoneracion: false,
         documentoExoneracion: '',
         detalleExoneracion: '',
@@ -435,7 +467,7 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
     setTiposLoading(true)
     try {
       const response = await fetch(`/api/cabys-tipos?channelId=${channelId}`)
-      
+
       if (response.ok) {
         const data = await response.json()
         setTiposDisponibles(data.tipos || [])
@@ -445,7 +477,7 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
         // Fallback a tipos básicos si falla la API
         setTiposDisponibles([
           'Producto',
-          'Servicio', 
+          'Servicio',
           'Materia Prima',
           'Insumo',
           'Herramienta',
@@ -459,7 +491,7 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
       setTiposDisponibles([
         'Producto',
         'Servicio',
-        'Materia Prima', 
+        'Materia Prima',
         'Insumo',
         'Herramienta',
         'Equipo',
@@ -484,7 +516,7 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
       tipo: cabysItem.bienoserv || prev.tipo
     }))
     setSelectedCabysInfo(`${cabysItem.codigo} - ${cabysItem.descripOf || cabysItem.descripPer || 'Sin descripción'}`)
-    
+
     // Clear CABYS error if it exists
     if (errors.cabys) {
       setErrors(prev => ({
@@ -509,7 +541,7 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
       tipo: updatedCabys.bienoserv || prev.tipo
     }))
     setSelectedCabysInfo(`${updatedCabys.codigo} - ${updatedCabys.descripPer || updatedCabys.descripOf || 'Sin descripción'}`)
-    
+
     // Clear CABYS error if it exists
     if (errors.cabys) {
       setErrors(prev => ({
@@ -531,12 +563,12 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
     const checked = (e.target as HTMLInputElement).checked
-    
+
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }))
-    
+
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
@@ -550,18 +582,18 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
   const subtotal = React.useMemo(() => {
     const precio = parseFloat(formData.precio) || 0
     const montoDescuento = parseFloat(formData.montoDescuento) || 0
-    
+
     if (!formData.tieneDescuento || !formData.tipoDescuento) {
       return precio
     }
-    
+
     let descuento = 0
     if (formData.tipoDescuento === 'Fijo') {
       descuento = montoDescuento
     } else if (formData.tipoDescuento === 'Porcentual') {
       descuento = (precio * montoDescuento) / 100
     }
-    
+
     return Math.max(0, precio - descuento)
   }, [formData.precio, formData.montoDescuento, formData.tieneDescuento, formData.tipoDescuento])
 
@@ -570,6 +602,21 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
     const baseImponible = parseFloat(formData.baseImponible) || 0
     return baseImponible > 0 ? baseImponible : subtotal
   }, [formData.baseImponible, subtotal])
+
+  // Actualizar tipoTarifaGeneral cuando cambie tipoTarifa
+  React.useEffect(() => {
+    if (formData.tipoTarifa) {
+      setFormData(prev => ({
+        ...prev,
+        tipoTarifaGeneral: formData.tipoTarifa
+      }))
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        tipoTarifaGeneral: ''
+      }))
+    }
+  }, [formData.tipoTarifa])
 
   // Ajustar Tarifa cuando el código usa porcentaje fijo del tipo de tarifa
   React.useEffect(() => {
@@ -588,9 +635,9 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
   // Calcular monto del impuesto
   const montoImpuesto = React.useMemo(() => {
     if (!formData.tieneImpuesto) return 0
-    
+
     let porcentajeTarifa = 0
-    
+
     if (formData.codigoImpuesto === '01' || formData.codigoImpuesto === '07') {
       // Usar porcentaje del tipo de tarifa
       const tipoTarifaSeleccionado = TIPOS_TARIFA.find(t => t.value === formData.tipoTarifa)
@@ -599,14 +646,14 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
       // Usar valor de tarifa
       porcentajeTarifa = parseFloat(formData.tarifa) || 0
     }
-    
+
     return (baseParaImpuestos * porcentajeTarifa) / 100
   }, [formData.tieneImpuesto, formData.codigoImpuesto, formData.tipoTarifa, formData.tarifa, baseParaImpuestos])
 
   // Calcular monto de exoneración
   const montoExoneracion = React.useMemo(() => {
     if (!formData.tieneExoneracion) return 0
-    
+
     const porcentaje = parseFloat(formData.porcentajeExoneracion) || 0
     return (baseParaImpuestos * porcentaje) / 100
   }, [formData.tieneExoneracion, formData.porcentajeExoneracion, baseParaImpuestos])
@@ -693,7 +740,7 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) {
       return
     }
@@ -702,7 +749,7 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
     try {
       const url = isEditing ? `/api/inventario/${inventario!._id}` : '/api/inventario'
       const method = isEditing ? 'PUT' : 'POST'
-      
+
       // Función helper para convertir strings a números de forma segura
       const toNumber = (value: string | number, defaultValue: number = 0): number => {
         if (typeof value === 'number') return isNaN(value) ? defaultValue : value
@@ -756,13 +803,16 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
         codigoImpuesto: formData.codigoImpuesto || '',
         detalleImpuesto: formData.detalleImpuesto?.trim() || '',
         tipoTarifa: formData.tipoTarifa || '',
+        tipoTarifaGeneral: formData.tipoTarifaGeneral || formData.tipoTarifa || '',
         tarifa: toNumber(formData.tarifa, 0),
+        factorCalculoIVA: toNumber(formData.factorCalculoIVA, 0),
         // Impuesto específico
         esEspecifico: Boolean(formData.esEspecifico),
         porcentajeEspecifico: toNumber(formData.porcentajeEspecifico, 0),
         impuestoPorUnidad: toNumber(formData.impuestoPorUnidad, 0),
         cantidadUnidadMedida: toNumber(formData.cantidadUnidadMedida, 0),
         volumenPorUnidadConsumo: toNumber(formData.volumenPorUnidadConsumo, 0),
+        proporcion: toNumber(formData.proporcion, 0),
         // Exoneración
         tieneExoneracion: Boolean(formData.tieneExoneracion),
         documentoExoneracion: formData.documentoExoneracion || '',
@@ -882,7 +932,7 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
       <div className={styles.modal}>
         <div className={styles.modalHeader}>
           <h2>{isEditing ? 'Editar Artículo' : 'Nuevo Artículo'}</h2>
-          <button 
+          <button
             onClick={() => onClose()}
             className={styles.closeButton}
             disabled={loading}
@@ -894,1102 +944,1133 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
         <div className={styles.modalContent}>
           <form onSubmit={handleSubmit} className={styles.form}>
 
-          <div className={styles.headerRow}>
-            <div className={styles.headerRight}>
-              <div className={styles.imageSection}>
-                <label className={styles.imageLabel}>Imagen del artículo</label>
-                <div className={styles.imageContainer}>
-                  {imagePreview ? (
-                    <img
-                      src={imagePreview}
-                      alt="Previsualización del artículo"
-                      className={styles.imagePreview}
-                    />
-                  ) : (
-                    <div className={styles.imagePlaceholder}>
-                      <span>Sin imagen</span>
-                    </div>
-                  )}
-                </div>
-                <div className={styles.imageControls}>
-                  <button
-                    type="button"
-                    onClick={handleBrowseClick}
-                    disabled={loading}
-                    className={styles.browseButton}
-                  >
-                    Examinar...
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    disabled={loading}
-                    className={styles.hiddenFileInput}
-                  />
-                  {imageFile && (
+            <div className={styles.headerRow}>
+              <div className={styles.headerRight}>
+                <div className={styles.imageSection}>
+                  <label className={styles.imageLabel}>Imagen del artículo</label>
+                  <div className={styles.imageContainer}>
+                    {imagePreview ? (
+                      <img
+                        src={imagePreview}
+                        alt="Previsualización del artículo"
+                        className={styles.imagePreview}
+                      />
+                    ) : (
+                      <div className={styles.imagePlaceholder}>
+                        <span>Sin imagen</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className={styles.imageControls}>
                     <button
                       type="button"
-                      onClick={handleRemoveImage}
+                      onClick={handleBrowseClick}
                       disabled={loading}
-                      className={styles.removeButton}
+                      className={styles.browseButton}
                     >
-                      Eliminar
+                      Examinar...
                     </button>
-                  )}
-                </div>
-                <div className={styles.fileName}>
-                  {imageFile ? imageFile.name : 'No se ha seleccionado ningún archivo.'}
-                </div>
-              </div>
-            </div>
-            <div className={styles.headerLeft}>
-              <div className={styles.formGroup}>
-                <label>Tipo de mercancía</label>
-                <div className={styles.radioGroup}>
-                  <label className={styles.radioLabel}>
                     <input
-                      type="radio"
-                      name="tipoMercancia"
-                      value="Normal"
-                      checked={formData.tipoMercancia === 'Normal'}
-                      onChange={handleInputChange}
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
                       disabled={loading}
+                      className={styles.hiddenFileInput}
                     />
-                    <span>Normal</span>
-                  </label>
-                  <label className={styles.radioLabel}>
-                    <input
-                      type="radio"
-                      name="tipoMercancia"
-                      value="Surtido"
-                      checked={formData.tipoMercancia === 'Surtido'}
-                      onChange={handleInputChange}
-                      disabled={loading}
-                    />
-                    <span>Surtido</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label htmlFor="cabys">Código CABYS *</label>
-                  <div className={styles.cabysSelector}>
-                    <button
-                      type="button"
-                      onClick={() => setShowCabysModal(true)}
-                      className={`${styles.cabysButton} ${errors.cabys ? styles.inputError : ''}`}
-                      disabled={loading}
-                    >
-                      {selectedCabysInfo ? (
-                        <span className={styles.cabysSelected}>
-                          📋 {selectedCabysInfo.length > 50 ? selectedCabysInfo.substring(0, 50) + '...' : selectedCabysInfo}
-                        </span>
-                      ) : (
-                        <span className={styles.cabysPlaceholder}>
-                          🔍 Seleccionar código CABYS
-                        </span>
-                      )}
-                    </button>
-                    {selectedCabysInfo && (
+                    {imageFile && (
                       <button
                         type="button"
-                        onClick={() => {
-                          setFormData(prev => ({ ...prev, cabys: '' }))
-                          setSelectedCabysInfo('')
-                        }}
-                        className={styles.clearButton}
+                        onClick={handleRemoveImage}
                         disabled={loading}
-                        title="Limpiar selección"
+                        className={styles.removeButton}
                       >
-                        ×
+                        Eliminar
                       </button>
                     )}
                   </div>
-                  {errors.cabys && <span className={styles.error}>{errors.cabys}</span>}
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label htmlFor="titulo">Título</label>
-                  <input
-                    type="text"
-                    id="titulo"
-                    name="titulo"
-                    value={formData.titulo}
-                    onChange={handleInputChange}
-                    disabled={loading}
-                    placeholder="Título corto para la factura"
-                  />
-                </div>
-              </div>
-              
-              <div className={styles.formGroup}>
-                <label htmlFor="descripcion">Descripción *</label>
-                <textarea
-                  id="descripcion"
-                  name="descripcion"
-                  value={formData.descripcion}
-                  onChange={handleInputChange}
-                  className={errors.descripcion ? styles.inputError : ''}
-                  disabled={loading}
-                  placeholder="Descripción detallada del artículo"
-                  rows={3}
-                />
-                {errors.descripcion && <span className={styles.error}>{errors.descripcion}</span>}
-              </div>
-
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label htmlFor="tipo">Tipo *</label>
-                  <select
-                    id="tipo"
-                    name="tipo"
-                    value={formData.tipo}
-                    onChange={handleInputChange}
-                    className={errors.tipo ? styles.inputError : ''}
-                    disabled={loading || tiposLoading}
-                  >
-                    <option value="">
-                      {tiposLoading ? 'Cargando tipos...' : 'Seleccionar tipo'}
-                    </option>
-                    {tiposDisponibles.map((tipo) => (
-                      <option key={tipo} value={tipo}>
-                        {tipo}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.tipo && <span className={styles.error}>{errors.tipo}</span>}
-                  {tiposLoading && (
-                    <small className={styles.loadingText}>
-                      Cargando tipos desde CABYS...
-                    </small>
-                  )}
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label htmlFor="precio">Precio (₡) *</label>
-                  <input
-                    type="number"
-                    id="precio"
-                    name="precio"
-                    value={formData.precio}
-                    onChange={handleInputChange}
-                    className={errors.precio ? styles.inputError : ''}
-                    disabled={loading}
-                    placeholder="0.00"
-                    min="0"
-                    step="0.01"
-                  />
-                  {errors.precio && <span className={styles.error}>{errors.precio}</span>}
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label htmlFor="cantidad">Cantidad *</label>
-                  <input
-                    type="number"
-                    id="cantidad"
-                    name="cantidad"
-                    value={formData.cantidad}
-                    onChange={handleInputChange}
-                    className={errors.cantidad ? styles.inputError : ''}
-                    disabled={loading}
-                    placeholder="0"
-                    min="0"
-                    step="1"
-                  />
-                  {errors.cantidad && <span className={styles.error}>{errors.cantidad}</span>}
-                </div>
-              </div>
-            </div>
-          </div>
-
-
-          {/* Sección: Información para facturación o Detalles del surtido */}
-          {formData.tipoMercancia === 'Surtido' ? (
-            <div className={styles.section}>
-              <h3 className={styles.sectionTitle}>Detalles del surtido</h3>
-              
-              <div style={{ marginBottom: '20px' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowSurtidoModal(true)}
-                  className={styles.submitButton}
-                  disabled={loading}
-                >
-                  Agregar al surtido
-                </button>
-              </div>
-
-              {productosSurtido.length > 0 && (
-                <>
-                  <div className={styles.summaryTableWrapper}>
-                    <table className={styles.summaryTable}>
-                      <thead>
-                        <tr>
-                          <th style={{ minWidth: '80px' }}>Eliminar</th>
-                          <th style={{ minWidth: '120px' }}>Código cabys</th>
-                          <th style={{ minWidth: '150px' }}>Título</th>
-                          <th style={{ minWidth: '200px' }}>Descripción</th>
-                          <th style={{ minWidth: '100px' }}>Tipo</th>
-                          <th style={{ minWidth: '100px' }}>Precio</th>
-                          <th style={{ minWidth: '90px' }}>Cantidad</th>
-                          <th style={{ minWidth: '130px' }}>Código comercial</th>
-                          <th style={{ minWidth: '150px' }}>Tipo código comercial</th>
-                          <th style={{ minWidth: '130px' }}>Unidad de medida</th>
-                          <th style={{ minWidth: '180px' }}>Unidad de medida comercial</th>
-                          <th style={{ minWidth: '130px' }}>Monto (Descuento)</th>
-                          <th style={{ minWidth: '130px' }}>Código (Descuento)</th>
-                          <th style={{ minWidth: '150px' }}>Detalle (Descuento)</th>
-                          <th style={{ minWidth: '150px' }}>IVA Cobrado fábrica</th>
-                          <th style={{ minWidth: '130px' }}>Base imponible</th>
-                          <th style={{ minWidth: '130px' }}>Código (Impuesto)</th>
-                          <th style={{ minWidth: '150px' }}>Detalle (Impuesto)</th>
-                          <th style={{ minWidth: '150px' }}>Tipo tarifa (Impuesto)</th>
-                          <th style={{ minWidth: '130px' }}>Tarifa (Impuesto)</th>
-                          <th style={{ minWidth: '220px' }}>Cantidad unidad de medida (Específico)</th>
-                          <th style={{ minWidth: '150px' }}>Porcentaje (Específico)</th>
-                          <th style={{ minWidth: '100px' }}>Proporción</th>
-                          <th style={{ minWidth: '250px' }}>Volumen por unidad de consumo (Específico)</th>
-                          <th style={{ minWidth: '200px' }}>Impuesto por unidad (Específico)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {productosSurtido.map((producto) => (
-                          <tr key={producto.id}>
-                            <td>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setProductosSurtido(prev => prev.filter(p => p.id !== producto.id))
-                                }}
-                                className={styles.summaryAction}
-                                disabled={loading}
-                              >
-                                Eliminar
-                              </button>
-                            </td>
-                            <td>{producto.cabys}</td>
-                            <td>{producto.titulo}</td>
-                            <td>{producto.descripcion}</td>
-                            <td>{producto.tipo}</td>
-                            <td>₡{producto.precio.toFixed(2)}</td>
-                            <td>{producto.cantidad}</td>
-                            <td>{producto.codigoComercial}</td>
-                            <td>{producto.tipoCodigoComercial}</td>
-                            <td>{producto.unidadMedida}</td>
-                            <td>{producto.unidadMedidaComercial}</td>
-                            <td>₡{producto.montoDescuento.toFixed(2)}</td>
-                            <td>{producto.codigoDescuento}</td>
-                            <td>{producto.detalleDescuento}</td>
-                            <td>₡{producto.ivaCobradoFabrica.toFixed(2)}</td>
-                            <td>₡{producto.baseImponible.toFixed(2)}</td>
-                            <td>{producto.codigoImpuesto}</td>
-                            <td>{producto.detalleImpuesto}</td>
-                            <td>{producto.tipoTarifa}</td>
-                            <td>{producto.tarifa}%</td>
-                            <td>{producto.cantidadUnidadMedida}</td>
-                            <td>{producto.porcentajeEspecifico}%</td>
-                            <td>{producto.proporcion}</td>
-                            <td>{producto.volumenPorUnidadConsumo}</td>
-                            <td>₡{producto.impuestoPorUnidad.toFixed(2)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className={styles.fileName}>
+                    {imageFile ? imageFile.name : 'No se ha seleccionado ningún archivo.'}
                   </div>
-
-                  <div className={styles.totalsGrid} style={{ marginTop: '20px' }}>
-                    <div className={styles.totalItem}>
-                      <div className={styles.totalLabel}>Total de descuentos</div>
-                      <div className={styles.totalValue}>
-                        ₡{productosSurtido.reduce((sum, p) => sum + p.montoDescuento, 0).toFixed(2)}
-                      </div>
-                    </div>
-                    <div className={styles.totalItem}>
-                      <div className={styles.totalLabel}>Total de impuestos</div>
-                      <div className={styles.totalValue}>
-                        ₡{productosSurtido.reduce((sum, p) => sum + p.ivaCobradoFabrica, 0).toFixed(2)}
-                      </div>
-                    </div>
-                    <div className={styles.totalItem}>
-                      <div className={styles.totalLabel}>Total del surtido</div>
-                      <div className={styles.totalValue}>
-                        ₡{productosSurtido.reduce((sum, p) => {
-                          const subtotal = (p.precio * p.cantidad) - p.montoDescuento
-                          const impuesto = p.ivaCobradoFabrica
-                          return sum + subtotal + impuesto
-                        }, 0).toFixed(2)}
-                      </div>
-                    </div>
+                </div>
+              </div>
+              <div className={styles.headerLeft}>
+                <div className={styles.formGroup}>
+                  <label>Tipo de mercancía</label>
+                  <div className={styles.radioGroup}>
+                    <label className={styles.radioLabel}>
+                      <input
+                        type="radio"
+                        name="tipoMercancia"
+                        value="Normal"
+                        checked={formData.tipoMercancia === 'Normal'}
+                        onChange={handleInputChange}
+                        disabled={loading}
+                      />
+                      <span>Normal</span>
+                    </label>
+                    <label className={styles.radioLabel}>
+                      <input
+                        type="radio"
+                        name="tipoMercancia"
+                        value="Surtido"
+                        checked={formData.tipoMercancia === 'Surtido'}
+                        onChange={handleInputChange}
+                        disabled={loading}
+                      />
+                      <span>Surtido</span>
+                    </label>
                   </div>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className={styles.section}>
-              <h3 className={styles.sectionTitle}>Información para facturación</h3>
-            
-            {/* Subsección: Información general */}
-            <div className={styles.subsection}>
-              <h4 className={styles.subsectionTitle}>Información general</h4>
-              
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label htmlFor="partidaArancelaria">Partida Arancelaria:</label>
-                  <input
-                    type="text"
-                    id="partidaArancelaria"
-                    name="partidaArancelaria"
-                    value={formData.partidaArancelaria}
-                    onChange={handleInputChange}
-                    disabled={loading}
-                    placeholder="Ingrese la partida arancelaria"
-                  />
                 </div>
 
-                <div className={styles.formGroup}>
-                  <label htmlFor="codigoComercial">Código Comercial:</label>
-                  <input
-                    type="text"
-                    id="codigoComercial"
-                    name="codigoComercial"
-                    value={formData.codigoComercial}
-                    onChange={handleInputChange}
-                    disabled={loading}
-                    placeholder="Ingrese el código comercial"
-                  />
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label htmlFor="tipoCodigoComercial">Tipo de cód. Comercial:</label>
-                  <select
-                    id="tipoCodigoComercial"
-                    name="tipoCodigoComercial"
-                    value={formData.tipoCodigoComercial}
-                    onChange={handleInputChange}
-                    disabled={loading}
-                  >
-                    <option value="">Seleccionar tipo</option>
-                    <option value="01">01 - Código del producto del vendedor</option>
-                    <option value="02">02 - Código del producto del comprador</option>
-                    <option value="03">03 - Código del producto asignado por la industria</option>
-                    <option value="04">04 - Código uso interno</option>
-                    <option value="99">99 - Otros</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Subsección: Datos del producto o servicio */}
-            <div className={styles.subsection}>
-            <h4 className={styles.subsectionTitle}>Datos del producto o servicio</h4>
-            
-            {/* Información general */}
-            <div className={styles.subsubsection}>
-              <h5 className={styles.subsubsectionTitle}>Información general</h5>
-              
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label htmlFor="unidadMedida">Unidad medida:</label>
-                  <select
-                    id="unidadMedida"
-                    name="unidadMedida"
-                    value={formData.unidadMedida}
-                    onChange={handleInputChange}
-                    disabled={loading}
-                  >
-                    <option value="">Seleccionar unidad</option>
-                    {UNIDADES_MEDIDA.map((unidad) => (
-                      <option key={unidad.value} value={unidad.value}>
-                        {unidad.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label htmlFor="unidadMedidaComercial">Unidad medida comercial:</label>
-                  <input
-                    type="text"
-                    id="unidadMedidaComercial"
-                    name="unidadMedidaComercial"
-                    value={formData.unidadMedidaComercial}
-                    onChange={handleInputChange}
-                    disabled={loading}
-                    placeholder="Ingrese la unidad medida comercial"
-                  />
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label htmlFor="tipoTransaccion">Tipo transacción:</label>
-                  <select
-                    id="tipoTransaccion"
-                    name="tipoTransaccion"
-                    value={formData.tipoTransaccion}
-                    onChange={handleInputChange}
-                    disabled={loading}
-                  >
-                    <option value="">Seleccionar tipo</option>
-                    {TIPOS_TRANSACCION.map((tipo) => (
-                      <option key={tipo.value} value={tipo.value}>
-                        {tipo.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Información de medicamento */}
-            <div className={styles.subsubsection}>
-              <div className={styles.checkboxGroup}>
-                <input
-                  type="checkbox"
-                  id="esMedicamento"
-                  name="esMedicamento"
-                  checked={formData.esMedicamento}
-                  onChange={handleInputChange}
-                  disabled={loading}
-                />
-                <label htmlFor="esMedicamento">¿Medicamento?</label>
-              </div>
-
-              {formData.esMedicamento && (
                 <div className={styles.formRow}>
                   <div className={styles.formGroup}>
-                    <label htmlFor="registro">Registro:</label>
-                    <input
-                      type="text"
-                      id="registro"
-                      name="registro"
-                      value={formData.registro}
-                      onChange={handleInputChange}
-                      disabled={loading}
-                      placeholder="Ingrese el registro"
-                    />
+                    <label htmlFor="cabys">Código CABYS *</label>
+                    <div className={styles.cabysSelector}>
+                      <button
+                        type="button"
+                        onClick={() => setShowCabysModal(true)}
+                        className={`${styles.cabysButton} ${errors.cabys ? styles.inputError : ''}`}
+                        disabled={loading}
+                      >
+                        {selectedCabysInfo ? (
+                          <span className={styles.cabysSelected}>
+                            📋 {selectedCabysInfo.length > 50 ? selectedCabysInfo.substring(0, 50) + '...' : selectedCabysInfo}
+                          </span>
+                        ) : (
+                          <span className={styles.cabysPlaceholder}>
+                            🔍 Seleccionar código CABYS
+                          </span>
+                        )}
+                      </button>
+                      {selectedCabysInfo && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData(prev => ({ ...prev, cabys: '' }))
+                            setSelectedCabysInfo('')
+                          }}
+                          className={styles.clearButton}
+                          disabled={loading}
+                          title="Limpiar selección"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                    {errors.cabys && <span className={styles.error}>{errors.cabys}</span>}
                   </div>
 
                   <div className={styles.formGroup}>
-                    <label htmlFor="formaFarmaceutica">Forma farmacéutica:</label>
-                    <select
-                      id="formaFarmaceutica"
-                      name="formaFarmaceutica"
-                      value={formData.formaFarmaceutica}
+                    <label htmlFor="titulo">Título</label>
+                    <input
+                      type="text"
+                      id="titulo"
+                      name="titulo"
+                      value={formData.titulo}
                       onChange={handleInputChange}
                       disabled={loading}
+                      placeholder="Título corto para la factura"
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label htmlFor="descripcion">Descripción *</label>
+                  <textarea
+                    id="descripcion"
+                    name="descripcion"
+                    value={formData.descripcion}
+                    onChange={handleInputChange}
+                    className={errors.descripcion ? styles.inputError : ''}
+                    disabled={loading}
+                    placeholder="Descripción detallada del artículo"
+                    rows={3}
+                  />
+                  {errors.descripcion && <span className={styles.error}>{errors.descripcion}</span>}
+                </div>
+
+                <div className={styles.formRow}>
+                  <div className={styles.formGroup}>
+                    <label htmlFor="tipo">Tipo *</label>
+                    <select
+                      id="tipo"
+                      name="tipo"
+                      value={formData.tipo}
+                      onChange={handleInputChange}
+                      className={errors.tipo ? styles.inputError : ''}
+                      disabled={loading || tiposLoading}
                     >
-                      <option value="">Seleccionar forma</option>
-                      {FORMAS_FARMACEUTICAS.map((forma) => (
-                        <option key={forma.value} value={forma.value}>
-                          {forma.label}
+                      <option value="">
+                        {tiposLoading ? 'Cargando tipos...' : 'Seleccionar tipo'}
+                      </option>
+                      {tiposDisponibles.map((tipo) => (
+                        <option key={tipo} value={tipo}>
+                          {tipo}
                         </option>
                       ))}
                     </select>
+                    {errors.tipo && <span className={styles.error}>{errors.tipo}</span>}
+                    {tiposLoading && (
+                      <small className={styles.loadingText}>
+                        Cargando tipos desde CABYS...
+                      </small>
+                    )}
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label htmlFor="precio">Precio (₡) *</label>
+                    <input
+                      type="number"
+                      id="precio"
+                      name="precio"
+                      value={formData.precio}
+                      onChange={handleInputChange}
+                      className={errors.precio ? styles.inputError : ''}
+                      disabled={loading || formData.tipoMercancia === 'Surtido'}
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                      readOnly={formData.tipoMercancia === 'Surtido'}
+                    />
+                    {errors.precio && <span className={styles.error}>{errors.precio}</span>}
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label htmlFor="cantidad">Cantidad *</label>
+                    <input
+                      type="number"
+                      id="cantidad"
+                      name="cantidad"
+                      value={formData.cantidad}
+                      onChange={handleInputChange}
+                      className={errors.cantidad ? styles.inputError : ''}
+                      disabled={loading}
+                      placeholder="0"
+                      min="0"
+                      step="1"
+                    />
+                    {errors.cantidad && <span className={styles.error}>{errors.cantidad}</span>}
                   </div>
                 </div>
-              )}
+              </div>
             </div>
 
-            {/* Información de VIN o serie */}
-            <div className={styles.subsubsection}>
-              <div className={styles.checkboxGroup}>
-                <input
-                  type="checkbox"
-                  id="esVinSerie"
-                  name="esVinSerie"
-                  checked={formData.esVinSerie}
-                  onChange={handleInputChange}
-                  disabled={loading}
-                />
-                <label htmlFor="esVinSerie">¿VIN o serie?</label>
-              </div>
 
-              {formData.esVinSerie && (
-                <div className={styles.formGroup}>
-                  <label htmlFor="numeroVinSerie">Número:</label>
-                  <input
-                    type="text"
-                    id="numeroVinSerie"
-                    name="numeroVinSerie"
-                    value={formData.numeroVinSerie}
-                    onChange={handleInputChange}
+            {/* Sección: Información para facturación o Detalles del surtido */}
+            {formData.tipoMercancia === 'Surtido' ? (
+              <div className={styles.section}>
+                <h3 className={styles.sectionTitle}>Detalles del surtido</h3>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowSurtidoModal(true)}
+                    className={styles.submitButton}
                     disabled={loading}
-                    placeholder="Ingrese el número de VIN o serie"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Información de descuento */}
-            <div className={styles.subsubsection}>
-              <div className={styles.checkboxGroup}>
-                <input
-                  type="checkbox"
-                  id="tieneDescuento"
-                  name="tieneDescuento"
-                  checked={formData.tieneDescuento}
-                  onChange={handleInputChange}
-                  disabled={loading}
-                />
-                <label htmlFor="tieneDescuento">¿Descuento?</label>
-              </div>
-
-              {formData.tieneDescuento && (
-                <>
-                  <div className={styles.formRow}>
-                    <div className={styles.formGroup}>
-                      <label htmlFor="naturalezaDescuento">Naturaleza:</label>
-                      <input
-                        type="text"
-                        id="naturalezaDescuento"
-                        name="naturalezaDescuento"
-                        value={formData.naturalezaDescuento}
-                        onChange={handleInputChange}
-                        disabled={loading}
-                        placeholder="Ingrese la naturaleza del descuento"
-                      />
-                    </div>
-
-                    <div className={styles.formGroup}>
-                      <label htmlFor="tipoDescuento">Tipo de descuento:</label>
-                      <select
-                        id="tipoDescuento"
-                        name="tipoDescuento"
-                        value={formData.tipoDescuento}
-                        onChange={handleInputChange}
-                        disabled={loading}
-                      >
-                        <option value="">Seleccionar tipo</option>
-                        <option value="Fijo">Fijo</option>
-                        <option value="Porcentual">Porcentual</option>
-                      </select>
-                    </div>
-
-                    <div className={styles.formGroup}>
-                      <label htmlFor="montoDescuento">Monto:</label>
-                      <div className={styles.inputWithIcon}>
-                        <input
-                          type="number"
-                          id="montoDescuento"
-                          name="montoDescuento"
-                          value={formData.montoDescuento}
-                          onChange={handleInputChange}
-                          disabled={loading}
-                          placeholder="0"
-                          min="0"
-                          step="0.01"
-                        />
-                        <span className={styles.inputIcon}>
-                          {formData.tipoDescuento === 'Porcentual' ? '%' : '₡'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={styles.formRow}>
-                    <div className={styles.formGroup}>
-                      <label htmlFor="codigoDescuento">Código del descuento:</label>
-                      <select
-                        id="codigoDescuento"
-                        name="codigoDescuento"
-                        value={formData.codigoDescuento}
-                        onChange={handleInputChange}
-                        disabled={loading}
-                      >
-                        <option value="">Seleccionar código</option>
-                        {CODIGOS_DESCUENTO.map((codigo) => (
-                          <option key={codigo.value} value={codigo.value}>
-                            {codigo.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className={styles.formGroup}>
-                      <label htmlFor="detalleDescuento">Detalle:</label>
-                      <input
-                        type="text"
-                        id="detalleDescuento"
-                        name="detalleDescuento"
-                        value={formData.detalleDescuento}
-                        onChange={handleInputChange}
-                        disabled={loading || formData.codigoDescuento !== '99'}
-                        placeholder={formData.codigoDescuento !== '99' ? 'Solo disponible para "Otros descuentos"' : 'Ingrese el detalle del descuento'}
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Base imponible y Subtotal */}
-            <div className={styles.subsubsection}>
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label htmlFor="baseImponible">Base imponible:</label>
-                  <input
-                    type="number"
-                    id="baseImponible"
-                    name="baseImponible"
-                    value={formData.baseImponible}
-                    onChange={handleInputChange}
-                    disabled={loading}
-                    placeholder="0.00"
-                    min="0"
-                    step="0.01"
-                  />
+                  >
+                    Agregar al surtido
+                  </button>
                 </div>
 
-                <div className={styles.formGroup}>
-                  <label htmlFor="subtotal">Subtotal:</label>
-                  <input
-                    type="text"
-                    id="subtotal"
-                    name="subtotal"
-                    value={subtotal.toFixed(2)}
-                    disabled
-                    readOnly
-                    className={styles.infoField}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Subsección: Información del impuesto */}
-          <div className={styles.subsection}>
-            <h4 className={styles.subsectionTitle}>Información del impuesto</h4>
-            
-            {/* Información de impuesto */}
-            <div className={styles.subsubsection}>
-              <div className={styles.checkboxGroup}>
-                <input
-                  type="checkbox"
-                  id="tieneImpuesto"
-                  name="tieneImpuesto"
-                  checked={formData.tieneImpuesto}
-                  onChange={handleInputChange}
-                  disabled={loading}
-                />
-                <label htmlFor="tieneImpuesto">¿Impuesto?</label>
-              </div>
-
-              {formData.tieneImpuesto && (
-                <>
-                  <div className={styles.formRow}>
-                    <div className={styles.formGroup}>
-                      <label htmlFor="codigoImpuesto">Código:</label>
-                      <select
-                        id="codigoImpuesto"
-                        name="codigoImpuesto"
-                        value={formData.codigoImpuesto}
-                        onChange={handleInputChange}
-                        disabled={loading}
-                      >
-                        <option value="">Seleccionar código</option>
-                        {CODIGOS_IMPUESTO.map((codigo) => (
-                          <option key={codigo.value} value={codigo.value}>
-                            {codigo.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className={styles.formGroup}>
-                      <label htmlFor="detalleImpuesto">Detalle:</label>
-                      <input
-                        type="text"
-                        id="detalleImpuesto"
-                        name="detalleImpuesto"
-                        value={formData.detalleImpuesto}
-                        onChange={handleInputChange}
-                        disabled={loading || formData.codigoImpuesto !== '99'}
-                        placeholder={formData.codigoImpuesto !== '99' ? 'Solo disponible para "Otros"' : 'Ingrese el detalle del impuesto'}
-                      />
-                    </div>
-
-                    <div className={styles.formGroup}>
-                      <label htmlFor="tipoTarifa">Tipo Tarifa:</label>
-                      <select
-                        id="tipoTarifa"
-                        name="tipoTarifa"
-                        value={formData.tipoTarifa}
-                        onChange={handleInputChange}
-                        disabled={loading || (formData.codigoImpuesto !== '01' && formData.codigoImpuesto !== '07')}
-                      >
-                        <option value="">Seleccionar tipo</option>
-                        {TIPOS_TARIFA.map((tipo) => (
-                          <option key={tipo.value} value={tipo.value}>
-                            {tipo.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className={styles.formGroup}>
-                      <label htmlFor="tarifa">Tarifa:</label>
-                      <div className={styles.inputWithIcon}>
-                        <input
-                          type="number"
-                          id="tarifa"
-                          name="tarifa"
-                          value={formData.tarifa}
-                          onChange={handleInputChange}
-                          disabled={loading || formData.codigoImpuesto === '01' || formData.codigoImpuesto === '07'}
-                          placeholder="0"
-                          min="0"
-                          step="0.01"
-                        />
-                        <span className={styles.inputIcon}>%</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={styles.formRow}>
-                    <div className={styles.formGroup}>
-                      <label htmlFor="montoImpuesto">Monto:</label>
-                      <input
-                        type="text"
-                        id="montoImpuesto"
-                        name="montoImpuesto"
-                        value={montoImpuesto.toFixed(2)}
-                        disabled
-                        readOnly
-                        className={styles.infoField}
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Información de impuesto específico */}
-            {formData.tieneImpuesto && (
-              <div className={styles.subsubsection}>
-                <div className={styles.checkboxGroup}>
-                  <input
-                    type="checkbox"
-                    id="esEspecifico"
-                    name="esEspecifico"
-                    checked={formData.esEspecifico}
-                    onChange={handleInputChange}
-                    disabled={loading}
-                  />
-                  <label htmlFor="esEspecifico">¿Específico?</label>
-                </div>
-
-                {formData.esEspecifico && (
-                  <div className={styles.formRow}>
-                    <div className={styles.formGroup}>
-                      <label htmlFor="porcentajeEspecifico">Porcentaje:</label>
-                      <div className={styles.inputWithIcon}>
-                        <input
-                          type="number"
-                          id="porcentajeEspecifico"
-                          name="porcentajeEspecifico"
-                          value={formData.porcentajeEspecifico}
-                          onChange={handleInputChange}
-                          disabled={loading}
-                          placeholder="0"
-                          min="0"
-                          step="0.01"
-                        />
-                        <span className={styles.inputIcon}>%</span>
-                      </div>
-                    </div>
-
-                    <div className={styles.formGroup}>
-                      <label htmlFor="impuestoPorUnidad">Impuesto por Unidad:</label>
-                      <input
-                        type="number"
-                        id="impuestoPorUnidad"
-                        name="impuestoPorUnidad"
-                        value={formData.impuestoPorUnidad}
-                        onChange={handleInputChange}
-                        disabled={loading}
-                        placeholder="0.00"
-                        min="0"
-                        step="0.01"
-                      />
-                    </div>
-
-                    <div className={styles.formGroup}>
-                      <label htmlFor="cantidadUnidadMedida">Cantidad unidad de medida:</label>
-                      <input
-                        type="number"
-                        id="cantidadUnidadMedida"
-                        name="cantidadUnidadMedida"
-                        value={formData.cantidadUnidadMedida}
-                        onChange={handleInputChange}
-                        disabled={loading}
-                        placeholder="0"
-                        min="0"
-                        step="0.01"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {formData.esEspecifico && (
-                  <div className={styles.formRow}>
-                    <div className={styles.formGroup}>
-                      <label htmlFor="volumenPorUnidadConsumo">Volumen por Unidad de consumo:</label>
-                      <input
-                        type="number"
-                        id="volumenPorUnidadConsumo"
-                        name="volumenPorUnidadConsumo"
-                        value={formData.volumenPorUnidadConsumo}
-                        onChange={handleInputChange}
-                        disabled={loading}
-                        placeholder="0"
-                        min="0"
-                        step="0.01"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Información de exoneración */}
-            {formData.tieneImpuesto && (
-              <div className={styles.subsubsection}>
-                <div className={styles.checkboxGroup}>
-                  <input
-                    type="checkbox"
-                    id="tieneExoneracion"
-                    name="tieneExoneracion"
-                    checked={formData.tieneExoneracion}
-                    onChange={handleInputChange}
-                    disabled={loading}
-                  />
-                  <label htmlFor="tieneExoneracion">¿Exoneración?</label>
-                </div>
-
-                {formData.tieneExoneracion && (
+                {productosSurtido.length > 0 && (
                   <>
-                    <div className={styles.formRow}>
-                      <div className={styles.formGroup}>
-                        <label htmlFor="documentoExoneracion">Documento:</label>
-                        <select
-                          id="documentoExoneracion"
-                          name="documentoExoneracion"
-                          value={formData.documentoExoneracion}
-                          onChange={handleInputChange}
-                          disabled={loading}
-                        >
-                          <option value="">Seleccionar documento</option>
-                          {DOCUMENTOS_EXONERACION.map((doc) => (
-                            <option key={doc.value} value={doc.value}>
-                              {doc.label}
-                            </option>
+                    <div className={styles.summaryTableWrapper}>
+                      <table className={styles.summaryTable}>
+                        <thead>
+                          <tr>
+                            <th style={{ minWidth: '80px' }}>Eliminar</th>
+                            <th style={{ minWidth: '120px' }}>Código cabys</th>
+                            <th style={{ minWidth: '150px' }}>Título</th>
+                            <th style={{ minWidth: '200px' }}>Descripción</th>
+                            <th style={{ minWidth: '100px' }}>Tipo</th>
+                            <th style={{ minWidth: '100px' }}>Precio</th>
+                            <th style={{ minWidth: '90px' }}>Cantidad</th>
+                            <th style={{ minWidth: '130px' }}>Código comercial</th>
+                            <th style={{ minWidth: '150px' }}>Tipo código comercial</th>
+                            <th style={{ minWidth: '130px' }}>Unidad de medida</th>
+                            <th style={{ minWidth: '180px' }}>Unidad de medida comercial</th>
+                            <th style={{ minWidth: '130px' }}>Monto (Descuento)</th>
+                            <th style={{ minWidth: '130px' }}>Código (Descuento)</th>
+                            <th style={{ minWidth: '150px' }}>Detalle (Descuento)</th>
+                            <th style={{ minWidth: '150px' }}>IVA Cobrado fábrica</th>
+                            <th style={{ minWidth: '130px' }}>Base imponible</th>
+                            <th style={{ minWidth: '130px' }}>Código (Impuesto)</th>
+                            <th style={{ minWidth: '150px' }}>Detalle (Impuesto)</th>
+                            <th style={{ minWidth: '150px' }}>Tipo tarifa (Impuesto)</th>
+                            <th style={{ minWidth: '130px' }}>Tarifa (Impuesto)</th>
+                            <th style={{ minWidth: '220px' }}>Cantidad unidad de medida (Específico)</th>
+                            <th style={{ minWidth: '150px' }}>Porcentaje (Específico)</th>
+                            <th style={{ minWidth: '100px' }}>Proporción</th>
+                            <th style={{ minWidth: '250px' }}>Volumen por unidad de consumo (Específico)</th>
+                            <th style={{ minWidth: '200px' }}>Impuesto por unidad (Específico)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {productosSurtido.map((producto) => (
+                            <tr key={producto.id}>
+                              <td>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setProductosSurtido(prev => prev.filter(p => p.id !== producto.id))
+                                  }}
+                                  className={styles.summaryAction}
+                                  disabled={loading}
+                                >
+                                  Eliminar
+                                </button>
+                              </td>
+                              <td>{producto.cabys}</td>
+                              <td>{producto.titulo}</td>
+                              <td>{producto.descripcion}</td>
+                              <td>{producto.tipo}</td>
+                              <td>₡{producto.precio.toFixed(2)}</td>
+                              <td>{producto.cantidad}</td>
+                              <td>{producto.codigoComercial}</td>
+                              <td>{producto.tipoCodigoComercial}</td>
+                              <td>{producto.unidadMedida}</td>
+                              <td>{producto.unidadMedidaComercial}</td>
+                              <td>₡{producto.montoDescuento.toFixed(2)}</td>
+                              <td>{producto.codigoDescuento}</td>
+                              <td>{producto.detalleDescuento}</td>
+                              <td>₡{producto.ivaCobradoFabrica.toFixed(2)}</td>
+                              <td>₡{producto.baseImponible.toFixed(2)}</td>
+                              <td>{producto.codigoImpuesto}</td>
+                              <td>{producto.detalleImpuesto}</td>
+                              <td>{producto.tipoTarifa}</td>
+                              <td>{producto.tarifa}%</td>
+                              <td>{producto.cantidadUnidadMedida}</td>
+                              <td>{producto.porcentajeEspecifico}%</td>
+                              <td>{producto.proporcion}</td>
+                              <td>{producto.volumenPorUnidadConsumo}</td>
+                              <td>₡{producto.impuestoPorUnidad.toFixed(2)}</td>
+                            </tr>
                           ))}
-                        </select>
-                      </div>
-
-                      <div className={styles.formGroup}>
-                        <label htmlFor="detalleExoneracion">Detalle:</label>
-                        <input
-                          type="text"
-                          id="detalleExoneracion"
-                          name="detalleExoneracion"
-                          value={formData.detalleExoneracion}
-                          onChange={handleInputChange}
-                          disabled={loading}
-                          placeholder="Ingrese el detalle"
-                        />
-                      </div>
-
-                      <div className={styles.formGroup}>
-                        <label htmlFor="numeroDocumentoExoneracion">Núm. documento:</label>
-                        <input
-                          type="text"
-                          id="numeroDocumentoExoneracion"
-                          name="numeroDocumentoExoneracion"
-                          value={formData.numeroDocumentoExoneracion}
-                          onChange={handleInputChange}
-                          disabled
-                          readOnly
-                          className={styles.infoField}
-                          placeholder="0"
-                        />
-                      </div>
+                        </tbody>
+                      </table>
                     </div>
 
-                    <div className={styles.formRow}>
-                      <div className={styles.formGroup}>
-                        <label htmlFor="articuloExoneracion">Artículo:</label>
-                        <input
-                          type="text"
-                          id="articuloExoneracion"
-                          name="articuloExoneracion"
-                          value={formData.articuloExoneracion}
-                          onChange={handleInputChange}
-                          disabled={loading}
-                          placeholder="Ingrese el artículo"
-                        />
-                      </div>
-
-                      <div className={styles.formGroup}>
-                        <label htmlFor="incisoExoneracion">Inciso:</label>
-                        <input
-                          type="text"
-                          id="incisoExoneracion"
-                          name="incisoExoneracion"
-                          value={formData.incisoExoneracion}
-                          onChange={handleInputChange}
-                          disabled={loading}
-                          placeholder="Ingrese el inciso"
-                        />
-                      </div>
-
-                      <div className={styles.formGroup}>
-                        <label htmlFor="institucionExoneracion">Institución:</label>
-                        <select
-                          id="institucionExoneracion"
-                          name="institucionExoneracion"
-                          value={formData.institucionExoneracion}
-                          onChange={handleInputChange}
-                          disabled={loading}
-                        >
-                          <option value="">Seleccionar institución</option>
-                          {INSTITUCIONES.map((inst) => (
-                            <option key={inst.value} value={inst.value}>
-                              {inst.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className={styles.formGroup}>
-                        <label htmlFor="detalleInstitucionExoneracion">Detalle:</label>
-                        <input
-                          type="text"
-                          id="detalleInstitucionExoneracion"
-                          name="detalleInstitucionExoneracion"
-                          value={formData.detalleInstitucionExoneracion}
-                          onChange={handleInputChange}
-                          disabled={loading}
-                          placeholder="Ingrese el detalle"
-                        />
-                      </div>
-                    </div>
-
-                    <div className={styles.formRow}>
-                      <div className={styles.formGroup}>
-                        <label htmlFor="fechaAutorizacionExoneracion">Fecha Autorización:</label>
-                        <input
-                          type="date"
-                          id="fechaAutorizacionExoneracion"
-                          name="fechaAutorizacionExoneracion"
-                          value={formData.fechaAutorizacionExoneracion}
-                          onChange={handleInputChange}
-                          disabled={loading}
-                        />
-                      </div>
-
-                      <div className={styles.formGroup}>
-                        <label htmlFor="porcentajeExoneracion">Porc. exoneración:</label>
-                        <div className={styles.inputWithIcon}>
-                          <input
-                            type="number"
-                            id="porcentajeExoneracion"
-                            name="porcentajeExoneracion"
-                            value={formData.porcentajeExoneracion}
-                            onChange={handleInputChange}
-                            disabled={loading}
-                            placeholder="0"
-                            min="0"
-                            max="100"
-                            step="0.01"
-                          />
-                          <span className={styles.inputIcon}>%</span>
+                    <div className={styles.totalsGrid} style={{ marginTop: '20px' }}>
+                      <div className={styles.totalItem}>
+                        <div className={styles.totalLabel}>Total de descuentos</div>
+                        <div className={styles.totalValue}>
+                          ₡{productosSurtido.reduce((sum, p) => sum + p.montoDescuento, 0).toFixed(2)}
                         </div>
                       </div>
-
-                      <div className={styles.formGroup}>
-                        <label htmlFor="montoExoneracion">Monto:</label>
-                        <input
-                          type="text"
-                          id="montoExoneracion"
-                          name="montoExoneracion"
-                          value={montoExoneracion.toFixed(2)}
-                          disabled
-                          readOnly
-                          className={styles.infoField}
-                        />
+                      <div className={styles.totalItem}>
+                        <div className={styles.totalLabel}>Total de impuestos</div>
+                        <div className={styles.totalValue}>
+                          ₡{productosSurtido.reduce((sum, p) => sum + p.ivaCobradoFabrica, 0).toFixed(2)}
+                        </div>
+                      </div>
+                      <div className={styles.totalItem}>
+                        <div className={styles.totalLabel}>Total del surtido</div>
+                        <div className={styles.totalValue}>
+                          ₡{productosSurtido.reduce((sum, p) => {
+                            const subtotal = (p.precio * p.cantidad) - p.montoDescuento
+                            const impuesto = p.ivaCobradoFabrica
+                            return sum + subtotal + impuesto
+                          }, 0).toFixed(2)}
+                        </div>
                       </div>
                     </div>
                   </>
                 )}
               </div>
+            ) : (
+              <div className={styles.section}>
+                <h3 className={styles.sectionTitle}>Información para facturación</h3>
+
+                {/* Subsección: Información general */}
+                <div className={styles.subsection}>
+                  <h4 className={styles.subsectionTitle}>Información general</h4>
+
+                  <div className={styles.formRow}>
+                    <div className={styles.formGroup}>
+                      <label htmlFor="partidaArancelaria">Partida Arancelaria:</label>
+                      <input
+                        type="text"
+                        id="partidaArancelaria"
+                        name="partidaArancelaria"
+                        value={formData.partidaArancelaria}
+                        onChange={handleInputChange}
+                        disabled={loading}
+                        placeholder="Ingrese la partida arancelaria"
+                      />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                      <label htmlFor="codigoComercial">Código Comercial:</label>
+                      <input
+                        type="text"
+                        id="codigoComercial"
+                        name="codigoComercial"
+                        value={formData.codigoComercial}
+                        onChange={handleInputChange}
+                        disabled={loading}
+                        placeholder="Ingrese el código comercial"
+                      />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                      <label htmlFor="tipoCodigoComercial">Tipo de cód. Comercial:</label>
+                      <select
+                        id="tipoCodigoComercial"
+                        name="tipoCodigoComercial"
+                        value={formData.tipoCodigoComercial}
+                        onChange={handleInputChange}
+                        disabled={loading}
+                      >
+                        <option value="">Seleccionar tipo</option>
+                        <option value="01">01 - Código del producto del vendedor</option>
+                        <option value="02">02 - Código del producto del comprador</option>
+                        <option value="03">03 - Código del producto asignado por la industria</option>
+                        <option value="04">04 - Código uso interno</option>
+                        <option value="99">99 - Otros</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Subsección: Datos del producto o servicio */}
+                <div className={styles.subsection}>
+                  <h4 className={styles.subsectionTitle}>Datos del producto o servicio</h4>
+
+                  {/* Información general */}
+                  <div className={styles.subsubsection}>
+                    <h5 className={styles.subsubsectionTitle}>Información general</h5>
+
+                    <div className={styles.formRow}>
+                      <div className={styles.formGroup}>
+                        <label htmlFor="unidadMedida">Unidad medida:</label>
+                        <select
+                          id="unidadMedida"
+                          name="unidadMedida"
+                          value={formData.unidadMedida}
+                          onChange={handleInputChange}
+                          disabled={loading}
+                        >
+                          <option value="">Seleccionar unidad</option>
+                          {UNIDADES_MEDIDA.map((unidad) => (
+                            <option key={unidad.value} value={unidad.value}>
+                              {unidad.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className={styles.formGroup}>
+                        <label htmlFor="unidadMedidaComercial">Unidad medida comercial:</label>
+                        <input
+                          type="text"
+                          id="unidadMedidaComercial"
+                          name="unidadMedidaComercial"
+                          value={formData.unidadMedidaComercial}
+                          onChange={handleInputChange}
+                          disabled={loading}
+                          placeholder="Ingrese la unidad medida comercial"
+                        />
+                      </div>
+
+                      <div className={styles.formGroup}>
+                        <label htmlFor="tipoTransaccion">Tipo transacción:</label>
+                        <select
+                          id="tipoTransaccion"
+                          name="tipoTransaccion"
+                          value={formData.tipoTransaccion}
+                          onChange={handleInputChange}
+                          disabled={loading}
+                        >
+                          <option value="">Seleccionar tipo</option>
+                          {TIPOS_TRANSACCION.map((tipo) => (
+                            <option key={tipo.value} value={tipo.value}>
+                              {tipo.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Información de medicamento */}
+                  <div className={styles.subsubsection}>
+                    <div className={styles.checkboxGroup}>
+                      <input
+                        type="checkbox"
+                        id="esMedicamento"
+                        name="esMedicamento"
+                        checked={formData.esMedicamento}
+                        onChange={handleInputChange}
+                        disabled={loading}
+                      />
+                      <label htmlFor="esMedicamento">¿Medicamento?</label>
+                    </div>
+
+                    {formData.esMedicamento && (
+                      <div className={styles.formRow}>
+                        <div className={styles.formGroup}>
+                          <label htmlFor="registro">Registro:</label>
+                          <input
+                            type="text"
+                            id="registro"
+                            name="registro"
+                            value={formData.registro}
+                            onChange={handleInputChange}
+                            disabled={loading}
+                            placeholder="Ingrese el registro"
+                          />
+                        </div>
+
+                        <div className={styles.formGroup}>
+                          <label htmlFor="formaFarmaceutica">Forma farmacéutica:</label>
+                          <select
+                            id="formaFarmaceutica"
+                            name="formaFarmaceutica"
+                            value={formData.formaFarmaceutica}
+                            onChange={handleInputChange}
+                            disabled={loading}
+                          >
+                            <option value="">Seleccionar forma</option>
+                            {FORMAS_FARMACEUTICAS.map((forma) => (
+                              <option key={forma.value} value={forma.value}>
+                                {forma.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Información de VIN o serie */}
+                  <div className={styles.subsubsection}>
+                    <div className={styles.checkboxGroup}>
+                      <input
+                        type="checkbox"
+                        id="esVinSerie"
+                        name="esVinSerie"
+                        checked={formData.esVinSerie}
+                        onChange={handleInputChange}
+                        disabled={loading}
+                      />
+                      <label htmlFor="esVinSerie">¿VIN o serie?</label>
+                    </div>
+
+                    {formData.esVinSerie && (
+                      <div className={styles.formGroup}>
+                        <label htmlFor="numeroVinSerie">Número:</label>
+                        <input
+                          type="text"
+                          id="numeroVinSerie"
+                          name="numeroVinSerie"
+                          value={formData.numeroVinSerie}
+                          onChange={handleInputChange}
+                          disabled={loading}
+                          placeholder="Ingrese el número de VIN o serie"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Información de descuento */}
+                  <div className={styles.subsubsection}>
+                    <div className={styles.checkboxGroup}>
+                      <input
+                        type="checkbox"
+                        id="tieneDescuento"
+                        name="tieneDescuento"
+                        checked={formData.tieneDescuento}
+                        onChange={handleInputChange}
+                        disabled={loading}
+                      />
+                      <label htmlFor="tieneDescuento">¿Descuento?</label>
+                    </div>
+
+                    {formData.tieneDescuento && (
+                      <>
+                        <div className={styles.formRow}>
+                          <div className={styles.formGroup}>
+                            <label htmlFor="naturalezaDescuento">Naturaleza:</label>
+                            <input
+                              type="text"
+                              id="naturalezaDescuento"
+                              name="naturalezaDescuento"
+                              value={formData.naturalezaDescuento}
+                              onChange={handleInputChange}
+                              disabled={loading}
+                              placeholder="Ingrese la naturaleza del descuento"
+                            />
+                          </div>
+
+                          <div className={styles.formGroup}>
+                            <label htmlFor="tipoDescuento">Tipo de descuento:</label>
+                            <select
+                              id="tipoDescuento"
+                              name="tipoDescuento"
+                              value={formData.tipoDescuento}
+                              onChange={handleInputChange}
+                              disabled={loading}
+                            >
+                              <option value="">Seleccionar tipo</option>
+                              <option value="Fijo">Fijo</option>
+                              <option value="Porcentual">Porcentual</option>
+                            </select>
+                          </div>
+
+                          <div className={styles.formGroup}>
+                            <label htmlFor="montoDescuento">Monto:</label>
+                            <div className={styles.inputWithIcon}>
+                              <input
+                                type="number"
+                                id="montoDescuento"
+                                name="montoDescuento"
+                                value={formData.montoDescuento}
+                                onChange={handleInputChange}
+                                disabled={loading}
+                                placeholder="0"
+                                min="0"
+                                step="0.01"
+                              />
+                              <span className={styles.inputIcon}>
+                                {formData.tipoDescuento === 'Porcentual' ? '%' : '₡'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className={styles.formRow}>
+                          <div className={styles.formGroup}>
+                            <label htmlFor="codigoDescuento">Código del descuento:</label>
+                            <select
+                              id="codigoDescuento"
+                              name="codigoDescuento"
+                              value={formData.codigoDescuento}
+                              onChange={handleInputChange}
+                              disabled={loading}
+                            >
+                              <option value="">Seleccionar código</option>
+                              {CODIGOS_DESCUENTO.map((codigo) => (
+                                <option key={codigo.value} value={codigo.value}>
+                                  {codigo.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className={styles.formGroup}>
+                            <label htmlFor="detalleDescuento">Detalle:</label>
+                            <input
+                              type="text"
+                              id="detalleDescuento"
+                              name="detalleDescuento"
+                              value={formData.detalleDescuento}
+                              onChange={handleInputChange}
+                              disabled={loading || formData.codigoDescuento !== '99'}
+                              placeholder={formData.codigoDescuento !== '99' ? 'Solo disponible para "Otros descuentos"' : 'Ingrese el detalle del descuento'}
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Base imponible y Subtotal */}
+                  <div className={styles.subsubsection}>
+                    <div className={styles.formRow}>
+                      <div className={styles.formGroup}>
+                        <label htmlFor="baseImponible">Base imponible:</label>
+                        <input
+                          type="number"
+                          id="baseImponible"
+                          name="baseImponible"
+                          value={formData.baseImponible}
+                          onChange={handleInputChange}
+                          disabled={loading}
+                          placeholder="0.00"
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+
+                      <div className={styles.formGroup}>
+                        <label htmlFor="subtotal">Subtotal:</label>
+                        <input
+                          type="text"
+                          id="subtotal"
+                          name="subtotal"
+                          value={subtotal.toFixed(2)}
+                          disabled
+                          readOnly
+                          className={styles.infoField}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Subsección: Información del impuesto */}
+                <div className={styles.subsection}>
+                  <h4 className={styles.subsectionTitle}>Información del impuesto</h4>
+
+                  {/* Información de impuesto */}
+                  <div className={styles.subsubsection}>
+                    <div className={styles.checkboxGroup}>
+                      <input
+                        type="checkbox"
+                        id="tieneImpuesto"
+                        name="tieneImpuesto"
+                        checked={formData.tieneImpuesto}
+                        onChange={handleInputChange}
+                        disabled={loading}
+                      />
+                      <label htmlFor="tieneImpuesto">¿Impuesto?</label>
+                    </div>
+
+                    {formData.tieneImpuesto && (
+                      <>
+                        <div className={styles.formRow}>
+                          <div className={styles.formGroup}>
+                            <label htmlFor="codigoImpuesto">Código:</label>
+                            <select
+                              id="codigoImpuesto"
+                              name="codigoImpuesto"
+                              value={formData.codigoImpuesto}
+                              onChange={handleInputChange}
+                              disabled={loading}
+                            >
+                              <option value="">Seleccionar código</option>
+                              {CODIGOS_IMPUESTO.map((codigo) => (
+                                <option key={codigo.value} value={codigo.value}>
+                                  {codigo.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className={styles.formGroup}>
+                            <label htmlFor="detalleImpuesto">Detalle:</label>
+                            <input
+                              type="text"
+                              id="detalleImpuesto"
+                              name="detalleImpuesto"
+                              value={formData.detalleImpuesto}
+                              onChange={handleInputChange}
+                              disabled={loading || formData.codigoImpuesto !== '99'}
+                              placeholder={formData.codigoImpuesto !== '99' ? 'Solo disponible para "Otros"' : 'Ingrese el detalle del impuesto'}
+                            />
+                          </div>
+
+                          <div className={styles.formGroup}>
+                            <label htmlFor="tipoTarifa">Tipo Tarifa:</label>
+                            <select
+                              id="tipoTarifa"
+                              name="tipoTarifa"
+                              value={formData.tipoTarifa}
+                              onChange={handleInputChange}
+                              disabled={loading || (formData.codigoImpuesto !== '01' && formData.codigoImpuesto !== '07')}
+                            >
+                              <option value="">Seleccionar tipo</option>
+                              {TIPOS_TARIFA.map((tipo) => (
+                                <option key={tipo.value} value={tipo.value}>
+                                  {tipo.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className={styles.formGroup}>
+                            <label htmlFor="tarifa">Tarifa:</label>
+                            <div className={styles.inputWithIcon}>
+                              <input
+                                type="number"
+                                id="tarifa"
+                                name="tarifa"
+                                value={formData.tarifa}
+                                onChange={handleInputChange}
+                                disabled={loading || formData.codigoImpuesto === '01' || formData.codigoImpuesto === '07'}
+                                placeholder="0"
+                                min="0"
+                                step="0.01"
+                              />
+                              <span className={styles.inputIcon}>%</span>
+                            </div>
+                          </div>
+
+                          <div className={styles.formGroup}>
+                            <label htmlFor="factorCalculoIVA">Factor Calculo IVA:</label>
+                            <input
+                              type="number"
+                              id="factorCalculoIVA"
+                              name="factorCalculoIVA"
+                              value={formData.factorCalculoIVA}
+                              onChange={handleInputChange}
+                              disabled={loading}
+                              placeholder="0.00"
+                              min="0"
+                              step="0.01"
+                            />
+                          </div>
+                        </div>
+
+                        <div className={styles.formRow}>
+                          <div className={styles.formGroup}>
+                            <label htmlFor="montoImpuesto">Monto:</label>
+                            <input
+                              type="text"
+                              id="montoImpuesto"
+                              name="montoImpuesto"
+                              value={montoImpuesto.toFixed(2)}
+                              disabled
+                              readOnly
+                              className={styles.infoField}
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Información de impuesto específico */}
+                  {formData.tieneImpuesto && (
+                    <div className={styles.subsubsection}>
+                      <div className={styles.checkboxGroup}>
+                        <input
+                          type="checkbox"
+                          id="esEspecifico"
+                          name="esEspecifico"
+                          checked={formData.esEspecifico}
+                          onChange={handleInputChange}
+                          disabled={loading}
+                        />
+                        <label htmlFor="esEspecifico">¿Específico?</label>
+                      </div>
+
+                      {formData.esEspecifico && (
+                        <div className={styles.formRow}>
+                          <div className={styles.formGroup}>
+                            <label htmlFor="porcentajeEspecifico">Porcentaje:</label>
+                            <div className={styles.inputWithIcon}>
+                              <input
+                                type="number"
+                                id="porcentajeEspecifico"
+                                name="porcentajeEspecifico"
+                                value={formData.porcentajeEspecifico}
+                                onChange={handleInputChange}
+                                disabled={loading}
+                                placeholder="0"
+                                min="0"
+                                step="0.01"
+                              />
+                              <span className={styles.inputIcon}>%</span>
+                            </div>
+                          </div>
+
+                          <div className={styles.formGroup}>
+                            <label htmlFor="impuestoPorUnidad">Impuesto por Unidad:</label>
+                            <input
+                              type="number"
+                              id="impuestoPorUnidad"
+                              name="impuestoPorUnidad"
+                              value={formData.impuestoPorUnidad}
+                              onChange={handleInputChange}
+                              disabled={loading}
+                              placeholder="0.00"
+                              min="0"
+                              step="0.01"
+                            />
+                          </div>
+
+                          <div className={styles.formGroup}>
+                            <label htmlFor="cantidadUnidadMedida">Cantidad unidad de medida:</label>
+                            <input
+                              type="number"
+                              id="cantidadUnidadMedida"
+                              name="cantidadUnidadMedida"
+                              value={formData.cantidadUnidadMedida}
+                              onChange={handleInputChange}
+                              disabled={loading}
+                              placeholder="0"
+                              min="0"
+                              step="0.01"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {formData.esEspecifico && (
+                        <div className={styles.formRow}>
+                          <div className={styles.formGroup}>
+                            <label htmlFor="volumenPorUnidadConsumo">Volumen por Unidad de consumo:</label>
+                            <input
+                              type="number"
+                              id="volumenPorUnidadConsumo"
+                              name="volumenPorUnidadConsumo"
+                              value={formData.volumenPorUnidadConsumo}
+                              onChange={handleInputChange}
+                              disabled={loading}
+                              placeholder="0"
+                              min="0"
+                              step="0.01"
+                            />
+                          </div>
+
+                          <div className={styles.formGroup}>
+                            <label htmlFor="proporcion">Proporción:</label>
+                            <input
+                              type="number"
+                              id="proporcion"
+                              name="proporcion"
+                              value={formData.proporcion}
+                              onChange={handleInputChange}
+                              disabled={loading}
+                              placeholder="0"
+                              min="0"
+                              step="0.01"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Información de exoneración */}
+                  {formData.tieneImpuesto && (
+                    <div className={styles.subsubsection}>
+                      <div className={styles.checkboxGroup}>
+                        <input
+                          type="checkbox"
+                          id="tieneExoneracion"
+                          name="tieneExoneracion"
+                          checked={formData.tieneExoneracion}
+                          onChange={handleInputChange}
+                          disabled={loading}
+                        />
+                        <label htmlFor="tieneExoneracion">¿Exoneración?</label>
+                      </div>
+
+                      {formData.tieneExoneracion && (
+                        <>
+                          <div className={styles.formRow}>
+                            <div className={styles.formGroup}>
+                              <label htmlFor="documentoExoneracion">Documento:</label>
+                              <select
+                                id="documentoExoneracion"
+                                name="documentoExoneracion"
+                                value={formData.documentoExoneracion}
+                                onChange={handleInputChange}
+                                disabled={loading}
+                              >
+                                <option value="">Seleccionar documento</option>
+                                {DOCUMENTOS_EXONERACION.map((doc) => (
+                                  <option key={doc.value} value={doc.value}>
+                                    {doc.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div className={styles.formGroup}>
+                              <label htmlFor="detalleExoneracion">Detalle:</label>
+                              <input
+                                type="text"
+                                id="detalleExoneracion"
+                                name="detalleExoneracion"
+                                value={formData.detalleExoneracion}
+                                onChange={handleInputChange}
+                                disabled={loading}
+                                placeholder="Ingrese el detalle"
+                              />
+                            </div>
+
+                            <div className={styles.formGroup}>
+                              <label htmlFor="numeroDocumentoExoneracion">Núm. documento:</label>
+                              <input
+                                type="text"
+                                id="numeroDocumentoExoneracion"
+                                name="numeroDocumentoExoneracion"
+                                value={formData.numeroDocumentoExoneracion}
+                                onChange={handleInputChange}
+                                disabled
+                                readOnly
+                                className={styles.infoField}
+                                placeholder="0"
+                              />
+                            </div>
+                          </div>
+
+                          <div className={styles.formRow}>
+                            <div className={styles.formGroup}>
+                              <label htmlFor="articuloExoneracion">Artículo:</label>
+                              <input
+                                type="text"
+                                id="articuloExoneracion"
+                                name="articuloExoneracion"
+                                value={formData.articuloExoneracion}
+                                onChange={handleInputChange}
+                                disabled={loading}
+                                placeholder="Ingrese el artículo"
+                              />
+                            </div>
+
+                            <div className={styles.formGroup}>
+                              <label htmlFor="incisoExoneracion">Inciso:</label>
+                              <input
+                                type="text"
+                                id="incisoExoneracion"
+                                name="incisoExoneracion"
+                                value={formData.incisoExoneracion}
+                                onChange={handleInputChange}
+                                disabled={loading}
+                                placeholder="Ingrese el inciso"
+                              />
+                            </div>
+
+                            <div className={styles.formGroup}>
+                              <label htmlFor="institucionExoneracion">Institución:</label>
+                              <select
+                                id="institucionExoneracion"
+                                name="institucionExoneracion"
+                                value={formData.institucionExoneracion}
+                                onChange={handleInputChange}
+                                disabled={loading}
+                              >
+                                <option value="">Seleccionar institución</option>
+                                {INSTITUCIONES.map((inst) => (
+                                  <option key={inst.value} value={inst.value}>
+                                    {inst.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div className={styles.formGroup}>
+                              <label htmlFor="detalleInstitucionExoneracion">Detalle:</label>
+                              <input
+                                type="text"
+                                id="detalleInstitucionExoneracion"
+                                name="detalleInstitucionExoneracion"
+                                value={formData.detalleInstitucionExoneracion}
+                                onChange={handleInputChange}
+                                disabled={loading}
+                                placeholder="Ingrese el detalle"
+                              />
+                            </div>
+                          </div>
+
+                          <div className={styles.formRow}>
+                            <div className={styles.formGroup}>
+                              <label htmlFor="fechaAutorizacionExoneracion">Fecha Autorización:</label>
+                              <input
+                                type="date"
+                                id="fechaAutorizacionExoneracion"
+                                name="fechaAutorizacionExoneracion"
+                                value={formData.fechaAutorizacionExoneracion}
+                                onChange={handleInputChange}
+                                disabled={loading}
+                              />
+                            </div>
+
+                            <div className={styles.formGroup}>
+                              <label htmlFor="porcentajeExoneracion">Porc. exoneración:</label>
+                              <div className={styles.inputWithIcon}>
+                                <input
+                                  type="number"
+                                  id="porcentajeExoneracion"
+                                  name="porcentajeExoneracion"
+                                  value={formData.porcentajeExoneracion}
+                                  onChange={handleInputChange}
+                                  disabled={loading}
+                                  placeholder="0"
+                                  min="0"
+                                  max="100"
+                                  step="0.01"
+                                />
+                                <span className={styles.inputIcon}>%</span>
+                              </div>
+                            </div>
+
+                            <div className={styles.formGroup}>
+                              <label htmlFor="montoExoneracion">Monto:</label>
+                              <input
+                                type="text"
+                                id="montoExoneracion"
+                                name="montoExoneracion"
+                                value={montoExoneracion.toFixed(2)}
+                                disabled
+                                readOnly
+                                className={styles.infoField}
+                              />
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Campos calculados finales */}
+                  <div className={styles.subsubsection}>
+                    <div className={styles.formRow}>
+                      <div className={styles.formGroup}>
+                        <label htmlFor="montoExportacion">Monto exportación:</label>
+                        <input
+                          type="number"
+                          id="montoExportacion"
+                          name="montoExportacion"
+                          value={formData.montoExportacion}
+                          onChange={handleInputChange}
+                          disabled={loading}
+                          placeholder="0.00"
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+
+                      <div className={styles.formGroup}>
+                        <label htmlFor="impuestoAsumidoEmisor">Impuesto asumido por emisor o fábrica:</label>
+                        <input
+                          type="text"
+                          id="impuestoAsumidoEmisor"
+                          name="impuestoAsumidoEmisor"
+                          value={impuestoAsumidoEmisor.toFixed(2)}
+                          disabled
+                          readOnly
+                          className={styles.infoField}
+                        />
+                      </div>
+
+                      <div className={styles.formGroup}>
+                        <label htmlFor="impuestoNeto">Impuesto neto:</label>
+                        <input
+                          type="text"
+                          id="impuestoNeto"
+                          name="impuestoNeto"
+                          value={impuestoNeto.toFixed(2)}
+                          disabled
+                          readOnly
+                          className={styles.infoField}
+                        />
+                      </div>
+                    </div>
+
+                    <div className={styles.formRow}>
+                      <div className={styles.formGroup}>
+                        <label htmlFor="montoTotalLinea">Monto total de la línea:</label>
+                        <input
+                          type="text"
+                          id="montoTotalLinea"
+                          name="montoTotalLinea"
+                          value={montoTotalLinea.toFixed(2)}
+                          disabled
+                          readOnly
+                          className={styles.infoField}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
-
-            {/* Campos calculados finales */}
-            <div className={styles.subsubsection}>
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label htmlFor="montoExportacion">Monto exportación:</label>
-                  <input
-                    type="number"
-                    id="montoExportacion"
-                    name="montoExportacion"
-                    value={formData.montoExportacion}
-                    onChange={handleInputChange}
-                    disabled={loading}
-                    placeholder="0.00"
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label htmlFor="impuestoAsumidoEmisor">Impuesto asumido por emisor o fábrica:</label>
-                  <input
-                    type="text"
-                    id="impuestoAsumidoEmisor"
-                    name="impuestoAsumidoEmisor"
-                    value={impuestoAsumidoEmisor.toFixed(2)}
-                    disabled
-                    readOnly
-                    className={styles.infoField}
-                  />
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label htmlFor="impuestoNeto">Impuesto neto:</label>
-                  <input
-                    type="text"
-                    id="impuestoNeto"
-                    name="impuestoNeto"
-                    value={impuestoNeto.toFixed(2)}
-                    disabled
-                    readOnly
-                    className={styles.infoField}
-                  />
-                </div>
-              </div>
-
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label htmlFor="montoTotalLinea">Monto total de la línea:</label>
-                  <input
-                    type="text"
-                    id="montoTotalLinea"
-                    name="montoTotalLinea"
-                    value={montoTotalLinea.toFixed(2)}
-                    disabled
-                    readOnly
-                    className={styles.infoField}
-                  />
-                </div>
-              </div>
-            </div>
-            </div>
-          </div>
-          )}
           </form>
         </div>
 
@@ -2048,6 +2129,7 @@ const InventarioModal: React.FC<InventarioModalProps> = ({ inventario, channelId
           channelId={channelId}
           onClose={() => setShowSurtidoModal(false)}
           onAdd={handleAddProductoSurtido}
+          productosSurtidoExistentes={productosSurtido}
         />
       )}
     </div>

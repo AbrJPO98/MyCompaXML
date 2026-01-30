@@ -18,6 +18,16 @@ interface DescripcionPersonalizada {
   importado: string
   act_eco: string
   channel_id: string
+  otras_ventas_sin_iva_con_derecho_credito_pleno?: {
+    total_ventas_exentas: number
+    total_ventas_exonerados: number
+    total_ventas_no_sujetas: number
+  }
+  otras_ventas_sin_iva_sin_derecho_credito?: {
+    total_ventas_exentas: number
+    total_ventas_exonerados: number
+    total_ventas_no_sujetas: number
+  }
 }
 
 interface Actividad {
@@ -35,9 +45,9 @@ interface DescripcionPersonalizadaFormModalProps {
   onShowProgress?: (show: boolean, current: number, total: number, title: string) => void
 }
 
-const DescripcionPersonalizadaFormModal: React.FC<DescripcionPersonalizadaFormModalProps> = ({ 
-  descripcion, 
-  channelId, 
+const DescripcionPersonalizadaFormModal: React.FC<DescripcionPersonalizadaFormModalProps> = ({
+  descripcion,
+  channelId,
   onClose,
   onShowProgress
 }) => {
@@ -53,13 +63,23 @@ const DescripcionPersonalizadaFormModal: React.FC<DescripcionPersonalizadaFormMo
     categoria: '',
     act_eco: '',
     vidaUtil: '',
-    importado: ''
+    importado: '',
+    otras_ventas_sin_iva_con_derecho_credito_pleno: {
+      total_ventas_exentas: 0,
+      total_ventas_exonerados: 0,
+      total_ventas_no_sujetas: 0
+    },
+    otras_ventas_sin_iva_sin_derecho_credito: {
+      total_ventas_exentas: 0,
+      total_ventas_exonerados: 0,
+      total_ventas_no_sujetas: 0
+    }
   })
-  
+
   const [loading, setLoading] = useState(false)
   const [loadingData, setLoadingData] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  
+
   // Options for select inputs
   const [descripGasInvOptions, setDescripGasInvOptions] = useState<string[]>([])
   const [bienoservOptions, setBienoservOptions] = useState<string[]>([])
@@ -73,7 +93,7 @@ const DescripcionPersonalizadaFormModal: React.FC<DescripcionPersonalizadaFormMo
   const [newTipo, setNewTipo] = useState('')
   const [showNewCategoria, setShowNewCategoria] = useState(false)
   const [newCategoria, setNewCategoria] = useState('')
-  
+
   // CABYS selection states
   const [showCabysModal, setShowCabysModal] = useState(false)
   const [showCabysEditModal, setShowCabysEditModal] = useState(false)
@@ -92,7 +112,17 @@ const DescripcionPersonalizadaFormModal: React.FC<DescripcionPersonalizadaFormMo
         categoria: descripcion.categoria || '',
         act_eco: descripcion.act_eco || '',
         vidaUtil: descripcion.vidaUtil || '',
-        importado: descripcion.importado || ''
+        importado: descripcion.importado || '',
+        otras_ventas_sin_iva_con_derecho_credito_pleno: descripcion.otras_ventas_sin_iva_con_derecho_credito_pleno || {
+          total_ventas_exentas: 0,
+          total_ventas_exonerados: 0,
+          total_ventas_no_sujetas: 0
+        },
+        otras_ventas_sin_iva_sin_derecho_credito: descripcion.otras_ventas_sin_iva_sin_derecho_credito || {
+          total_ventas_exentas: 0,
+          total_ventas_exonerados: 0,
+          total_ventas_no_sujetas: 0
+        }
       })
       setSelectedCabysInfo(descripcion.codigo || '')
     }
@@ -173,7 +203,7 @@ const DescripcionPersonalizadaFormModal: React.FC<DescripcionPersonalizadaFormMo
       codigo: cabysItem.codigo
     }))
     setSelectedCabysInfo(`${cabysItem.codigo} - ${cabysItem.descripOf || cabysItem.descripPer || 'Sin descripción'}`)
-    
+
     // Clear CABYS error if it exists
     if (errors.codigo) {
       setErrors(prev => ({
@@ -217,7 +247,7 @@ const DescripcionPersonalizadaFormModal: React.FC<DescripcionPersonalizadaFormMo
       codigo: updatedCabys.codigo
     }))
     setSelectedCabysInfo(`${updatedCabys.codigo} - ${updatedCabys.descripPer || updatedCabys.descripOf || 'Sin descripción'}`)
-    
+
     // Clear CABYS error if it exists
     if (errors.codigo) {
       setErrors(prev => ({
@@ -242,7 +272,7 @@ const DescripcionPersonalizadaFormModal: React.FC<DescripcionPersonalizadaFormMo
       ...prev,
       [name]: value
     }))
-    
+
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
@@ -250,6 +280,20 @@ const DescripcionPersonalizadaFormModal: React.FC<DescripcionPersonalizadaFormMo
         [name]: ''
       }))
     }
+  }
+
+  const handleNestedInputChange = (
+    parentField: 'otras_ventas_sin_iva_con_derecho_credito_pleno' | 'otras_ventas_sin_iva_sin_derecho_credito',
+    childField: 'total_ventas_exentas' | 'total_ventas_exonerados' | 'total_ventas_no_sujetas',
+    value: number
+  ) => {
+    setFormData(prev => ({
+      ...prev,
+      [parentField]: {
+        ...prev[parentField],
+        [childField]: value
+      }
+    }))
   }
 
   const handleAddNewOption = (type: 'gastoInv' | 'tipo' | 'categoria', value: string) => {
@@ -308,7 +352,7 @@ const DescripcionPersonalizadaFormModal: React.FC<DescripcionPersonalizadaFormMo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) {
       return
     }
@@ -333,7 +377,7 @@ const DescripcionPersonalizadaFormModal: React.FC<DescripcionPersonalizadaFormMo
         try {
           const codigo = formData.codigo
           const desc_fact_slug = generateSlug(formData.desc_fact || '')
-          
+
           if (codigo && desc_fact_slug) {
             // Buscar facturas con este código CABYS y desc_fact en la categorización
             const facturasResponse = await fetch(`/api/facturas?channelId=${channelId}`)
@@ -344,28 +388,28 @@ const DescripcionPersonalizadaFormModal: React.FC<DescripcionPersonalizadaFormMo
               // Filtrar facturas que contengan el código CABYS y desc_fact en su categorización
               const facturasConDescripcion = facturas.filter((factura: any) => {
                 if (!factura.categorizacion) return false
-                
+
                 // Si categorizacion es un array
                 if (Array.isArray(factura.categorizacion)) {
-                  return factura.categorizacion.some((cat: any) => 
+                  return factura.categorizacion.some((cat: any) =>
                     cat.cabys === codigo && cat.desc_fact === desc_fact_slug
                   )
                 }
-                
+
                 // Si categorizacion es un string (compatibilidad con datos antiguos)
                 try {
-                  const categorizacionParsed = typeof factura.categorizacion === 'string' 
-                    ? JSON.parse(factura.categorizacion) 
+                  const categorizacionParsed = typeof factura.categorizacion === 'string'
+                    ? JSON.parse(factura.categorizacion)
                     : factura.categorizacion
                   if (Array.isArray(categorizacionParsed)) {
-                    return categorizacionParsed.some((cat: any) => 
+                    return categorizacionParsed.some((cat: any) =>
                       cat.cabys === codigo && cat.desc_fact === desc_fact_slug
                     )
                   }
                 } catch (e) {
                   return false
                 }
-                
+
                 return false
               })
 
@@ -381,11 +425,11 @@ const DescripcionPersonalizadaFormModal: React.FC<DescripcionPersonalizadaFormMo
                 // Recategorizar cada factura
                 for (let i = 0; i < facturasConDescripcion.length; i++) {
                   const factura = facturasConDescripcion[i]
-                  
+
                   try {
                     // Decodificar XML
                     const xmlString = factura.xml ? fromBase64(factura.xml) : ''
-                    
+
                     if (!xmlString) {
                       console.warn(`⚠️ Factura ${factura.clave} no tiene XML válido`)
                       processed++
@@ -424,7 +468,7 @@ const DescripcionPersonalizadaFormModal: React.FC<DescripcionPersonalizadaFormMo
                     }
 
                     processed++
-                    
+
                     // Actualizar progreso
                     if (onShowProgress) {
                       onShowProgress(true, processed, facturasConDescripcion.length, 'Recategorizando facturas...')
@@ -433,7 +477,7 @@ const DescripcionPersonalizadaFormModal: React.FC<DescripcionPersonalizadaFormMo
                     console.error(`❌ Error procesando factura ${factura.clave}:`, error)
                     errors++
                     processed++
-                    
+
                     // Actualizar progreso incluso si hay error
                     if (onShowProgress) {
                       onShowProgress(true, processed, facturasConDescripcion.length, 'Recategorizando facturas...')
@@ -494,7 +538,7 @@ const DescripcionPersonalizadaFormModal: React.FC<DescripcionPersonalizadaFormMo
       <div className={styles.modal}>
         <div className={styles.modalHeader}>
           <h2>{isEditing ? '✏️ Editar Descripción Personalizada' : '➕ Nueva Descripción Personalizada'}</h2>
-          <button 
+          <button
             onClick={() => onClose()}
             className={styles.closeButton}
             disabled={loading}
@@ -795,6 +839,98 @@ const DescripcionPersonalizadaFormModal: React.FC<DescripcionPersonalizadaFormMo
                   step="1"
                   placeholder="0"
                 />
+              </div>
+            </div>
+
+            {/* Otras ventas sin IVA con derecho crédito pleno */}
+            <div className={styles.formGroup}>
+              <label>💰 Otras ventas sin IVA con derecho crédito pleno</label>
+              <div className={styles.nestedFields}>
+                <div className={styles.formGroup}>
+                  <label htmlFor="otras_ventas_con_pleno_exentas">Total ventas exentas:</label>
+                  <input
+                    type="number"
+                    id="otras_ventas_con_pleno_exentas"
+                    value={formData.otras_ventas_sin_iva_con_derecho_credito_pleno?.total_ventas_exentas || 0}
+                    onChange={(e) => handleNestedInputChange('otras_ventas_sin_iva_con_derecho_credito_pleno', 'total_ventas_exentas', parseFloat(e.target.value) || 0)}
+                    disabled={loading}
+                    min="0"
+                    step="0.01"
+                    placeholder="0"
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label htmlFor="otras_ventas_con_pleno_exonerados">Total ventas exonerados:</label>
+                  <input
+                    type="number"
+                    id="otras_ventas_con_pleno_exonerados"
+                    value={formData.otras_ventas_sin_iva_con_derecho_credito_pleno?.total_ventas_exonerados || 0}
+                    onChange={(e) => handleNestedInputChange('otras_ventas_sin_iva_con_derecho_credito_pleno', 'total_ventas_exonerados', parseFloat(e.target.value) || 0)}
+                    disabled={loading}
+                    min="0"
+                    step="0.01"
+                    placeholder="0"
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label htmlFor="otras_ventas_con_pleno_no_sujetas">Total ventas no sujetas:</label>
+                  <input
+                    type="number"
+                    id="otras_ventas_con_pleno_no_sujetas"
+                    value={formData.otras_ventas_sin_iva_con_derecho_credito_pleno?.total_ventas_no_sujetas || 0}
+                    onChange={(e) => handleNestedInputChange('otras_ventas_sin_iva_con_derecho_credito_pleno', 'total_ventas_no_sujetas', parseFloat(e.target.value) || 0)}
+                    disabled={loading}
+                    min="0"
+                    step="0.01"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Otras ventas sin IVA sin derecho crédito */}
+            <div className={styles.formGroup}>
+              <label>💰 Otras ventas sin IVA sin derecho crédito</label>
+              <div className={styles.nestedFields}>
+                <div className={styles.formGroup}>
+                  <label htmlFor="otras_ventas_sin_pleno_exentas">Total ventas exentas:</label>
+                  <input
+                    type="number"
+                    id="otras_ventas_sin_pleno_exentas"
+                    value={formData.otras_ventas_sin_iva_sin_derecho_credito?.total_ventas_exentas || 0}
+                    onChange={(e) => handleNestedInputChange('otras_ventas_sin_iva_sin_derecho_credito', 'total_ventas_exentas', parseFloat(e.target.value) || 0)}
+                    disabled={loading}
+                    min="0"
+                    step="0.01"
+                    placeholder="0"
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label htmlFor="otras_ventas_sin_pleno_exonerados">Total ventas exonerados:</label>
+                  <input
+                    type="number"
+                    id="otras_ventas_sin_pleno_exonerados"
+                    value={formData.otras_ventas_sin_iva_sin_derecho_credito?.total_ventas_exonerados || 0}
+                    onChange={(e) => handleNestedInputChange('otras_ventas_sin_iva_sin_derecho_credito', 'total_ventas_exonerados', parseFloat(e.target.value) || 0)}
+                    disabled={loading}
+                    min="0"
+                    step="0.01"
+                    placeholder="0"
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label htmlFor="otras_ventas_sin_pleno_no_sujetas">Total ventas no sujetas:</label>
+                  <input
+                    type="number"
+                    id="otras_ventas_sin_pleno_no_sujetas"
+                    value={formData.otras_ventas_sin_iva_sin_derecho_credito?.total_ventas_no_sujetas || 0}
+                    onChange={(e) => handleNestedInputChange('otras_ventas_sin_iva_sin_derecho_credito', 'total_ventas_no_sujetas', parseFloat(e.target.value) || 0)}
+                    disabled={loading}
+                    min="0"
+                    step="0.01"
+                    placeholder="0"
+                  />
+                </div>
               </div>
             </div>
 

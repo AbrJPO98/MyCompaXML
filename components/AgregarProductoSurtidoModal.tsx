@@ -171,12 +171,14 @@ interface AgregarProductoSurtidoModalProps {
   channelId: string
   onClose: () => void
   onAdd: (producto: ProductoSurtido) => void
+  productosSurtidoExistentes?: ProductoSurtido[]
 }
 
 const AgregarProductoSurtidoModal: React.FC<AgregarProductoSurtidoModalProps> = ({
   channelId,
   onClose,
-  onAdd
+  onAdd,
+  productosSurtidoExistentes = []
 }) => {
   const [formData, setFormData] = useState({
     cabys: '',
@@ -293,7 +295,23 @@ const AgregarProductoSurtidoModal: React.FC<AgregarProductoSurtidoModalProps> = 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
     const checked = (e.target as HTMLInputElement).checked
-    
+
+    // Validar código de descuento si se está cambiando
+    if (name === 'codigoDescuento' && value !== '') {
+      if (!validarCodigoDescuento(value)) {
+        alert(`El código de descuento debe coincidir con el de los productos ya añadidos (${codigoDescuentoComun || 'ninguno'})`)
+        return
+      }
+    }
+
+    // Validar código de impuesto si se está cambiando
+    if (name === 'codigoImpuesto' && value !== '') {
+      if (!validarCodigoImpuesto(value)) {
+        alert(`El código de impuesto debe coincidir con el de los productos ya añadidos (${codigoImpuestoComun || 'ninguno'})`)
+        return
+      }
+    }
+
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
@@ -305,7 +323,7 @@ const AgregarProductoSurtidoModal: React.FC<AgregarProductoSurtidoModalProps> = 
     const precio = parseFloat(formData.precio) || 0
     const cantidad = parseFloat(formData.cantidad) || 0
     const montoDescuento = parseFloat(formData.montoDescuento) || 0
-    
+
     let precioUnitario = precio
     if (formData.tieneDescuento && formData.tipoDescuento) {
       let descuento = 0
@@ -316,7 +334,7 @@ const AgregarProductoSurtidoModal: React.FC<AgregarProductoSurtidoModalProps> = 
       }
       precioUnitario = Math.max(0, precio - descuento)
     }
-    
+
     return precioUnitario * cantidad
   }, [formData.precio, formData.cantidad, formData.montoDescuento, formData.tieneDescuento, formData.tipoDescuento])
 
@@ -325,6 +343,96 @@ const AgregarProductoSurtidoModal: React.FC<AgregarProductoSurtidoModalProps> = 
     const baseImponible = parseFloat(formData.baseImponible) || 0
     return baseImponible > 0 ? baseImponible : subtotal
   }, [formData.baseImponible, subtotal])
+
+  // Determinar el código de descuento común de los productos existentes
+  const codigoDescuentoComun = React.useMemo(() => {
+    if (productosSurtidoExistentes.length === 0) {
+      return null // No hay productos, se puede seleccionar cualquier código
+    }
+
+    // Obtener códigos de descuento únicos de los productos existentes (excluyendo vacíos)
+    const codigosDescuentos = productosSurtidoExistentes
+      .map(p => p.codigoDescuento)
+      .filter(cod => cod && cod.trim() !== '')
+
+    if (codigosDescuentos.length === 0) {
+      return null // Todos los productos existentes no tienen código de descuento
+    }
+
+    // Verificar si todos tienen el mismo código
+    const primerCodigo = codigosDescuentos[0]
+    const todosIguales = codigosDescuentos.every(cod => cod === primerCodigo)
+
+    return todosIguales ? primerCodigo : null
+  }, [productosSurtidoExistentes])
+
+  // Determinar el código de impuesto común de los productos existentes
+  const codigoImpuestoComun = React.useMemo(() => {
+    if (productosSurtidoExistentes.length === 0) {
+      return null // No hay productos, se puede seleccionar cualquier código
+    }
+
+    // Obtener códigos de impuesto únicos de los productos existentes (excluyendo vacíos)
+    const codigosImpuestos = productosSurtidoExistentes
+      .map(p => p.codigoImpuesto)
+      .filter(cod => cod && cod.trim() !== '')
+
+    if (codigosImpuestos.length === 0) {
+      return null // Todos los productos existentes no tienen código de impuesto
+    }
+
+    // Verificar si todos tienen el mismo código
+    const primerCodigo = codigosImpuestos[0]
+    const todosIguales = codigosImpuestos.every(cod => cod === primerCodigo)
+
+    return todosIguales ? primerCodigo : null
+  }, [productosSurtidoExistentes])
+
+  // Obtener códigos de descuento disponibles basados en los productos existentes
+  const codigosDescuentoDisponibles = React.useMemo(() => {
+    if (codigoDescuentoComun === null) {
+      // Si no hay código común, se pueden seleccionar todos
+      return CODIGOS_DESCUENTO
+    }
+
+    // Si hay un código común, solo se puede seleccionar ese o ninguno
+    return CODIGOS_DESCUENTO.filter(cod =>
+      cod.value === codigoDescuentoComun || cod.value === ''
+    )
+  }, [codigoDescuentoComun])
+
+  // Obtener códigos de impuesto disponibles basados en los productos existentes
+  const codigosImpuestoDisponibles = React.useMemo(() => {
+    if (codigoImpuestoComun === null) {
+      // Si no hay código común, se pueden seleccionar todos
+      return CODIGOS_IMPUESTO
+    }
+
+    // Si hay un código común, solo se puede seleccionar ese o ninguno
+    return CODIGOS_IMPUESTO.filter(cod =>
+      cod.value === codigoImpuestoComun || cod.value === ''
+    )
+  }, [codigoImpuestoComun])
+
+  // Validar que el código de descuento seleccionado coincida
+  const validarCodigoDescuento = React.useCallback((codigoSeleccionado: string) => {
+    if (codigoDescuentoComun === null) {
+      return true // No hay restricción
+    }
+
+    // Si hay un código común, el seleccionado debe ser el mismo o vacío
+    return codigoSeleccionado === '' || codigoSeleccionado === codigoDescuentoComun
+  }, [codigoDescuentoComun])
+
+  // Validar que el código de impuesto seleccionado coincida
+  const validarCodigoImpuesto = React.useCallback((codigoSeleccionado: string) => {
+    if (codigoImpuestoComun === null) {
+      return true // No hay restricción
+    }
+
+    // Si hay un código común, el seleccionado debe ser el mismo o vacío
+    return codigoSeleccionado === '' || codigoSeleccionado === codigoImpuestoComun
+  }, [codigoImpuestoComun])
 
   // Ajustar Tarifa cuando el código usa porcentaje fijo del tipo de tarifa
   React.useEffect(() => {
@@ -340,12 +448,34 @@ const AgregarProductoSurtidoModal: React.FC<AgregarProductoSurtidoModalProps> = 
     }
   }, [formData.codigoImpuesto, formData.tipoTarifa])
 
+  // Ajustar código de descuento si hay un código común y el usuario activa el descuento
+  React.useEffect(() => {
+    if (codigoDescuentoComun && formData.codigoDescuento === '' && formData.tieneDescuento) {
+      // Si hay un código común y el usuario activó el descuento, establecer el código común
+      setFormData(prev => ({
+        ...prev,
+        codigoDescuento: codigoDescuentoComun
+      }))
+    }
+  }, [codigoDescuentoComun, formData.tieneDescuento, formData.codigoDescuento])
+
+  // Ajustar código de impuesto si hay un código común y el usuario no ha seleccionado ninguno
+  React.useEffect(() => {
+    if (codigoImpuestoComun && formData.codigoImpuesto === '' && formData.tieneImpuesto) {
+      // Si hay un código común y el usuario activó el impuesto, establecer el código común
+      setFormData(prev => ({
+        ...prev,
+        codigoImpuesto: codigoImpuestoComun
+      }))
+    }
+  }, [codigoImpuestoComun, formData.tieneImpuesto, formData.codigoImpuesto])
+
   // Calcular monto del impuesto
   const montoImpuesto = React.useMemo(() => {
     if (!formData.tieneImpuesto) return 0
-    
+
     let porcentajeTarifa = 0
-    
+
     if (formData.codigoImpuesto === '01' || formData.codigoImpuesto === '07') {
       // Usar porcentaje del tipo de tarifa
       const tipoTarifaSeleccionado = TIPOS_TARIFA.find(t => t.value === formData.tipoTarifa)
@@ -354,7 +484,7 @@ const AgregarProductoSurtidoModal: React.FC<AgregarProductoSurtidoModalProps> = 
       // Usar valor de tarifa
       porcentajeTarifa = parseFloat(formData.tarifa) || 0
     }
-    
+
     return (baseParaImpuestos * porcentajeTarifa) / 100
   }, [formData.tieneImpuesto, formData.codigoImpuesto, formData.tipoTarifa, formData.tarifa, baseParaImpuestos])
 
@@ -381,7 +511,7 @@ const AgregarProductoSurtidoModal: React.FC<AgregarProductoSurtidoModalProps> = 
     if (!formData.tieneDescuento || !formData.tipoDescuento) return 0
     const precio = parseFloat(formData.precio) || 0
     const montoDescuento = parseFloat(formData.montoDescuento) || 0
-    
+
     if (formData.tipoDescuento === 'Fijo') {
       return montoDescuento
     } else if (formData.tipoDescuento === 'Porcentual') {
@@ -423,9 +553,9 @@ const AgregarProductoSurtidoModal: React.FC<AgregarProductoSurtidoModalProps> = 
       volumenPorUnidadConsumo: parseFloat(formData.volumenPorUnidadConsumo) || 0,
       impuestoPorUnidad: parseFloat(formData.impuestoPorUnidad) || 0
     }
-    
+
     onAdd(nuevoProducto)
-    
+
     // Limpiar formulario
     setFormData({
       cabys: '',
@@ -499,7 +629,7 @@ const AgregarProductoSurtidoModal: React.FC<AgregarProductoSurtidoModalProps> = 
       <div className={styles.modal}>
         <div className={styles.modalHeader}>
           <h2>Agregar producto al surtido</h2>
-          <button 
+          <button
             onClick={handleClose}
             className={styles.closeButton}
           >
@@ -541,7 +671,7 @@ const AgregarProductoSurtidoModal: React.FC<AgregarProductoSurtidoModalProps> = 
                 placeholder="Escribe para buscar por código CABYS, título o descripción..."
                 autoComplete="off"
               />
-              
+
               {showInventarioDropdown && inventarioFiltrado.length > 0 && (
                 <div className={styles.suggestionsList}>
                   {inventarioFiltrado.map((item, index) => (
@@ -753,14 +883,20 @@ const AgregarProductoSurtidoModal: React.FC<AgregarProductoSurtidoModalProps> = 
                       value={formData.codigoDescuento}
                       onChange={handleFormChange}
                       className={inventarioStyles.selectInput}
+                      disabled={codigoDescuentoComun !== null && formData.codigoDescuento === ''}
                     >
                       <option value="">Seleccionar</option>
-                      {CODIGOS_DESCUENTO.map((cod) => (
+                      {codigosDescuentoDisponibles.map((cod) => (
                         <option key={cod.value} value={cod.value}>
                           {cod.label}
                         </option>
                       ))}
                     </select>
+                    {codigoDescuentoComun && (
+                      <small style={{ color: '#666', fontSize: '0.75rem', display: 'block', marginTop: '4px' }}>
+                        Debe coincidir con el código de descuento de los productos ya añadidos: {codigoDescuentoComun}
+                      </small>
+                    )}
                   </div>
                   <div className={inventarioStyles.formGroup}>
                     <label>Detalle</label>
@@ -826,14 +962,20 @@ const AgregarProductoSurtidoModal: React.FC<AgregarProductoSurtidoModalProps> = 
                       value={formData.codigoImpuesto}
                       onChange={handleFormChange}
                       className={inventarioStyles.selectInput}
+                      disabled={codigoImpuestoComun !== null && formData.codigoImpuesto === ''}
                     >
                       <option value="">Seleccionar</option>
-                      {CODIGOS_IMPUESTO.map((cod) => (
+                      {codigosImpuestoDisponibles.map((cod) => (
                         <option key={cod.value} value={cod.value}>
                           {cod.label}
                         </option>
                       ))}
                     </select>
+                    {codigoImpuestoComun && (
+                      <small style={{ color: '#666', fontSize: '0.75rem', display: 'block', marginTop: '4px' }}>
+                        Debe coincidir con el código de impuesto de los productos ya añadidos: {codigoImpuestoComun}
+                      </small>
+                    )}
                   </div>
                   <div className={inventarioStyles.formGroup}>
                     <label>Detalle</label>
@@ -900,80 +1042,80 @@ const AgregarProductoSurtidoModal: React.FC<AgregarProductoSurtidoModalProps> = 
           {/* Específico */}
           {formData.tieneImpuesto && (
             <div className={inventarioStyles.subsubsection}>
-            <div className={inventarioStyles.checkboxGroup}>
-              <input
-                type="checkbox"
-                name="esEspecifico"
-                checked={formData.esEspecifico}
-                onChange={handleFormChange}
-              />
-              <label>¿Es específico?</label>
-            </div>
-
-            {formData.esEspecifico && (
-              <div className={inventarioStyles.formRow}>
-                <div className={inventarioStyles.formGroup}>
-                  <label>Cantidad unidad de medida</label>
-                  <input
-                    type="number"
-                    name="cantidadUnidadMedida"
-                    value={formData.cantidadUnidadMedida}
-                    onChange={handleFormChange}
-                    className={inventarioStyles.textInput}
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-                <div className={inventarioStyles.formGroup}>
-                  <label>Porcentaje</label>
-                  <input
-                    type="number"
-                    name="porcentajeEspecifico"
-                    value={formData.porcentajeEspecifico}
-                    onChange={handleFormChange}
-                    className={inventarioStyles.textInput}
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-                <div className={inventarioStyles.formGroup}>
-                  <label>Proporción</label>
-                  <input
-                    type="number"
-                    name="proporcion"
-                    value={formData.proporcion}
-                    onChange={handleFormChange}
-                    className={inventarioStyles.textInput}
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-                <div className={inventarioStyles.formGroup}>
-                  <label>Volumen por unidad de consumo</label>
-                  <input
-                    type="number"
-                    name="volumenPorUnidadConsumo"
-                    value={formData.volumenPorUnidadConsumo}
-                    onChange={handleFormChange}
-                    className={inventarioStyles.textInput}
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-                <div className={inventarioStyles.formGroup}>
-                  <label>Impuesto por unidad</label>
-                  <input
-                    type="number"
-                    name="impuestoPorUnidad"
-                    value={formData.impuestoPorUnidad}
-                    onChange={handleFormChange}
-                    className={inventarioStyles.textInput}
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
+              <div className={inventarioStyles.checkboxGroup}>
+                <input
+                  type="checkbox"
+                  name="esEspecifico"
+                  checked={formData.esEspecifico}
+                  onChange={handleFormChange}
+                />
+                <label>¿Es específico?</label>
               </div>
-            )}
+
+              {formData.esEspecifico && (
+                <div className={inventarioStyles.formRow}>
+                  <div className={inventarioStyles.formGroup}>
+                    <label>Cantidad unidad de medida</label>
+                    <input
+                      type="number"
+                      name="cantidadUnidadMedida"
+                      value={formData.cantidadUnidadMedida}
+                      onChange={handleFormChange}
+                      className={inventarioStyles.textInput}
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                  <div className={inventarioStyles.formGroup}>
+                    <label>Porcentaje</label>
+                    <input
+                      type="number"
+                      name="porcentajeEspecifico"
+                      value={formData.porcentajeEspecifico}
+                      onChange={handleFormChange}
+                      className={inventarioStyles.textInput}
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                  <div className={inventarioStyles.formGroup}>
+                    <label>Proporción</label>
+                    <input
+                      type="number"
+                      name="proporcion"
+                      value={formData.proporcion}
+                      onChange={handleFormChange}
+                      className={inventarioStyles.textInput}
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                  <div className={inventarioStyles.formGroup}>
+                    <label>Volumen por unidad de consumo</label>
+                    <input
+                      type="number"
+                      name="volumenPorUnidadConsumo"
+                      value={formData.volumenPorUnidadConsumo}
+                      onChange={handleFormChange}
+                      className={inventarioStyles.textInput}
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                  <div className={inventarioStyles.formGroup}>
+                    <label>Impuesto por unidad</label>
+                    <input
+                      type="number"
+                      name="impuestoPorUnidad"
+                      value={formData.impuestoPorUnidad}
+                      onChange={handleFormChange}
+                      className={inventarioStyles.textInput}
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

@@ -41,6 +41,22 @@ const descripcionPersonalizadaSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  otras_ventas_sin_iva_con_derecho_credito_pleno: {
+    type: {
+      total_ventas_exentas: { type: Number, default: 0 },
+      total_ventas_exonerados: { type: Number, default: 0 },
+      total_ventas_no_sujetas: { type: Number, default: 0 }
+    },
+    required: false
+  },
+  otras_ventas_sin_iva_sin_derecho_credito: {
+    type: {
+      total_ventas_exentas: { type: Number, default: 0 },
+      total_ventas_exonerados: { type: Number, default: 0 },
+      total_ventas_no_sujetas: { type: Number, default: 0 }
+    },
+    required: false
+  },
   channel_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Channel',

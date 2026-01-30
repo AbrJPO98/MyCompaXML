@@ -88,6 +88,8 @@
   font-size: 1rem;
   transition: border-color 0.2s, box-shadow 0.2s;
   box-sizing: border-box;
+  background-color: white;
+  color: black;
 }
 
 .formGroup input:focus {
@@ -191,27 +193,27 @@
   .modalOverlay {
     padding: 0.5rem;
   }
-  
+
   .modal {
     max-height: 95vh;
   }
-  
+
   .modalHeader {
     padding: 1rem 1.5rem 0.75rem 1.5rem;
   }
-  
+
   .modalHeader h2 {
     font-size: 1.25rem;
   }
-  
+
   .form {
     padding: 1rem 1.5rem 1.5rem 1.5rem;
   }
-  
+
   .formActions {
     flex-direction: column-reverse;
   }
-  
+
   .formActions button {
     width: 100%;
   }
@@ -221,12 +223,12 @@
   .modalHeader {
     padding: 0.75rem 1rem 0.5rem 1rem;
   }
-  
+
   .form {
     padding: 0.75rem 1rem 1rem 1rem;
   }
-  
+
   .modalHeader h2 {
     font-size: 1.1rem;
   }
-} 
+}

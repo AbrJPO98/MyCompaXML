@@ -259,6 +259,8 @@
   border-radius: 6px;
   font-size: 0.9rem;
   transition: border-color 0.2s ease;
+  background-color: white;
+  color: black;
 }
 
 .numeroInput:focus {
@@ -368,43 +370,43 @@
   .modalOverlay {
     padding: 0.5rem;
   }
-  
+
   .modalContent {
     max-height: 95vh;
   }
-  
+
   .modalHeader,
   .modalBody,
   .modalFooter {
     padding: 1rem;
   }
-  
+
   .numeracionGrid {
     grid-template-columns: 1fr;
   }
-  
+
   .cajaHeader {
     flex-direction: column;
     gap: 1rem;
     align-items: flex-start;
   }
-  
+
   .cajaHeaderRight {
     width: 100%;
     justify-content: space-between;
   }
-  
+
   .cajaActions {
     width: 100%;
     justify-content: flex-end;
   }
-  
+
   .comprobanteItem label {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
   }
-  
+
   .comprobanteCode {
     align-self: flex-start;
   }
@@ -415,7 +417,7 @@
     flex-direction: column;
     width: 100%;
   }
-  
+
   .saveButton,
   .deleteButton {
     width: 100%;

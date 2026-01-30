@@ -10,6 +10,16 @@ export interface ArchivoConjuntoCategorizacionItem {
   actEconomica: string
   vidaUtil: string
   importado: string
+  otras_ventas_sin_iva_con_derecho_credito_pleno?: {
+    total_ventas_exentas: number
+    total_ventas_exonerados: number
+    total_ventas_no_sujetas: number
+  },
+  otras_ventas_sin_iva_sin_derecho_credito?: {
+    total_ventas_exentas: number
+    total_ventas_exonerados: number
+    total_ventas_no_sujetas: number
+  }
 }
 
 export interface ArchivoConjunto {
@@ -54,7 +64,23 @@ const ArchivoConjuntoSchema = new Schema({
       categoria: { type: String, trim: true },
       actEconomica: { type: String, trim: true },
       vidaUtil: { type: String, trim: true },
-      importado: { type: String, trim: true }
+      importado: { type: String, trim: true },
+      otras_ventas_sin_iva_con_derecho_credito_pleno: {
+        type: {
+          total_ventas_exentas: { type: Number, default: 0 },
+          total_ventas_exonerados: { type: Number, default: 0 },
+          total_ventas_no_sujetas: { type: Number, default: 0 }
+        },
+        required: false
+      },
+      otras_ventas_sin_iva_sin_derecho_credito: {
+        type: {
+          total_ventas_exentas: { type: Number, default: 0 },
+          total_ventas_exonerados: { type: Number, default: 0 },
+          total_ventas_no_sujetas: { type: Number, default: 0 }
+        },
+        required: false
+      }
     }],
     required: false,
     default: []

@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 
   if (!result.success) {
     return NextResponse.json(
-      { 
+      {
         error: result.error,
         message: 'Error al obtener CABYS personales'
       },
@@ -68,18 +68,20 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const sanitizedData = sanitizeInput(body)
-    
-    const { 
-      codigo, 
+
+    const {
+      codigo,
       descripOf,
-      bienoserv, 
+      bienoserv,
       descripPer,
       descripGasInv,
-      categoria, 
+      categoria,
       actEconomica,
       vidaUtil,
       importado,
-      channel_id 
+      otras_ventas_sin_iva_con_derecho_credito_pleno,
+      otras_ventas_sin_iva_sin_derecho_credito,
+      channel_id
     } = sanitizedData
 
     // Validaciones básicas
@@ -104,7 +106,7 @@ export async function POST(request: NextRequest) {
         channel_id: new mongoose.Types.ObjectId(channel_id)
       })
 
-      const cabysData = {
+      const cabysData: any = {
         codigo,
         descripOf: descripOf || '',
         bienoserv: bienoserv || '',
@@ -116,6 +118,14 @@ export async function POST(request: NextRequest) {
         importado: importado || '',
         channel_id: new mongoose.Types.ObjectId(channel_id),
         updatedAt: new Date()
+      }
+
+      // Añadir los nuevos campos si existen (incluso si tienen valores por defecto)
+      if (otras_ventas_sin_iva_con_derecho_credito_pleno !== undefined && otras_ventas_sin_iva_con_derecho_credito_pleno !== null) {
+        cabysData.otras_ventas_sin_iva_con_derecho_credito_pleno = otras_ventas_sin_iva_con_derecho_credito_pleno
+      }
+      if (otras_ventas_sin_iva_sin_derecho_credito !== undefined && otras_ventas_sin_iva_sin_derecho_credito !== null) {
+        cabysData.otras_ventas_sin_iva_sin_derecho_credito = otras_ventas_sin_iva_sin_derecho_credito
       }
 
       if (existingCabys) {
@@ -154,10 +164,10 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Error saving CABYS personal:', error)
     return NextResponse.json(
-      { 
+      {
         success: false,
         error: 'Error interno del servidor',
-        message: error.message 
+        message: error.message
       },
       { status: 500 }
     )

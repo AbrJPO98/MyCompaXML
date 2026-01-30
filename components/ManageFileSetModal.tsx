@@ -12,6 +12,16 @@ interface ArchivoConjuntoCategorizacionItem {
   actEconomica: string
   vidaUtil: string
   importado: string
+  otras_ventas_sin_iva_con_derecho_credito_pleno?: {
+    total_ventas_exentas: number
+    total_ventas_exonerados: number
+    total_ventas_no_sujetas: number
+  }
+  otras_ventas_sin_iva_sin_derecho_credito?: {
+    total_ventas_exentas: number
+    total_ventas_exonerados: number
+    total_ventas_no_sujetas: number
+  }
 }
 
 interface Archivo {
@@ -143,21 +153,21 @@ const ManageFileSetModal: React.FC<ManageFileSetModalProps> = ({
     try {
       // Decodificar de Base64
       const decodedXML = decodeURIComponent(escape(window.atob(archivo.xml)))
-      
+
       // Crear blob con el XML
       const blob = new Blob([decodedXML], { type: 'application/xml' })
-      
+
       // Crear enlace de descarga
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
       link.download = `${archivo.clave}.xml`
-      
+
       // Simular click para descargar
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      
+
       // Limpiar URL
       window.URL.revokeObjectURL(url)
     } catch (error) {
@@ -177,7 +187,7 @@ const ManageFileSetModal: React.FC<ManageFileSetModalProps> = ({
       <div className={styles.modal}>
         <div className={styles.modalHeader}>
           <h2>Ver categorizaciones realizadas</h2>
-          <button 
+          <button
             onClick={onClose}
             className={styles.closeButton}
           >
@@ -209,7 +219,7 @@ const ManageFileSetModal: React.FC<ManageFileSetModalProps> = ({
                 className={styles.autocompleteInput}
                 autoComplete="off"
               />
-              
+
               {showSuggestions && filteredCategorizaciones.length > 0 && (
                 <div className={styles.suggestionsList}>
                   {filteredCategorizaciones.map((categorizacion) => (
@@ -252,13 +262,13 @@ const ManageFileSetModal: React.FC<ManageFileSetModalProps> = ({
                   {tablesExpanded ? '▼ Ocultar tablas' : '▶ Mostrar tablas'}
                 </span>
               </button>
-              
+
               {tablesExpanded && (
                 <div className={styles.tablesContainer}>
                   {/* Primera tabla: Archivos */}
                   <div className={styles.filesSection}>
                     <h3>Archivos de la categorización</h3>
-                    
+
                     {selectedCategorizacion.archivos.length === 0 ? (
                       <div className={styles.empty}>
                         <p>No hay archivos en esta categorización</p>

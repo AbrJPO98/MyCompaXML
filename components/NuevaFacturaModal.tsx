@@ -82,10 +82,72 @@ interface Cliente {
   act_ecos?: string[]
 }
 
+interface ProductoSurtidoItem {
+  cabys: string
+  titulo: string
+  descripcion: string
+  tipo: string
+  precio: number
+  cantidad: number
+  codigoComercial: string
+  tipoCodigoComercial: string
+  unidadMedida: string
+  unidadMedidaComercial: string
+  montoDescuento: number
+  codigoDescuento: string
+  detalleDescuento: string
+  ivaCobradoFabrica: number
+  baseImponible: number
+  codigoImpuesto: string
+  detalleImpuesto: string
+  tipoTarifa: string
+  tarifa: number
+  cantidadUnidadMedida: number
+  porcentajeEspecifico: number
+  proporcion: number
+  volumenPorUnidadConsumo: number
+  impuestoPorUnidad: number
+}
+
 interface InventarioItem {
   _id: string
   descripcion: string
   titulo: string
+  partidaArancelaria: string
+  cabys: string
+  codigoComercial: string
+  tipoCodigoComercial: string
+  unidadMedida: string
+  unidadMedidaComercial: string
+  tipoTransaccion: string
+  esMedicamento: boolean
+  registro: string
+  formaFarmaceutica: string
+  esVinSerie: boolean
+  numeroVinSerie: string
+  naturalezaDescuento: string
+  codigoDescuento: string
+  detalleDescuento: string
+  codigoImpuesto: string
+  detalleImpuesto: string
+  tipoTarifa: string
+  tipoTarifaGeneral: string
+  esEspecifico: boolean
+  proporcion: number
+  porcentajeEspecifico: number
+  factorCalculoIVA: number
+  impuestoPorUnidad: number
+  cantidadUnidadMedida: number
+  volumenPorUnidadConsumo: number
+  documentoExoneracion: string
+  detalleExoneracion: string
+  numeroDocumentoExoneracion: string
+  articuloExoneracion: string
+  incisoExoneracion: string
+  institucionExoneracion: string
+  detalleInstitucionExoneracion: string
+  fechaAutorizacionExoneracion: string
+  montoExportacion: number
   cantidad: number
   precio: number
   image?: string
@@ -97,6 +159,8 @@ interface InventarioItem {
   tieneExoneracion?: boolean
   porcentajeExoneracion?: number
   baseImponible?: number
+  tipoMercancia?: string
+  detalleSurtido?: ProductoSurtidoItem[]
 }
 
 interface OtroCargo {
@@ -213,7 +277,7 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
   const [consecutivo, setConsecutivo] = useState('')
   const [ubicaciones, setUbicaciones] = useState<UbicacionesData | null>(null)
   const [ubicacionTexto, setUbicacionTexto] = useState('')
-  
+
   // Estados para información del receptor
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [clienteSeleccionado, setClienteSeleccionado] = useState<string>('')
@@ -223,7 +287,7 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
   const [actividadEconomicaSeleccionada, setActividadEconomicaSeleccionada] = useState<string>('')
   const [showActividadEconomicaDropdown, setShowActividadEconomicaDropdown] = useState(false)
   const actividadEconomicaInputRef = useRef<HTMLInputElement | null>(null)
-  
+
   // Estados para campos del receptor
   const [nombreReceptor, setNombreReceptor] = useState('')
   const [tipoIdentificacionReceptor, setTipoIdentificacionReceptor] = useState('')
@@ -236,20 +300,20 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
   const [cantonReceptor, setCantonReceptor] = useState('')
   const [distritoReceptor, setDistritoReceptor] = useState('')
   const [otrasSenasReceptor, setOtrasSenasReceptor] = useState('')
-  
+
   // Estados para selects dependientes de ubicación
   const [cantonesDisponibles, setCantonesDisponibles] = useState<{ [key: string]: string }>({})
   const [distritosDisponibles, setDistritosDisponibles] = useState<{ [key: string]: string }>({})
-  
+
   // Estado para búsqueda en Hacienda
   const [searchingHacienda, setSearchingHacienda] = useState(false)
-  
+
   // Estados para condición de la venta
   const [condicionVenta, setCondicionVenta] = useState('')
   const [especificacion, setEspecificacion] = useState('')
   const [plazoCredito, setPlazoCredito] = useState('')
   const [unidadPlazoCredito, setUnidadPlazoCredito] = useState('Días')
-  
+
   // Estados para tipo de cambio
   const [tipoMoneda, setTipoMoneda] = useState('CRC')
   const [cambioMoneda, setCambioMoneda] = useState('1')
@@ -258,11 +322,11 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
   // Estados para detalle de la factura basado en inventario
   const [inventarioItems, setInventarioItems] = useState<InventarioItem[]>([])
   const [cantidadesSeleccionadas, setCantidadesSeleccionadas] = useState<Record<string, number>>({})
-  
+
   // Estado para sección de totales collapsable
   const [totalsExpanded, setTotalsExpanded] = useState(false)
   const [lineOptions, setLineOptions] = useState<Record<string, LineOptions>>({})
-  
+
   // Estados para Documento de referencia
   const [referenceFile, setReferenceFile] = useState<File | null>(null)
   const [referenceFilePath, setReferenceFilePath] = useState('')
@@ -428,7 +492,7 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
           throw new Error('Error al obtener el tipo de cambio')
         }
         const data = await response.json()
-        
+
         // Acceder primero a la propiedad con el código de la moneda (usd, eur, jpy, etc.)
         const monedaCode = tipoMoneda.toLowerCase()
         if (data[monedaCode] && data[monedaCode].crc !== undefined) {
@@ -502,7 +566,7 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
         // La API ya filtra por channel_id, pero verificamos por seguridad
         // Mapear correctamente todos los campos incluyendo image
         const items: InventarioItem[] = (data || [])
-          .filter((item: any) => {
+          .filter((item: any): item is InventarioItem => {
             // Asegurar que el channel_id coincida con el canal actual
             // Puede venir como ObjectId, string, o objeto con _id
             let itemChannelId: string = ''
@@ -518,24 +582,89 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
             const currentChannelId = String(channelId)
             return itemChannelId === currentChannelId
           })
-            .map((item: any) => ({
-              _id: item._id || item._id?.toString() || '',
-              descripcion: item.descripcion || '',
-              titulo: item.titulo ? String(item.titulo).trim() : '',
-              cantidad: Number(item.cantidad) || 0,
-              precio: Number(item.precio) || 0,
-              image: item.image ? String(item.image).trim() : '',
-              tieneDescuento: Boolean(item.tieneDescuento),
-              tipoDescuento: item.tipoDescuento || '',
-              montoDescuento: Number(item.montoDescuento) || 0,
-              tieneImpuesto: Boolean(item.tieneImpuesto),
-              tarifa: Number(item.tarifa) || 0,
-              tieneExoneracion: Boolean(item.tieneExoneracion),
-              porcentajeExoneracion: Number(item.porcentajeExoneracion) || 0,
-              baseImponible: Number(item.baseImponible) || 0
-            }))
+          .map((item: any) => ({
+            _id: item._id || item._id?.toString() || '',
+            cabys: item.cabys || '',
+            descripcion: item.descripcion || '',
+            tipo: item.tipo || '',
+            cantidad: Number(item.cantidad) || 0,
+            precio: Number(item.precio) || 0,
+            partidaArancelaria: item.partidaArancelaria || '',
+            codigoComercial: item.codigoComercial || '',
+            tipoCodigoComercial: item.tipoCodigoComercial || '',
+            unidadMedida: item.unidadMedida || '',
+            unidadMedidaComercial: item.unidadMedidaComercial || '',
+            tipoTransaccion: item.tipoTransaccion || '',
+            esMedicamento: item.esMedicamento || false,
+            registro: item.registro || '',
+            formaFarmaceutica: item.formaFarmaceutica || '',
+            esVinSerie: item.esVinSerie || false,
+            numeroVinSerie: item.numeroVinSerie || '',
+            tieneDescuento: Boolean(item.tieneDescuento),
+            naturalezaDescuento: item.naturalezaDescuento || '',
+            montoDescuento: Number(item.montoDescuento) || 0,
+            codigoDescuento: item.codigoDescuento || '',
+            tipoDescuento: item.tipoDescuento || '',
+            detalleDescuento: item.detalleDescuento || '',
+            baseImponible: Number(item.baseImponible) || 0,
+            tieneImpuesto: Boolean(item.tieneImpuesto),
+            codigoImpuesto: item.codigoImpuesto || '',
+            detalleImpuesto: item.detalleImpuesto || '',
+            tipoTarifa: item.tipoTarifa || '',
+            tipoTarifaGeneral: item.tipoTarifaGeneral || item.tipoTarifa || '',
+            tarifa: Number(item.tarifa) || 0,
+            factorCalculoIVA: Number(item.factorCalculoIVA) || 0,
+            esEspecifico: Boolean(item.esEspecifico),
+            porcentajeEspecifico: Number(item.porcentajeEspecifico) || 0,
+            impuestoPorUnidad: Number(item.impuestoPorUnidad) || 0,
+            cantidadUnidadMedida: Number(item.cantidadUnidadMedida) || 0,
+            volumenPorUnidadConsumo: Number(item.volumenPorUnidadConsumo) || 0,
+            proporcion: Number(item.proporcion) || 0,
+            tieneExoneracion: Boolean(item.tieneExoneracion),
+            documentoExoneracion: item.documentoExoneracion || '',
+            detalleExoneracion: item.detalleExoneracion || '',
+            numeroDocumentoExoneracion: item.numeroDocumentoExoneracion || '',
+            articuloExoneracion: item.articuloExoneracion || '',
+            incisoExoneracion: item.incisoExoneracion || '',
+            institucionExoneracion: item.institucionExoneracion || '',
+            detalleInstitucionExoneracion: item.detalleInstitucionExoneracion || '',
+            fechaAutorizacionExoneracion: item.fechaAutorizacionExoneracion || '',
+            porcentajeExoneracion: Number(item.porcentajeExoneracion) || 0,
+            montoExportacion: Number(item.montoExportacion) || 0,
+            titulo: item.titulo ? String(item.titulo).trim() : '',
+            image: item.image ? String(item.image).trim() : '',
+            tipoMercancia: item.tipoMercancia || 'Normal',
+            detalleSurtido: item.detalleSurtido && Array.isArray(item.detalleSurtido)
+              ? item.detalleSurtido.map((surtidoItem: any) => ({
+                cabys: surtidoItem.cabys || '',
+                titulo: surtidoItem.titulo || '',
+                descripcion: surtidoItem.descripcion || '',
+                tipo: surtidoItem.tipo || '',
+                precio: Number(surtidoItem.precio) || 0,
+                cantidad: Number(surtidoItem.cantidad) || 0,
+                codigoComercial: surtidoItem.codigoComercial || '',
+                tipoCodigoComercial: surtidoItem.tipoCodigoComercial || '',
+                unidadMedida: surtidoItem.unidadMedida || '',
+                unidadMedidaComercial: surtidoItem.unidadMedidaComercial || '',
+                montoDescuento: Number(surtidoItem.montoDescuento) || 0,
+                codigoDescuento: surtidoItem.codigoDescuento || '',
+                detalleDescuento: surtidoItem.detalleDescuento || '',
+                ivaCobradoFabrica: Number(surtidoItem.ivaCobradoFabrica) || 0,
+                baseImponible: Number(surtidoItem.baseImponible) || 0,
+                codigoImpuesto: surtidoItem.codigoImpuesto || '',
+                detalleImpuesto: surtidoItem.detalleImpuesto || '',
+                tipoTarifa: surtidoItem.tipoTarifa || '',
+                tarifa: Number(surtidoItem.tarifa) || 0,
+                cantidadUnidadMedida: Number(surtidoItem.cantidadUnidadMedida) || 0,
+                porcentajeEspecifico: Number(surtidoItem.porcentajeEspecifico) || 0,
+                proporcion: Number(surtidoItem.proporcion) || 0,
+                volumenPorUnidadConsumo: Number(surtidoItem.volumenPorUnidadConsumo) || 0,
+                impuestoPorUnidad: Number(surtidoItem.impuestoPorUnidad) || 0
+              }))
+              : undefined,
+          }))
           .filter((item: InventarioItem) => item._id) // Filtrar items sin _id válido
-        
+
         setInventarioItems(items)
         const nextOptions: Record<string, LineOptions> = {}
         items.forEach((item) => {
@@ -563,7 +692,7 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
 
   const handleClienteChange = (clienteId: string) => {
     setClienteSeleccionado(clienteId)
-    
+
     if (clienteId === '') {
       // Limpiar todos los campos
       setNombreReceptor('')
@@ -633,7 +762,7 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
     setTimeout(() => actividadEconomicaInputRef.current?.focus(), 0)
   }
 
-const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: number) => {
+  const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: number) => {
     setCantidadesSeleccionadas((prev) => {
       const actual = prev[inventarioId] || 0
       let nueva = actual + delta
@@ -651,6 +780,279 @@ const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: 
       }
       return { ...prev, [inventarioId]: nueva }
     })
+  }
+
+  const getDetalle = () => {
+    let detalleText = '';
+    let numeroLinea = 1;
+    Object.entries(cantidadesSeleccionadas).forEach(([inventarioId, cantidad]: [string, number]) => {
+      if (cantidad > 0) {
+        const item = inventarioItems.find((item) => item._id === inventarioId)
+        if (item) {
+          const vinSerie = item.esVinSerie ? `<NumeroVINoSerie>${item.numeroVinSerie}</NumeroVINoSerie>` : '';
+          const registroMedicamento = item.esMedicamento ? `<RegistroMedicamento>${item.registro}</RegistroMedicamento>` : '';
+          const formaFarmaceutica = item.esMedicamento ? `<FormaFarmaceutica>${item.formaFarmaceutica}</FormaFarmaceutica>` : '';
+
+          let detalleSurtido = '';
+          let totalImpuestoSurtido = 0;
+          let tipoImpuestoSurtido = '';
+          if (item.tipoMercancia === 'Surtido' && item.detalleSurtido && item.detalleSurtido.length > 0) {
+            detalleSurtido = `<DetalleSurtido>`;
+
+            item.detalleSurtido.forEach((surtidoItem: any) => {
+
+              let codigoComercialSurtido = '';
+              if (surtidoItem.tipoCodigoComercial != '') {
+                let codigoComercialSurtidoOtro = '';
+                if (surtidoItem.tipoCodigoComercial === '99') {
+                  codigoComercialSurtidoOtro = `<CodigoComercialSurtidoOtros>${surtidoItem.detalleCodigoComercial}</CodigoComercialSurtidoOtros>`;
+                }
+                codigoComercialSurtido = `<CodigoComercialSurtido>
+                  <TipoSurtido>${surtidoItem.tipoCodigoComercial}</TipoSurtido>
+                  <CodigoSurtido>${surtidoItem.codigoComercial}</CodigoSurtido>
+                  ${codigoComercialSurtidoOtro}
+                </CodigoComercialSurtido>`;
+              }
+
+              let descuentoSurtido = '';
+              if (surtidoItem.tieneDescuento) {
+                let descuentoSurtidoOtro = '';
+                if (surtidoItem.tipoDescuento === '99') {
+                  descuentoSurtidoOtro = `<DescuentoSurtidoOtros>${surtidoItem.detalleDescuento}</DescuentoSurtidoOtros>`;
+                }
+                descuentoSurtido = `<DescuentoSurtido>
+                  <MontoDescuentoSurtido>${surtidoItem.montoDescuento}</MontoDescuentoSurtido>
+                  <CodigoDescuentoSurtido>${surtidoItem.codigoDescuento}</CodigoDescuentoSurtido>
+                  ${descuentoSurtidoOtro}
+                </DescuentoSurtido>`;
+              }
+
+              const montoTotalSurtido = surtidoItem.precio * surtidoItem.cantidad;
+
+              const subtotalSurtido = montoTotalSurtido - (surtidoItem.montoDescuento || 0);
+
+              let impuestoSurtido = '';
+              if (surtidoItem.tieneImpuesto) {
+                let impuestoSurtidoOtro = '';
+                if (surtidoItem.tipoImpuesto === '99') {
+                  impuestoSurtidoOtro = `<CodigoImpuestoOTROSurtido>${surtidoItem.detalleImpuesto}</CodigoImpuestoOTROSurtido>`;
+                }
+                let datosImpuestoEspecificoSurtido = '';
+                if (surtidoItem.cantidadUnidadMedida != '' || surtidoItem.porcentajeEspecifico != 0 || surtidoItem.proporcion != 0 || surtidoItem.volumenPorUnidadConsumo != 0 || surtidoItem.impuestoPorUnidad != 0) {
+
+                  datosImpuestoEspecificoSurtido = `<DatosImpuestoEspecificoSurtido>`;
+                  let especificoCantidadUnidadMedida = '';
+                  let especificoPorcentaje = '';
+                  let especificoProporcion = '';
+                  let especificoVolumenUnidadConsumo = '';
+                  let especificoImpuestoUnidad = '';
+                  if (surtidoItem.cantidadUnidadMedida != '') {
+                    especificoCantidadUnidadMedida = `<CantidadUnidadMedidaSurtido>${surtidoItem.cantidadUnidadMedida}</CantidadUnidadMedidaSurtido>`;
+                  }
+                  if (surtidoItem.porcentajeEspecifico != 0) {
+                    especificoPorcentaje = `<PorcentajeSurtido>${surtidoItem.porcentajeEspecifico}</PorcentajeSurtido>`;
+                  }
+                  if (surtidoItem.proporcion != 0) {
+                    especificoProporcion = `<ProporcionSurtido>${surtidoItem.proporcion}</ProporcionSurtido>`;
+                  }
+                  if (surtidoItem.volumenPorUnidadConsumo != 0) {
+                    especificoVolumenUnidadConsumo = `<VolumenUnidadConsumoSurtido>${surtidoItem.volumenPorUnidadConsumo}</VolumenUnidadConsumoSurtido>`;
+                  }
+                  if (surtidoItem.impuestoPorUnidad != 0) {
+                    especificoImpuestoUnidad = `<ImpuestoUnidadSurtido>${surtidoItem.impuestoPorUnidad}</ImpuestoUnidadSurtido>`;
+                  }
+                  datosImpuestoEspecificoSurtido += `
+                    ${especificoCantidadUnidadMedida}
+                    ${especificoPorcentaje}
+                    ${especificoProporcion}
+                    ${especificoVolumenUnidadConsumo}
+                    ${especificoImpuestoUnidad}
+                  `;
+                  datosImpuestoEspecificoSurtido += `</DatosImpuestoEspecificoSurtido>`;
+                }
+
+                let impuestoSurtidoMonto = subtotalSurtido * surtidoItem.cantidad;
+
+                impuestoSurtido = `<ImpuestoSurtido>
+                  <CodigoImpuestoSurtido>${surtidoItem.codigoImpuesto}</CodigoImpuestoSurtido>
+                  ${impuestoSurtidoOtro}
+                  <CodigoTarifaIVASurtido>${surtidoItem.tipoTarifa}</CodigoTarifaIVASurtido>
+                  <TarifaSurtido>${surtidoItem.tarifa}</TarifaSurtido>
+                  ${datosImpuestoEspecificoSurtido}
+                  <MontoImpuestoSurtido>${impuestoSurtidoMonto}</MontoImpuestoSurtido>
+                </ImpuestoSurtido>`;
+                totalImpuestoSurtido += Number(impuestoSurtidoMonto);
+                if (surtidoItem.codigoImpuesto != '') {
+                  tipoImpuestoSurtido = surtidoItem.codigoImpuesto;
+                }
+              }
+
+              detalleSurtido += `<LineaDetalleSurtido>
+                <CodigoCABYSSurtido>${surtidoItem.cabys}</CodigoCABYSSurtido>
+                ${codigoComercialSurtido}
+                <CantidadSurtido>${surtidoItem.cantidad}</CantidadSurtido>
+                <UnidadMedidaSurtido>${surtidoItem.unidadMedida}</UnidadMedidaSurtido>
+                <UnidadMedidaComercialSurtido>${surtidoItem.unidadMedidaComercial}</UnidadMedidaComercialSurtido>
+                <DetalleSurtido>${surtidoItem.descripcion}</DetalleSurtido>
+                <PrecioUnitarioSurtido>${surtidoItem.precio}</PrecioUnitarioSurtido>
+                <MontoTotalSurtido>${montoTotalSurtido}</MontoTotalSurtido>
+                ${descuentoSurtido}
+                <SubTotalSurtido>${subtotalSurtido}</SubTotalSurtido>
+                <IVACobradoFabricaSurtido>${surtidoItem.ivaCobradoFabrica}</IVACobradoFabricaSurtido>
+                <BaseImponibleSurtido>${surtidoItem.baseImponible}</BaseImponibleSurtido>
+                ${impuestoSurtido}
+              </LineaDetalleSurtido>`;
+            });
+
+            detalleSurtido += `</DetalleSurtido>`
+          }
+
+          let descuento = '';
+          if (item.tieneDescuento) {
+            const codigoDescuentoOtro = item.codigoDescuento === '99' ? `<CodigoDescuentoOTRO>${item.detalleDescuento}</CodigoDescuentoOTRO>` : ``;
+            descuento = `<Descuento>
+              <MontoDescuento>${item.montoDescuento}</MontoDescuento>
+              <CodigoDescuento>${item.codigoDescuento}</CodigoDescuento>
+              ${codigoDescuentoOtro}
+              <NaturalezaDescuento>${item.naturalezaDescuento}</NaturalezaDescuento>
+            </Descuento>`;
+          }
+
+          const montoTotal = item.precio * cantidad;
+          const subTotal = montoTotal - (item.montoDescuento || 0);
+
+          let impuesto = '';
+          let impuestoNeto = 0;
+          switch (item.tipoMercancia) {
+            case 'Surtido':
+              if (tipoImpuestoSurtido != '') {
+                impuesto = `<Impuesto>
+                  <Codigo>${tipoImpuestoSurtido}</Codigo>
+                  <Monto>${totalImpuestoSurtido}</Monto>
+                </Impuesto>`;
+                impuestoNeto = totalImpuestoSurtido;
+              }
+              break;
+            default:
+              if (item.tieneImpuesto) {
+                const codigoImpuestoOtro = item.codigoImpuesto === '99' ? `<CodigoImpuestoOTRO>${item.detalleImpuesto}</CodigoImpuestoOTRO>` : ``;
+
+                let impuestoEspecifico = '';
+
+                if (item.cantidadUnidadMedida != 0 || item.porcentajeEspecifico != 0 || item.proporcion != 0 || item.volumenPorUnidadConsumo != 0 || item.impuestoPorUnidad != 0) {
+
+                  impuestoEspecifico = `<DatosImpuestoEspecifico>`;
+                  let especificoCantidadUnidadMedida = '';
+                  let especificoPorcentaje = '';
+                  let especificoProporcion = '';
+                  let especificoVolumenUnidadConsumo = '';
+                  let especificoImpuestoUnidad = '';
+                  if (String(item.cantidadUnidadMedida) != '') {
+                    especificoCantidadUnidadMedida = `<CantidadUnidadMedida>${item.cantidadUnidadMedida}</CantidadUnidadMedida>`;
+                  }
+                  if (String(item.porcentajeEspecifico) != '') {
+                    especificoPorcentaje = `<Porcentaje>${item.porcentajeEspecifico}</Porcentaje>`;
+                  }
+                  if (String(item.proporcion) != '') {
+                    especificoProporcion = `<Proporcion>${item.proporcion}</Proporcion>`;
+                  }
+                  if (String(item.volumenPorUnidadConsumo) != '') {
+                    especificoVolumenUnidadConsumo = `<VolumenUnidadConsumo>${item.volumenPorUnidadConsumo}</VolumenUnidadConsumo>`;
+                  }
+                  if (String(item.impuestoPorUnidad) != '') {
+                    especificoImpuestoUnidad = `<ImpuestoUnidad>${item.impuestoPorUnidad}</ImpuestoUnidad>`;
+                  }
+                  impuestoEspecifico += `
+                    ${especificoCantidadUnidadMedida}
+                    ${especificoPorcentaje}
+                    ${especificoProporcion}
+                    ${especificoVolumenUnidadConsumo}
+                    ${especificoImpuestoUnidad}
+                  `;
+                  impuestoEspecifico += `</DatosImpuestoEspecifico>`;
+                }
+
+                let factorCalculoIVA = String(item.factorCalculoIVA) != '' ? `<FactorCalculoIVA>${item.factorCalculoIVA}</FactorCalculoIVA>` : ``;
+
+                let montoImpuesto = Number(item.tarifa) * Number(item.baseImponible);
+
+                let exoneracion = '';
+                let montoExoneracionFinal = 0;
+                if (item.tieneExoneracion) {
+                  let montoExoneracion = (Number(item.porcentajeExoneracion) * Number(montoImpuesto)) / 100;
+                  let documentoExoneracion = item.documentoExoneracion != '' ? `<TipoDocumentoEX1>${item.documentoExoneracion}</TipoDocumentoEX1>` : ``;
+                  let tipoDocumentoOtro = item.documentoExoneracion == '99' ? `<TipoDocumentoOTRO>${item.detalleExoneracion}</TipoDocumentoOTRO>` : ``;
+                  let numeroDocumentoExoneracion = String(item.numeroDocumentoExoneracion) != '' ? `<NumeroDocumento>${item.numeroDocumentoExoneracion}</NumeroDocumento>` : ``;
+                  let articuloExoneracion = item.articuloExoneracion != '' ? `<Articulo>${item.articuloExoneracion}</Articulo>` : ``;
+                  let incisoExoneracion = item.incisoExoneracion != '' ? `<Inciso>${item.incisoExoneracion}</Inciso>` : ``;
+                  let institucionExoneracion = item.institucionExoneracion != '' ? `<NombreInstitucion>${item.institucionExoneracion}</NombreInstitucion>` : ``;
+                  let detalleInstitucionExoneracion = item.documentoExoneracion == '99' ? `<NombreInstitucionOtros>${item.detalleInstitucionExoneracion}</NombreInstitucionOtros>` : ``;
+                  let fechaAutorizacionExoneracion = item.fechaAutorizacionExoneracion != '' ? `<FechaEmisionEX>${item.fechaAutorizacionExoneracion}</FechaEmisionEX>` : ``;
+                  let porcentajeExoneracion = item.porcentajeExoneracion != 0 ? `<TarifaExonerada>${item.porcentajeExoneracion}</TarifaExonerada>` : ``;
+                  let exoneracionMonto = item.montoExportacion != 0 ? `<MontoExoneracion>${montoExoneracion}</MontoExoneracion>` : ``;
+                  exoneracion = `<Exoneracion>
+                    ${documentoExoneracion}
+                    ${tipoDocumentoOtro}
+                    ${numeroDocumentoExoneracion}
+                    ${articuloExoneracion}
+                    ${incisoExoneracion}
+                    ${institucionExoneracion}
+                    ${detalleInstitucionExoneracion}
+                    ${fechaAutorizacionExoneracion}
+                    ${porcentajeExoneracion}
+                    ${exoneracionMonto}
+                  </Exoneracion>`;
+                  montoExoneracionFinal = montoExoneracion;
+                }
+
+                impuesto = `<Impuesto>
+                  <Codigo>${item.codigoImpuesto}</Codigo>
+                  ${codigoImpuestoOtro}
+                  <CodigoTarifaIVA>${item.tipoTarifa}</CodigoTarifaIVA>
+                  <Tarifa>${item.tarifa}</Tarifa>
+                  ${factorCalculoIVA}
+                  ${impuestoEspecifico}
+                  <Monto>${montoImpuesto}</Monto>
+                  <MontoExportacion>${item.montoExportacion}</MontoExportacion>
+                  ${exoneracion}
+                </Impuesto>`;
+                impuestoNeto = montoImpuesto - montoExoneracionFinal;
+              }
+              break;
+          }
+
+          detalleText += `
+          <LineaDetalle>
+            <NumeroLinea>${numeroLinea}</NumeroLinea>
+            <PartidaArancelaria>${item.partidaArancelaria}</PartidaArancelaria>
+            <CodigoCABYS>${item.cabys}</CodigoCABYS>
+            <CodigoComercial>
+              <Tipo>${item.tipoCodigoComercial}</Tipo>
+              <Codigo>${item.codigoComercial}</Codigo>
+            </CodigoComercial>
+            <Cantidad>${cantidad}</Cantidad>
+            <UnidadMedida>${item.unidadMedida}</UnidadMedida>
+            <UnidadMedidaComercial>${item.unidadMedidaComercial}</UnidadMedidaComercial>
+            <TipoTransaccion>${item.tipoTransaccion}</TipoTransaccion>
+            <Detalle>${item.descripcion}</Detalle>
+            ${vinSerie}
+            ${registroMedicamento}
+            ${formaFarmaceutica}
+            <PrecioUnitario>${item.precio}</PrecioUnitario>
+            <MontoTotal>${montoTotal}</MontoTotal>
+            ${descuento}
+            <SubTotal>${subTotal}</SubTotal>
+            <BaseImponible>${item.baseImponible}</BaseImponible>
+            ${detalleSurtido}
+            ${impuesto}
+            <ImpuestoNeto>${impuestoNeto}</ImpuestoNeto>
+            <MontoTotalLinea>${subTotal + impuestoNeto}</MontoTotalLinea>
+          </LineaDetalle>`
+          numeroLinea++;
+        }
+      }
+    })
+    return detalleText
   }
 
   const getDefaultLineOption = (item: InventarioItem): LineOptions => ({
@@ -711,7 +1113,7 @@ const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: 
 
   const searchHacienda = async () => {
     const identificacion = numeroIdentificacionReceptor.trim()
-    
+
     if (!identificacion) {
       alert('Por favor ingrese un número de identificación para buscar')
       return
@@ -886,7 +1288,7 @@ const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: 
     }
 
     setOtrosCargos(prev => [...prev, cargo])
-    
+
     // Resetear el formulario
     setNuevoCargo({
       tipoDocumento: '',
@@ -1014,13 +1416,13 @@ const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: 
       registroFiscalNode = `<Registrofiscal8707>${registroFiscal}</Registrofiscal8707>`;
     }
     let ubicacionEmisor = `<Ubicacion>`;
-    if (invoiceData?.sucursal?.provincia){ // Provincia de la sucursal
+    if (invoiceData?.sucursal?.provincia) { // Provincia de la sucursal
       ubicacionEmisor += `<Provincia>${invoiceData?.sucursal?.provincia}</Provincia>`;
-      if (invoiceData?.sucursal?.canton){ // Cantón de la sucursal
+      if (invoiceData?.sucursal?.canton) { // Cantón de la sucursal
         ubicacionEmisor += `<Canton>${invoiceData?.sucursal?.canton}</Canton>`;
-        if (invoiceData?.sucursal?.distrito){ // Distrito de la sucursal
+        if (invoiceData?.sucursal?.distrito) { // Distrito de la sucursal
           ubicacionEmisor += `<Distrito>${invoiceData?.sucursal?.distrito}</Distrito>`;
-          if (invoiceData?.sucursal?.direccion){ // Dirección de la sucursal
+          if (invoiceData?.sucursal?.direccion) { // Dirección de la sucursal
             ubicacionEmisor += `<OtrasSenas>${invoiceData?.sucursal?.direccion}</OtrasSenas>`;
           }
         }
@@ -1029,13 +1431,13 @@ const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: 
     ubicacionEmisor += `</Ubicacion>`;
 
     let ubicacionReceptor = `<Ubicacion>`;
-    if (provinciaReceptor){ // Provincia del receptor
+    if (provinciaReceptor) { // Provincia del receptor
       ubicacionReceptor += `<Provincia>${provinciaReceptor}</Provincia>`;
-      if (cantonReceptor){ // Cantón del receptor
+      if (cantonReceptor) { // Cantón del receptor
         ubicacionReceptor += `<Canton>${cantonReceptor}</Canton>`;
-        if (distritoReceptor){ // Distrito del receptor
+        if (distritoReceptor) { // Distrito del receptor
           ubicacionReceptor += `<Distrito>${distritoReceptor}</Distrito>`;
-          if (otrasSenasReceptor){ // Otras senas del receptor
+          if (otrasSenasReceptor) { // Otras senas del receptor
             ubicacionReceptor += `<OtrasSenas>${otrasSenasReceptor}</OtrasSenas>`;
           }
         }
@@ -1048,6 +1450,8 @@ const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: 
     if (condicionVentaText && condicionVentaText.trim() === '99') {
       condicionVentaEspecificacionNode = `<CondicionVentaOtros>${especificacion}</CondicionVentaOtros>`;
     }
+
+    const detalle = getDetalle();
 
     const xml =
       `<?xml version="1.0" encoding="utf-8"?>
@@ -1090,6 +1494,7 @@ const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: 
         <CondicionVenta>${condicionVentaText}</CondicionVenta>
         ${condicionVentaEspecificacionNode}
         <PlazoCredito>${plazoCredito}</PlazoCredito>
+        <Detalle>${detalle}</Detalle>
       </${def.header}>`
 
     const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' })
@@ -1136,7 +1541,7 @@ const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: 
               {/* Sección: Datos principales de la factura */}
               <div className={styles.section}>
                 <h3 className={styles.sectionTitle}>Datos principales de la factura</h3>
-                
+
                 <div className={styles.formRow}>
                   <div className={styles.formGroup}>
                     <label htmlFor="tipoDocumento">
@@ -1188,7 +1593,7 @@ const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: 
               {/* Sección: Información del emisor */}
               <div className={styles.section}>
                 <h3 className={styles.sectionTitle}>Información del emisor</h3>
-                
+
                 <div className={styles.formGrid}>
                   <div className={styles.formGroup}>
                     <label className={styles.label}>
@@ -1204,7 +1609,7 @@ const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: 
                       Tipo de identificación
                     </label>
                     <div className={styles.valueDisplay}>
-                      {invoiceData?.channel?.ident_type 
+                      {invoiceData?.channel?.ident_type
                         ? `${invoiceData.channel.ident_type} - ${TIPOS_IDENTIFICACION[invoiceData.channel.ident_type] || invoiceData.channel.ident_type}`
                         : 'No disponible'}
                     </div>
@@ -1278,7 +1683,7 @@ const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: 
               {/* Sección: Información del receptor */}
               <div className={styles.section}>
                 <h3 className={styles.sectionTitle}>Información del receptor</h3>
-                
+
                 <div className={styles.formGrid}>
                   <div className={styles.formGroupFull}>
                     <label htmlFor="clienteSeleccionado" className={styles.label}>
@@ -1489,20 +1894,20 @@ const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: 
                               {!isLocked &&
                                 showActividadEconomicaDropdown &&
                                 actividadEconomicaFiltrada.length > 0 && (
-                          <div 
-                            className={styles.autocompleteDropdown}
-                            onMouseDown={(e) => e.preventDefault()} // Prevenir blur al hacer click
-                          >
-                            {actividadEconomicaFiltrada.map((actividad, index) => (
-                              <div
-                                key={index}
-                                className={styles.autocompleteItem}
-                                onClick={() => handleActividadEconomicaSelect(actividad)}
-                              >
-                                <strong>{actividad.name}</strong> - {actividad.description}
-                              </div>
-                            ))}
-                          </div>
+                                  <div
+                                    className={styles.autocompleteDropdown}
+                                    onMouseDown={(e) => e.preventDefault()} // Prevenir blur al hacer click
+                                  >
+                                    {actividadEconomicaFiltrada.map((actividad, index) => (
+                                      <div
+                                        key={index}
+                                        className={styles.autocompleteItem}
+                                        onClick={() => handleActividadEconomicaSelect(actividad)}
+                                      >
+                                        <strong>{actividad.name}</strong> - {actividad.description}
+                                      </div>
+                                    ))}
+                                  </div>
                                 )}
                             </>
                           )
@@ -1589,7 +1994,7 @@ const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: 
               {/* Sección: Condición de la venta */}
               <div className={styles.section}>
                 <h3 className={styles.sectionTitle}>Condición de la venta</h3>
-                
+
                 <div className={styles.formGrid}>
                   <div className={styles.formGroup}>
                     <label htmlFor="condicionVenta" className={styles.label}>
@@ -1658,7 +2063,7 @@ const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: 
               {/* Sección: Tipo de cambio */}
               <div className={styles.section}>
                 <h3 className={styles.sectionTitle}>Tipo de cambio</h3>
-                
+
                 <div className={styles.formGrid}>
                   <div className={styles.formGroup}>
                     <label htmlFor="tipoMoneda" className={styles.label}>
@@ -1713,8 +2118,8 @@ const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: 
                     inventarioItems.map((item) => {
                       const cantidadSeleccionada = cantidadesSeleccionadas[item._id] || 0
                       // Construir la URL de la imagen igual que en InventarioModal.tsx
-                      const imageUrl = item.image && item.image.trim() 
-                        ? `/protected/inventory-images/${channelId}/${item._id}/${item.image.trim()}` 
+                      const imageUrl = item.image && item.image.trim()
+                        ? `/protected/inventory-images/${channelId}/${item._id}/${item.image.trim()}`
                         : null
                       const displayTitle = (item.titulo?.trim() || item.descripcion || 'Artículo sin título').trim()
                       return (
@@ -1738,7 +2143,7 @@ const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: 
                                   }}
                                 />
                               ) : null}
-                              <div 
+                              <div
                                 className={styles.itemImagePlaceholder}
                                 style={{ display: imageUrl ? 'none' : 'flex' }}
                               >
@@ -2182,69 +2587,69 @@ const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: 
                       {totalsExpanded ? '▼ Ocultar totales' : '▶ Mostrar totales'}
                     </span>
                   </button>
-                  
+
                   {totalsExpanded && (
                     <div className={styles.totalsGrid}>
-                  <div className={styles.totalItem}>
-                    <label className={styles.totalLabel}>Total servicios gravados</label>
-                    <span className={styles.totalValue}>0.00000</span>
-                  </div>
-                  <div className={styles.totalItem}>
-                    <label className={styles.totalLabel}>Total servicios exentos</label>
-                    <span className={styles.totalValue}>0.00000</span>
-                  </div>
-                  <div className={styles.totalItem}>
-                    <label className={styles.totalLabel}>Total servicios exonerados</label>
-                    <span className={styles.totalValue}>0.00000</span>
-                  </div>
-                  <div className={styles.totalItem}>
-                    <label className={styles.totalLabel}>Total servicios no sujetos</label>
-                    <span className={styles.totalValue}>0.00000</span>
-                  </div>
-                  <div className={styles.totalItem}>
-                    <label className={styles.totalLabel}>Total mercancías gravadas</label>
-                    <span className={styles.totalValue}>0.00000</span>
-                  </div>
-                  <div className={styles.totalItem}>
-                    <label className={styles.totalLabel}>Total mercancías exentas</label>
-                    <span className={styles.totalValue}>0.00000</span>
-                  </div>
-                  <div className={styles.totalItem}>
-                    <label className={styles.totalLabel}>Total mercancías exoneradas</label>
-                    <span className={styles.totalValue}>0.00000</span>
-                  </div>
-                  <div className={styles.totalItem}>
-                    <label className={styles.totalLabel}>Total mercancías no sujetas</label>
-                    <span className={styles.totalValue}>0.00000</span>
-                  </div>
-                  <div className={styles.totalItem}>
-                    <label className={styles.totalLabel}>Total gravado</label>
-                    <span className={styles.totalValue}>0.00000</span>
-                  </div>
-                  <div className={styles.totalItem}>
-                    <label className={styles.totalLabel}>Total exento</label>
-                    <span className={styles.totalValue}>0.00000</span>
-                  </div>
-                  <div className={styles.totalItem}>
-                    <label className={styles.totalLabel}>Total exonerado</label>
-                    <span className={styles.totalValue}>0.00000</span>
-                  </div>
-                  <div className={styles.totalItem}>
-                    <label className={styles.totalLabel}>Total no sujeto</label>
-                    <span className={styles.totalValue}>0.00000</span>
-                  </div>
-                  <div className={styles.totalItem}>
-                    <label className={styles.totalLabel}>Total venta</label>
-                    <span className={styles.totalValue}>0.00000</span>
-                  </div>
-                  <div className={styles.totalItem}>
-                    <label className={styles.totalLabel}>Total descuentos</label>
-                    <span className={styles.totalValue}>0.00000</span>
-                  </div>
-                  <div className={styles.totalItem}>
-                    <label className={styles.totalLabel}>Total venta neta</label>
-                    <span className={styles.totalValue}>0.00000</span>
-                  </div>
+                      <div className={styles.totalItem}>
+                        <label className={styles.totalLabel}>Total servicios gravados</label>
+                        <span className={styles.totalValue}>0.00000</span>
+                      </div>
+                      <div className={styles.totalItem}>
+                        <label className={styles.totalLabel}>Total servicios exentos</label>
+                        <span className={styles.totalValue}>0.00000</span>
+                      </div>
+                      <div className={styles.totalItem}>
+                        <label className={styles.totalLabel}>Total servicios exonerados</label>
+                        <span className={styles.totalValue}>0.00000</span>
+                      </div>
+                      <div className={styles.totalItem}>
+                        <label className={styles.totalLabel}>Total servicios no sujetos</label>
+                        <span className={styles.totalValue}>0.00000</span>
+                      </div>
+                      <div className={styles.totalItem}>
+                        <label className={styles.totalLabel}>Total mercancías gravadas</label>
+                        <span className={styles.totalValue}>0.00000</span>
+                      </div>
+                      <div className={styles.totalItem}>
+                        <label className={styles.totalLabel}>Total mercancías exentas</label>
+                        <span className={styles.totalValue}>0.00000</span>
+                      </div>
+                      <div className={styles.totalItem}>
+                        <label className={styles.totalLabel}>Total mercancías exoneradas</label>
+                        <span className={styles.totalValue}>0.00000</span>
+                      </div>
+                      <div className={styles.totalItem}>
+                        <label className={styles.totalLabel}>Total mercancías no sujetas</label>
+                        <span className={styles.totalValue}>0.00000</span>
+                      </div>
+                      <div className={styles.totalItem}>
+                        <label className={styles.totalLabel}>Total gravado</label>
+                        <span className={styles.totalValue}>0.00000</span>
+                      </div>
+                      <div className={styles.totalItem}>
+                        <label className={styles.totalLabel}>Total exento</label>
+                        <span className={styles.totalValue}>0.00000</span>
+                      </div>
+                      <div className={styles.totalItem}>
+                        <label className={styles.totalLabel}>Total exonerado</label>
+                        <span className={styles.totalValue}>0.00000</span>
+                      </div>
+                      <div className={styles.totalItem}>
+                        <label className={styles.totalLabel}>Total no sujeto</label>
+                        <span className={styles.totalValue}>0.00000</span>
+                      </div>
+                      <div className={styles.totalItem}>
+                        <label className={styles.totalLabel}>Total venta</label>
+                        <span className={styles.totalValue}>0.00000</span>
+                      </div>
+                      <div className={styles.totalItem}>
+                        <label className={styles.totalLabel}>Total descuentos</label>
+                        <span className={styles.totalValue}>0.00000</span>
+                      </div>
+                      <div className={styles.totalItem}>
+                        <label className={styles.totalLabel}>Total venta neta</label>
+                        <span className={styles.totalValue}>0.00000</span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -2311,7 +2716,7 @@ const handleChangeCantidad = (inventarioId: string, delta: number, maxCantidad: 
                       readOnly
                     />
                   </div>
-                  
+
                   <div className={styles.formGroup}>
                     <label htmlFor="referenceCodigo" className={styles.label}>
                       Código de referencia

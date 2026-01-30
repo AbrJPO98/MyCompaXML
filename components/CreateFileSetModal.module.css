@@ -38,6 +38,7 @@
     opacity: 0;
     transform: scale(0.9) translateY(-20px);
   }
+
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -115,6 +116,8 @@
   border-radius: 6px;
   font-size: 1rem;
   transition: border-color 0.2s ease;
+  background-color: white;
+  color: black;
 }
 
 .nameInput:focus {
@@ -170,8 +173,13 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Error and Empty States */
@@ -411,22 +419,22 @@
     width: 95vw;
     height: 90vh;
   }
-  
+
   .modalHeader,
   .modalBody,
   .modalFooter {
     padding: 1rem;
   }
-  
+
   .table {
     font-size: 0.85rem;
   }
-  
+
   .table th,
   .table td {
     padding: 0.5rem;
   }
-  
+
   .truncate {
     max-width: 120px;
   }
