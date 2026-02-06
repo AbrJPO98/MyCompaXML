@@ -250,6 +250,16 @@
   margin-bottom: 0;
 }
 
+.formGroupSpan2 {
+  grid-column: span 2;
+}
+
+.sectionActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
 .formGroup:last-child {
   margin-bottom: 0;
 }

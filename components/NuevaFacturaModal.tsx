@@ -163,6 +163,43 @@ interface InventarioItem {
   detalleSurtido?: ProductoSurtidoItem[]
 }
 
+interface desgloseImpuesto {
+  codigo: string
+  condigoTarifaIVA: string
+  totalMontoImpuesto: number
+}
+
+interface medioPago {
+  tipoMedioPago: string
+  medioPagoOtros: string
+  totalMedioPago: number
+}
+
+interface TotalesFinales {
+  totalServGravados: number
+  totalServExentos: number
+  totalServExonerado: number
+  totalServNoSujeto: number
+  totalMercanciasGravadas: number
+  totalMercanciasExentas: number
+  totalMercExonerada: number
+  totalMercNoSujeta: number
+  totalGravado: number
+  totalExento: number
+  totalExonerado: number
+  totalNoSujeto: number
+  totalVenta: number
+  totalDescuentos: number
+  totalVentaNeta: number
+  totalDesgloseImpuesto: desgloseImpuesto[]
+  totalImpuesto: number
+  totalImpAsumEmisorFabrica: number
+  totalIVADevuelto: number
+  totalOtrosCargos: number
+  medioPago: medioPago[]
+  totalComprobante: number
+}
+
 interface OtroCargo {
   id: string
   tipoDocumento: string
@@ -174,6 +211,14 @@ interface OtroCargo {
   nombreTercero: string
   tipoTercero: string
   numeroIdentificacion: string
+}
+
+interface MedioPagoItem {
+  id: string
+  tipoMedioPago: string
+  descripcion: string
+  totalMedioPago: number
+  usarTotalVenta: boolean
 }
 
 interface LineOptions {
@@ -270,6 +315,15 @@ const TIPOS_MONEDA = [
   { value: 'JPY', label: 'Yen japonés (JPY)' }
 ]
 
+const TIPOS_MEDIO_PAGO = [
+  { value: '01', label: '01 - Efectivo' },
+  { value: '02', label: '02 - Tarjeta' },
+  { value: '03', label: '03 - Cheque' },
+  { value: '04', label: '04 - Transferencia – depósito bancario' },
+  { value: '05', label: '05 - Recaudado por terceros' },
+  { value: '99', label: '99 - Otros' }
+]
+
 export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }: NuevaFacturaModalProps) {
   const [tipoDocumento, setTipoDocumento] = useState('01')
   const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null)
@@ -335,6 +389,36 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
   const [referenceCodigo, setReferenceCodigo] = useState('')
   const [referenceRazon, setReferenceRazon] = useState('')
 
+  // Estados para Detalle de la factura
+  const [detalleFactura, setDetalleFactura] = useState('')
+  const [otrosCargosText, setOtrosCargosText] = useState('')
+
+  // Estados para Detalle de la factura
+  const [totalesFinales, setTotalesFinales] = useState<TotalesFinales>({
+    totalServGravados: 0,
+    totalServExentos: 0,
+    totalServExonerado: 0,
+    totalServNoSujeto: 0,
+    totalMercanciasGravadas: 0,
+    totalMercanciasExentas: 0,
+    totalMercExonerada: 0,
+    totalMercNoSujeta: 0,
+    totalGravado: 0,
+    totalExento: 0,
+    totalExonerado: 0,
+    totalNoSujeto: 0,
+    totalVenta: 0,
+    totalDescuentos: 0,
+    totalVentaNeta: 0,
+    totalDesgloseImpuesto: [],
+    totalImpuesto: 0,
+    totalImpAsumEmisorFabrica: 0,
+    totalIVADevuelto: 0,
+    totalOtrosCargos: 0,
+    medioPago: [],
+    totalComprobante: 0
+  })
+
   // Estados para Información adicional
   const [additionalInfo, setAdditionalInfo] = useState<AdditionalInfoNode[]>([])
 
@@ -351,6 +435,15 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
     tipoTercero: '',
     numeroIdentificacion: ''
   })
+
+  // Estados para Medios de pago
+  const [mediosPago, setMediosPago] = useState<MedioPagoItem[]>([])
+  const [nuevoMedioPago, setNuevoMedioPago] = useState<Omit<MedioPagoItem, 'id' | 'usarTotalVenta'>>({
+    tipoMedioPago: '',
+    descripcion: '',
+    totalMedioPago: 0
+  })
+  const [usarTotalVenta, setUsarTotalVenta] = useState(false)
 
   const extractClaveFromXml = (xmlText: string): string => {
     try {
@@ -459,6 +552,25 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
       setDistritosDisponibles({})
     }
   }, [cantonReceptor, provinciaReceptor, ubicaciones])
+
+  // Efecto para actualizar el total del medio de pago cuando cambia totalComprobante y usarTotalVenta está seleccionado
+  useEffect(() => {
+    if (usarTotalVenta && mediosPago.length === 0) {
+      setNuevoMedioPago(prev => ({
+        ...prev,
+        totalMedioPago: totalesFinales.totalComprobante
+      }))
+    }
+  }, [totalesFinales.totalComprobante, usarTotalVenta])
+
+  // Si hay registros en la tabla que usan "Total de la venta", mantener el monto sincronizado con totalComprobante
+  useEffect(() => {
+    const nuevoTotal = totalesFinales.totalComprobante
+    setMediosPago((prev) => {
+      if (!prev.some((mp) => mp.usarTotalVenta)) return prev
+      return prev.map((mp) => (mp.usarTotalVenta ? { ...mp, totalMedioPago: nuevoTotal } : mp))
+    })
+  }, [totalesFinales.totalComprobante])
 
   // Efecto para filtrar actividades económicas
   useEffect(() => {
@@ -783,8 +895,34 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
   }
 
   const getDetalle = () => {
+
+    const unidadesMedida = ["Al", "Alc", "Cm", "d", "h", "I", "Os", "Spe", "Sp", "s", "St"]
+
+    totalesFinales.totalServGravados = 0;
+    totalesFinales.totalServExentos = 0;
+    totalesFinales.totalServExonerado = 0;
+    totalesFinales.totalServNoSujeto = 0;
+    totalesFinales.totalMercanciasGravadas = 0;
+    totalesFinales.totalMercanciasExentas = 0;
+    totalesFinales.totalMercExonerada = 0;
+    totalesFinales.totalMercNoSujeta = 0;
+    totalesFinales.totalGravado = 0;
+    totalesFinales.totalExento = 0;
+    totalesFinales.totalExonerado = 0;
+    totalesFinales.totalNoSujeto = 0;
+    totalesFinales.totalVenta = 0;
+    totalesFinales.totalDescuentos = 0;
+    totalesFinales.totalVentaNeta = 0;
+    totalesFinales.totalDesgloseImpuesto = [];
+    totalesFinales.totalImpuesto = 0;
+    totalesFinales.totalImpAsumEmisorFabrica = 0;
+    totalesFinales.totalIVADevuelto = 0;
+
     let detalleText = '';
     let numeroLinea = 1;
+
+    const selectedItems = Object.entries(cantidadesSeleccionadas).filter(([_, cantidad]) => cantidad > 0);
+
     Object.entries(cantidadesSeleccionadas).forEach(([inventarioId, cantidad]: [string, number]) => {
       if (cantidad > 0) {
         const item = inventarioItems.find((item) => item._id === inventarioId)
@@ -793,9 +931,20 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
           const registroMedicamento = item.esMedicamento ? `<RegistroMedicamento>${item.registro}</RegistroMedicamento>` : '';
           const formaFarmaceutica = item.esMedicamento ? `<FormaFarmaceutica>${item.formaFarmaceutica}</FormaFarmaceutica>` : '';
 
+          const propiedades = {
+            "servicios": { gravado: "totalServGravados", exento: "totalServExentos", exonerado: "totalServExonerado", noSujeto: "totalServNoSujeto" },
+            "mercancias": { gravado: "totalMercanciasGravadas", exento: "totalMercanciasExentas", exonerado: "totalMercExonerada", noSujeto: "totalMercNoSujeto" },
+          };
+
+          const positionProp = unidadesMedida.includes(item.unidadMedida) ? "mercancias" : "servicios";
+
+          const propiedadCalculo = propiedades[positionProp as keyof typeof propiedades];
+
           let detalleSurtido = '';
           let totalImpuestoSurtido = 0;
           let tipoImpuestoSurtido = '';
+          let tipoDescuentoSurtido = '';
+          let totalDescuentoSurtido = 0;
           if (item.tipoMercancia === 'Surtido' && item.detalleSurtido && item.detalleSurtido.length > 0) {
             detalleSurtido = `<DetalleSurtido>`;
 
@@ -825,6 +974,10 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
                   <CodigoDescuentoSurtido>${surtidoItem.codigoDescuento}</CodigoDescuentoSurtido>
                   ${descuentoSurtidoOtro}
                 </DescuentoSurtido>`;
+                totalDescuentoSurtido += Number(surtidoItem.montoDescuento);
+                if (surtidoItem.codigoDescuento != '') {
+                  tipoDescuentoSurtido = surtidoItem.codigoDescuento;
+                }
               }
 
               const montoTotalSurtido = surtidoItem.precio * surtidoItem.cantidad;
@@ -908,18 +1061,10 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
           }
 
           let descuento = '';
-          if (item.tieneDescuento) {
-            const codigoDescuentoOtro = item.codigoDescuento === '99' ? `<CodigoDescuentoOTRO>${item.detalleDescuento}</CodigoDescuentoOTRO>` : ``;
-            descuento = `<Descuento>
-              <MontoDescuento>${item.montoDescuento}</MontoDescuento>
-              <CodigoDescuento>${item.codigoDescuento}</CodigoDescuento>
-              ${codigoDescuentoOtro}
-              <NaturalezaDescuento>${item.naturalezaDescuento}</NaturalezaDescuento>
-            </Descuento>`;
-          }
 
           const montoTotal = item.precio * cantidad;
           const subTotal = montoTotal - (item.montoDescuento || 0);
+          let descuento_for_monto = 0;
 
           let impuesto = '';
           let impuestoNeto = 0;
@@ -931,9 +1076,34 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
                   <Monto>${totalImpuestoSurtido}</Monto>
                 </Impuesto>`;
                 impuestoNeto = totalImpuestoSurtido;
+
+                totalesFinales.totalDesgloseImpuesto.push({
+                  codigo: item.codigoImpuesto,
+                  condigoTarifaIVA: item.codigoImpuesto == '01' || item.codigoImpuesto == '07' ? item.tipoTarifa : '',
+                  totalMontoImpuesto: impuestoNeto,
+                });
+                totalesFinales.totalImpuesto += impuestoNeto;
+              }
+              if (tipoDescuentoSurtido != '') {
+                descuento = `<Descuento>
+                  <MontoDescuento>${totalDescuentoSurtido}</MontoDescuento>
+                  <CodigoDescuento>${tipoDescuentoSurtido}</CodigoDescuento>
+                </Descuento>`;
+                descuento_for_monto = totalDescuentoSurtido;
               }
               break;
             default:
+              if (item.tieneDescuento) {
+                const codigoDescuentoOtro = item.codigoDescuento === '99' ? `<CodigoDescuentoOTRO>${item.detalleDescuento}</CodigoDescuentoOTRO>` : ``;
+                descuento = `<Descuento>
+                  <MontoDescuento>${item.montoDescuento}</MontoDescuento>
+                  <CodigoDescuento>${item.codigoDescuento}</CodigoDescuento>
+                  ${codigoDescuentoOtro}
+                  <NaturalezaDescuento>${item.naturalezaDescuento}</NaturalezaDescuento>
+                </Descuento>`;
+                descuento_for_monto = Number(item.montoDescuento || 0);
+              }
+
               if (item.tieneImpuesto) {
                 const codigoImpuestoOtro = item.codigoImpuesto === '99' ? `<CodigoImpuestoOTRO>${item.detalleImpuesto}</CodigoImpuestoOTRO>` : ``;
 
@@ -1017,8 +1187,52 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
                   ${exoneracion}
                 </Impuesto>`;
                 impuestoNeto = montoImpuesto - montoExoneracionFinal;
+                totalesFinales.totalDesgloseImpuesto.push({
+                  codigo: item.codigoImpuesto,
+                  condigoTarifaIVA: item.codigoImpuesto == '01' || item.codigoImpuesto == '07' ? item.tipoTarifa : '',
+                  totalMontoImpuesto: impuestoNeto,
+                });
+                totalesFinales.totalImpuesto += impuestoNeto;
               }
               break;
+          }
+
+          totalesFinales.totalDescuentos += descuento_for_monto;
+
+          let enviarAExento = false;
+          if (impuesto != '') {
+            const tiposImpuesto = ['01', '07', '08'];
+            if (tiposImpuesto.includes(item.codigoImpuesto)) {
+              const tiposTarifa = ['01', '11'];
+              if (item.codigoImpuesto == '01' && tiposTarifa.includes(item.tipoTarifa)) {
+                const propiedadNoSujeto = propiedadCalculo.noSujeto as keyof TotalesFinales;
+                (totalesFinales[propiedadNoSujeto] as number) += montoTotal;
+              }
+              else {
+                if (item.porcentajeExoneracion != undefined && Number(item.porcentajeExoneracion) > 0) {
+                  const propiedadGravado = propiedadCalculo.gravado as keyof TotalesFinales;
+                  (totalesFinales[propiedadGravado] as number) += (1 - item.porcentajeExoneracion / (item.tarifa || 0)) * montoTotal;
+
+                  const propiedadExonerado = propiedadCalculo.exonerado as keyof TotalesFinales;
+                  (totalesFinales[propiedadExonerado] as number) += item.porcentajeExoneracion / (item.tarifa || 0) * montoTotal;
+                }
+                else {
+                  const propiedadGravado = propiedadCalculo.gravado as keyof TotalesFinales;
+                  (totalesFinales[propiedadGravado] as number) += montoTotal;
+                }
+              }
+            }
+            else if (selectedItems.length === 1 && (item.montoDescuento || 0) > 0) { // Mayor a 0 y una sola línea en la tabla de mercancías
+              enviarAExento = true;
+            }
+          }
+          else {
+            enviarAExento = true;
+          }
+
+          if (enviarAExento) {
+            const propiedadExento = propiedadCalculo.exento as keyof TotalesFinales;
+            (totalesFinales[propiedadExento] as number) += montoTotal;
           }
 
           detalleText += `
@@ -1052,7 +1266,38 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
         }
       }
     })
-    return detalleText
+
+    totalesFinales.totalGravado += totalesFinales.totalServGravados + totalesFinales.totalMercanciasGravadas;
+    totalesFinales.totalExento += totalesFinales.totalServExentos + totalesFinales.totalMercanciasExentas;
+    totalesFinales.totalExonerado += totalesFinales.totalServExonerado + totalesFinales.totalMercExonerada;
+    totalesFinales.totalNoSujeto += totalesFinales.totalServNoSujeto + totalesFinales.totalMercNoSujeta;
+    totalesFinales.totalVenta += totalesFinales.totalGravado + totalesFinales.totalExento + totalesFinales.totalExonerado + totalesFinales.totalNoSujeto;
+    totalesFinales.totalVentaNeta += totalesFinales.totalVenta - totalesFinales.totalDescuentos;
+    totalesFinales.totalComprobante += totalesFinales.totalVentaNeta + totalesFinales.totalOtrosCargos + totalesFinales.totalImpuesto;
+
+    setDetalleFactura(detalleText)
+  }
+
+  const getOtrosCargos = () => {
+    let otrosCargosText = ''
+    otrosCargos.forEach((cargo) => {
+      const tipoDocumentOtro = cargo.tipoDocumento === '99' ? `<TipoDocumentoOTRO>${cargo.detalleOtros}</TipoDocumentoOTRO>` : ``;
+      otrosCargosText += `
+      <OtroCargo>
+        <TipoDocumentoOC>${cargo.tipoDocumento}</TipoDocumentoOC>
+        ${tipoDocumentOtro}
+        <DetalleOtros>${cargo.detalleOtros}</DetalleOtros>
+        <IdentificacionTercero>
+          <Tipo>${cargo.tipoTercero}</Tipo>
+          <Numero>${cargo.numeroIdentificacion}</Numero>
+        </IdentificacionTercero>
+        <NombreTercero>${cargo.nombreTercero}</NombreTercero>
+        <Detalle>${cargo.detalleCargo}</Detalle>
+        <PorcentajeOC>${cargo.porcentajeCargo}</PorcentajeOC>
+        <MontoCargo>${cargo.montoCargo}</MontoCargo>
+      </OtroCargo>`
+    })
+    setOtrosCargosText(otrosCargosText)
   }
 
   const getDefaultLineOption = (item: InventarioItem): LineOptions => ({
@@ -1289,6 +1534,8 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
 
     setOtrosCargos(prev => [...prev, cargo])
 
+    totalesFinales.totalOtrosCargos += Number(nuevoCargo.montoCargo || 0);
+
     // Resetear el formulario
     setNuevoCargo({
       tipoDocumento: '',
@@ -1305,6 +1552,68 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
 
   const handleRemoveCargo = (id: string) => {
     setOtrosCargos(prev => prev.filter(cargo => cargo.id !== id))
+    totalesFinales.totalOtrosCargos -= Number(otrosCargos.find(cargo => cargo.id === id)?.montoCargo || 0);
+  }
+
+  const handleAddMedioPago = () => {
+    // Validar que tipoMedioPago esté seleccionado
+    if (!nuevoMedioPago.tipoMedioPago) {
+      alert('Por favor seleccione un tipo de medio de pago')
+      return
+    }
+
+    // Validar que si es tipo 99, descripcion no esté vacía
+    if (nuevoMedioPago.tipoMedioPago === '99' && !nuevoMedioPago.descripcion.trim()) {
+      alert('Por favor ingrese la descripción para el tipo de medio de pago 99')
+      return
+    }
+
+    // Usar totalComprobante si el checkbox está seleccionado, sino usar el valor ingresado
+    const totalMedioPago = usarTotalVenta ? totalesFinales.totalComprobante : nuevoMedioPago.totalMedioPago
+
+    const medioPago: MedioPagoItem = {
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      tipoMedioPago: nuevoMedioPago.tipoMedioPago,
+      descripcion: nuevoMedioPago.descripcion,
+      totalMedioPago: totalMedioPago,
+      usarTotalVenta: usarTotalVenta
+    }
+
+    setMediosPago(prev => [...prev, medioPago])
+
+    // Agregar a totalesFinales.medioPago
+    setTotalesFinales(prev => ({
+      ...prev,
+      medioPago: [...prev.medioPago, {
+        tipoMedioPago: medioPago.tipoMedioPago,
+        medioPagoOtros: medioPago.tipoMedioPago === '99' ? medioPago.descripcion : '',
+        totalMedioPago: medioPago.totalMedioPago
+      }]
+    }))
+
+    // Resetear el formulario y el checkbox
+    setNuevoMedioPago({
+      tipoMedioPago: '',
+      descripcion: '',
+      totalMedioPago: 0
+    })
+    setUsarTotalVenta(false)
+  }
+
+  const handleRemoveMedioPago = (id: string) => {
+    setMediosPago(prev => {
+      const updated = prev.filter(mp => mp.id !== id)
+      // Sincronizar totalesFinales.medioPago con los medios de pago restantes
+      setTotalesFinales(prevTotales => ({
+        ...prevTotales,
+        medioPago: updated.map(mp => ({
+          tipoMedioPago: mp.tipoMedioPago,
+          medioPagoOtros: mp.tipoMedioPago === '99' ? mp.descripcion : '',
+          totalMedioPago: mp.totalMedioPago
+        }))
+      }))
+      return updated
+    })
   }
 
   const handleClose = () => {
@@ -1363,6 +1672,18 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
         tipoTercero: '',
         numeroIdentificacion: ''
       })
+      // Limpiar medios de pago
+      setMediosPago([])
+      setNuevoMedioPago({
+        tipoMedioPago: '',
+        descripcion: '',
+        totalMedioPago: 0
+      })
+      setUsarTotalVenta(false)
+      setTotalesFinales(prev => ({
+        ...prev,
+        medioPago: []
+      }))
       onClose()
     }
   }
@@ -1451,7 +1772,27 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
       condicionVentaEspecificacionNode = `<CondicionVentaOtros>${especificacion}</CondicionVentaOtros>`;
     }
 
-    const detalle = getDetalle();
+    let totalDesgloseImpuesto = '';
+    totalesFinales.totalDesgloseImpuesto.forEach((impuesto) => {
+      totalDesgloseImpuesto += `
+      <TotalDesgloseImpuesto>
+        <Codigo>${impuesto.codigo}</Codigo>
+        <CodigoTarifaIVA>${impuesto.condigoTarifaIVA}</CodigoTarifaIVA>
+        <TotalMontoImpuesto>${impuesto.totalMontoImpuesto}</TotalMontoImpuesto>
+      </TotalDesgloseImpuesto>`;
+    });
+
+    let medioPagoText = '';
+    mediosPago.forEach((pago) => {
+      const medioPagoOtros = pago.tipoMedioPago === '99' ? pago.descripcion : ''
+      const totalMedioPago = pago.usarTotalVenta ? totalesFinales.totalComprobante : pago.totalMedioPago
+      medioPagoText += `
+      <MedioPago>
+        <TipoMedioPago>${pago.tipoMedioPago}</TipoMedioPago>
+        <MedioPagoOtros>${medioPagoOtros}</MedioPagoOtros>
+        <TotalMedioPago>${totalMedioPago}</TotalMedioPago>
+      </MedioPago>`;
+    });
 
     const xml =
       `<?xml version="1.0" encoding="utf-8"?>
@@ -1494,7 +1835,36 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
         <CondicionVenta>${condicionVentaText}</CondicionVenta>
         ${condicionVentaEspecificacionNode}
         <PlazoCredito>${plazoCredito}</PlazoCredito>
-        <Detalle>${detalle}</Detalle>
+        <Detalle>${detalleFactura}</Detalle>
+        ${otrosCargosText}
+        <ResumenFactura>
+          <CodigoTipoMoneda>
+            <CodigoMoneda>${tipoMoneda}</CodigoMoneda>
+            <TipoCambio>${cambioMoneda}</TipoCambio>
+          </CodigoTipoMoneda>
+          <TotalServGravados>${totalesFinales.totalServGravados}</TotalServGravados>
+          <TotalServExentos>${totalesFinales.totalServExentos}</TotalServExentos>
+          <TotalServExonerado>${totalesFinales.totalServExonerado}</TotalServExonerado>
+          <TotalServNoSujeto>${totalesFinales.totalServNoSujeto}</TotalServNoSujeto>
+          <TotalMercanciasGravadas>${totalesFinales.totalMercanciasGravadas}</TotalMercanciasGravadas>
+          <TotalMercanciasExentas>${totalesFinales.totalMercanciasExentas}</TotalMercanciasExentas>
+          <TotalMercExonerada>${totalesFinales.totalMercExonerada}</TotalMercExonerada>
+          <TotalMercNoSujeta>${totalesFinales.totalMercNoSujeta}</TotalMercNoSujeta>
+          <TotalGravado>${totalesFinales.totalGravado}</TotalGravado>
+          <TotalExento>${totalesFinales.totalExento}</TotalExento>
+          <TotalExonerado>${totalesFinales.totalExonerado}</TotalExonerado>
+          <TotalNoSujeto>${totalesFinales.totalNoSujeto}</TotalNoSujeto>
+          <TotalVenta>${totalesFinales.totalVenta}</TotalVenta>
+          <TotalDescuentos>${totalesFinales.totalDescuentos}</TotalDescuentos>
+          <TotalVentaNeta>${totalesFinales.totalVentaNeta}</TotalVentaNeta>
+          ${totalDesgloseImpuesto}
+          <TotalImpuesto>${totalesFinales.totalImpuesto}</TotalImpuesto>
+          <TotalImpAsumEmisorFabrica>${totalesFinales.totalImpAsumEmisorFabrica}</TotalImpAsumEmisorFabrica>
+          <TotalIVADevuelto>${totalesFinales.totalIVADevuelto}</TotalIVADevuelto>
+          <TotalOtrosCargos>${totalesFinales.totalOtrosCargos}</TotalOtrosCargos>
+          ${medioPagoText}
+          <TotalComprobante>${totalesFinales.totalComprobante}</TotalComprobante>
+        </ResumenFactura>
       </${def.header}>`
 
     const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' })
@@ -2060,6 +2430,154 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
                 </div>
               </div>
 
+              {/* Sección: Medios de pago */}
+              <div className={styles.section}>
+                <h3 className={styles.sectionTitle}>Medios de pago</h3>
+
+                <div className={styles.formGrid}>
+                  <div className={styles.formGroup}>
+                    <label htmlFor="tipoMedioPago" className={styles.label}>
+                      Tipo
+                    </label>
+                    <select
+                      id="tipoMedioPago"
+                      value={nuevoMedioPago.tipoMedioPago}
+                      onChange={(e) => setNuevoMedioPago(prev => ({
+                        ...prev,
+                        tipoMedioPago: e.target.value,
+                        descripcion: e.target.value !== '99' ? '' : prev.descripcion
+                      }))}
+                      className={styles.selectInput}
+                    >
+                      <option value="">Seleccione un tipo</option>
+                      {TIPOS_MEDIO_PAGO.map((tipo) => (
+                        <option key={tipo.value} value={tipo.value}>
+                          {tipo.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className={`${styles.formGroup} ${styles.formGroupSpan2}`}>
+                    <label htmlFor="descripcionMedioPago" className={styles.label}>
+                      Descripción
+                    </label>
+                    <input
+                      type="text"
+                      id="descripcionMedioPago"
+                      value={nuevoMedioPago.descripcion}
+                      onChange={(e) => setNuevoMedioPago(prev => ({
+                        ...prev,
+                        descripcion: e.target.value
+                      }))}
+                      className={styles.textInput}
+                      placeholder="Ingrese la descripción"
+                      disabled={nuevoMedioPago.tipoMedioPago !== '99'}
+                    />
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label htmlFor="totalMedioPago" className={styles.label}>
+                      Total
+                    </label>
+                    <input
+                      type="number"
+                      id="totalMedioPago"
+                      value={usarTotalVenta ? totalesFinales.totalComprobante : (nuevoMedioPago.totalMedioPago || '')}
+                      onChange={(e) => {
+                        if (!usarTotalVenta) {
+                          setNuevoMedioPago(prev => ({
+                            ...prev,
+                            totalMedioPago: Number(e.target.value) || 0
+                          }))
+                        }
+                      }}
+                      className={styles.textInput}
+                      placeholder="Ingrese el total"
+                      min="0"
+                      step="0.01"
+                      readOnly={usarTotalVenta}
+                      disabled={usarTotalVenta}
+                    />
+
+                    {/* Checkbox Total de la venta - solo visible cuando no hay registros */}
+                    {mediosPago.length === 0 && (
+                      <div className={styles.checkboxGroup} style={{ marginTop: 10 }}>
+                        <input
+                          type="checkbox"
+                          id="usarTotalVenta"
+                          checked={usarTotalVenta}
+                          onChange={(e) => {
+                            setUsarTotalVenta(e.target.checked)
+                            if (e.target.checked) {
+                              setNuevoMedioPago(prev => ({
+                                ...prev,
+                                totalMedioPago: totalesFinales.totalComprobante
+                              }))
+                            }
+                          }}
+                        />
+                        <label htmlFor="usarTotalVenta">Total de la venta</label>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Botón Añadir medio de pago */}
+                <div className={styles.sectionActions}>
+                  <button
+                    type="button"
+                    onClick={handleAddMedioPago}
+                    className={styles.addCargoButton}
+                  >
+                    Añadir
+                  </button>
+                </div>
+
+                {/* Tabla de medios de pago agregados */}
+                {mediosPago.length > 0 && (
+                  <div className={styles.otherChargesTableWrapper}>
+                    <table className={styles.summaryTable}>
+                      <thead>
+                        <tr>
+                          <th>Tipo</th>
+                          <th>Descripción</th>
+                          <th>Total</th>
+                          <th>Total de la venta</th>
+                          <th>Eliminar</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {mediosPago.map((medioPago) => (
+                          <tr key={medioPago.id}>
+                            <td>
+                              {TIPOS_MEDIO_PAGO.find(t => t.value === medioPago.tipoMedioPago)?.label || medioPago.tipoMedioPago}
+                            </td>
+                            <td>
+                              {medioPago.tipoMedioPago === '99'
+                                ? medioPago.descripcion
+                                : TIPOS_MEDIO_PAGO.find(t => t.value === medioPago.tipoMedioPago)?.label?.split(' - ')[1] || '-'}
+                            </td>
+                            <td>{Number(medioPago.totalMedioPago || 0).toFixed(2)}</td>
+                            <td>{medioPago.usarTotalVenta ? 'Sí' : 'No'}</td>
+                            <td>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveMedioPago(medioPago.id)}
+                                className={styles.summaryAction}
+                                title="Eliminar medio de pago"
+                              >
+                                Eliminar
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
               {/* Sección: Tipo de cambio */}
               <div className={styles.section}>
                 <h3 className={styles.sectionTitle}>Tipo de cambio</h3>
@@ -2592,63 +3110,63 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
                     <div className={styles.totalsGrid}>
                       <div className={styles.totalItem}>
                         <label className={styles.totalLabel}>Total servicios gravados</label>
-                        <span className={styles.totalValue}>0.00000</span>
+                        <span className={styles.totalValue}>{totalesFinales.totalServGravados.toFixed(2)}</span>
                       </div>
                       <div className={styles.totalItem}>
                         <label className={styles.totalLabel}>Total servicios exentos</label>
-                        <span className={styles.totalValue}>0.00000</span>
+                        <span className={styles.totalValue}>{totalesFinales.totalServExentos.toFixed(2)}</span>
                       </div>
                       <div className={styles.totalItem}>
                         <label className={styles.totalLabel}>Total servicios exonerados</label>
-                        <span className={styles.totalValue}>0.00000</span>
+                        <span className={styles.totalValue}>{totalesFinales.totalServExonerado.toFixed(2)}</span>
                       </div>
                       <div className={styles.totalItem}>
                         <label className={styles.totalLabel}>Total servicios no sujetos</label>
-                        <span className={styles.totalValue}>0.00000</span>
+                        <span className={styles.totalValue}>{totalesFinales.totalServNoSujeto.toFixed(2)}</span>
                       </div>
                       <div className={styles.totalItem}>
                         <label className={styles.totalLabel}>Total mercancías gravadas</label>
-                        <span className={styles.totalValue}>0.00000</span>
+                        <span className={styles.totalValue}>{totalesFinales.totalMercanciasGravadas.toFixed(2)}</span>
                       </div>
                       <div className={styles.totalItem}>
                         <label className={styles.totalLabel}>Total mercancías exentas</label>
-                        <span className={styles.totalValue}>0.00000</span>
+                        <span className={styles.totalValue}>{totalesFinales.totalMercanciasExentas.toFixed(2)}</span>
                       </div>
                       <div className={styles.totalItem}>
                         <label className={styles.totalLabel}>Total mercancías exoneradas</label>
-                        <span className={styles.totalValue}>0.00000</span>
+                        <span className={styles.totalValue}>{totalesFinales.totalMercExonerada.toFixed(2)}</span>
                       </div>
                       <div className={styles.totalItem}>
                         <label className={styles.totalLabel}>Total mercancías no sujetas</label>
-                        <span className={styles.totalValue}>0.00000</span>
+                        <span className={styles.totalValue}>{totalesFinales.totalMercNoSujeta.toFixed(2)}</span>
                       </div>
                       <div className={styles.totalItem}>
                         <label className={styles.totalLabel}>Total gravado</label>
-                        <span className={styles.totalValue}>0.00000</span>
+                        <span className={styles.totalValue}>{totalesFinales.totalGravado.toFixed(2)}</span>
                       </div>
                       <div className={styles.totalItem}>
                         <label className={styles.totalLabel}>Total exento</label>
-                        <span className={styles.totalValue}>0.00000</span>
+                        <span className={styles.totalValue}>{totalesFinales.totalExento.toFixed(2)}</span>
                       </div>
                       <div className={styles.totalItem}>
                         <label className={styles.totalLabel}>Total exonerado</label>
-                        <span className={styles.totalValue}>0.00000</span>
+                        <span className={styles.totalValue}>{totalesFinales.totalExonerado.toFixed(2)}</span>
                       </div>
                       <div className={styles.totalItem}>
                         <label className={styles.totalLabel}>Total no sujeto</label>
-                        <span className={styles.totalValue}>0.00000</span>
+                        <span className={styles.totalValue}>{totalesFinales.totalNoSujeto.toFixed(2)}</span>
                       </div>
                       <div className={styles.totalItem}>
                         <label className={styles.totalLabel}>Total venta</label>
-                        <span className={styles.totalValue}>0.00000</span>
+                        <span className={styles.totalValue}>{totalesFinales.totalVenta.toFixed(2)}</span>
                       </div>
                       <div className={styles.totalItem}>
                         <label className={styles.totalLabel}>Total descuentos</label>
-                        <span className={styles.totalValue}>0.00000</span>
+                        <span className={styles.totalValue}>{totalesFinales.totalDescuentos.toFixed(2)}</span>
                       </div>
                       <div className={styles.totalItem}>
                         <label className={styles.totalLabel}>Total venta neta</label>
-                        <span className={styles.totalValue}>0.00000</span>
+                        <span className={styles.totalValue}>{totalesFinales.totalVentaNeta.toFixed(2)}</span>
                       </div>
                     </div>
                   )}
