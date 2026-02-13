@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import styles from './NuevaFacturaModal.module.css'
 import AdditionalInfoEditor, { type AdditionalInfoNode } from './AdditionalInfoEditor'
 
@@ -8,6 +8,7 @@ interface NuevaFacturaModalProps {
   onClose: () => void
   channelId: string
   userId: string
+  onFacturaGenerada?: () => void
 }
 
 interface InvoiceData {
@@ -40,6 +41,9 @@ interface InvoiceData {
     phone: string
     email: string
     registro_fiscal_IVA: string
+    crypto_key?: {
+      status?: string
+    }
   } | null
 }
 
@@ -324,10 +328,11 @@ const TIPOS_MEDIO_PAGO = [
   { value: '99', label: '99 - Otros' }
 ]
 
-export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }: NuevaFacturaModalProps) {
+export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId, onFacturaGenerada }: NuevaFacturaModalProps) {
   const [tipoDocumento, setTipoDocumento] = useState('01')
   const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null)
   const [loading, setLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [consecutivo, setConsecutivo] = useState('')
   const [ubicaciones, setUbicaciones] = useState<UbicacionesData | null>(null)
   const [ubicacionTexto, setUbicacionTexto] = useState('')
@@ -917,6 +922,8 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
     totalesFinales.totalImpuesto = 0;
     totalesFinales.totalImpAsumEmisorFabrica = 0;
     totalesFinales.totalIVADevuelto = 0;
+    totalesFinales.totalComprobante = 0;
+    totalesFinales.totalOtrosCargos = otrosCargos.reduce((acc, cargo) => acc + Number(cargo.montoCargo || 0), 0);
 
     let detalleText = '';
     let numeroLinea = 1;
@@ -927,6 +934,11 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
       if (cantidad > 0) {
         const item = inventarioItems.find((item) => item._id === inventarioId)
         if (item) {
+          const options = lineOptions[inventarioId] || {
+            applyDiscount: Boolean(item.tieneDescuento),
+            applyTax: Boolean(item.tieneImpuesto),
+            applyExoneration: Boolean(item.tieneExoneracion) && Boolean(item.tieneImpuesto)
+          }
           const vinSerie = item.esVinSerie ? `<NumeroVINoSerie>${item.numeroVinSerie}</NumeroVINoSerie>` : '';
           const registroMedicamento = item.esMedicamento ? `<RegistroMedicamento>${item.registro}</RegistroMedicamento>` : '';
           const formaFarmaceutica = item.esMedicamento ? `<FormaFarmaceutica>${item.formaFarmaceutica}</FormaFarmaceutica>` : '';
@@ -964,7 +976,7 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
               }
 
               let descuentoSurtido = '';
-              if (surtidoItem.tieneDescuento) {
+              if (options.applyDiscount && surtidoItem.tieneDescuento) {
                 let descuentoSurtidoOtro = '';
                 if (surtidoItem.tipoDescuento === '99') {
                   descuentoSurtidoOtro = `<DescuentoSurtidoOtros>${surtidoItem.detalleDescuento}</DescuentoSurtidoOtros>`;
@@ -982,10 +994,10 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
 
               const montoTotalSurtido = surtidoItem.precio * surtidoItem.cantidad;
 
-              const subtotalSurtido = montoTotalSurtido - (surtidoItem.montoDescuento || 0);
+              const subtotalSurtido = montoTotalSurtido - (options.applyDiscount && surtidoItem.tieneDescuento ? (surtidoItem.montoDescuento || 0) : 0);
 
               let impuestoSurtido = '';
-              if (surtidoItem.tieneImpuesto) {
+              if (options.applyTax && surtidoItem.tieneImpuesto) {
                 let impuestoSurtidoOtro = '';
                 if (surtidoItem.tipoImpuesto === '99') {
                   impuestoSurtidoOtro = `<CodigoImpuestoOTROSurtido>${surtidoItem.detalleImpuesto}</CodigoImpuestoOTROSurtido>`;
@@ -1063,14 +1075,14 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
           let descuento = '';
 
           const montoTotal = item.precio * cantidad;
-          const subTotal = montoTotal - (item.montoDescuento || 0);
+          const subTotal = montoTotal - (options.applyDiscount && item.tieneDescuento ? (item.montoDescuento || 0) : 0);
           let descuento_for_monto = 0;
 
           let impuesto = '';
           let impuestoNeto = 0;
           switch (item.tipoMercancia) {
             case 'Surtido':
-              if (tipoImpuestoSurtido != '') {
+              if (options.applyTax && tipoImpuestoSurtido != '') {
                 impuesto = `<Impuesto>
                   <Codigo>${tipoImpuestoSurtido}</Codigo>
                   <Monto>${totalImpuestoSurtido}</Monto>
@@ -1084,7 +1096,7 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
                 });
                 totalesFinales.totalImpuesto += impuestoNeto;
               }
-              if (tipoDescuentoSurtido != '') {
+              if (options.applyDiscount && tipoDescuentoSurtido != '') {
                 descuento = `<Descuento>
                   <MontoDescuento>${totalDescuentoSurtido}</MontoDescuento>
                   <CodigoDescuento>${tipoDescuentoSurtido}</CodigoDescuento>
@@ -1093,7 +1105,7 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
               }
               break;
             default:
-              if (item.tieneDescuento) {
+              if (options.applyDiscount && item.tieneDescuento) {
                 const codigoDescuentoOtro = item.codigoDescuento === '99' ? `<CodigoDescuentoOTRO>${item.detalleDescuento}</CodigoDescuentoOTRO>` : ``;
                 descuento = `<Descuento>
                   <MontoDescuento>${item.montoDescuento}</MontoDescuento>
@@ -1104,7 +1116,7 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
                 descuento_for_monto = Number(item.montoDescuento || 0);
               }
 
-              if (item.tieneImpuesto) {
+              if (options.applyTax && item.tieneImpuesto) {
                 const codigoImpuestoOtro = item.codigoImpuesto === '99' ? `<CodigoImpuestoOTRO>${item.detalleImpuesto}</CodigoImpuestoOTRO>` : ``;
 
                 let impuestoEspecifico = '';
@@ -1148,7 +1160,7 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
 
                 let exoneracion = '';
                 let montoExoneracionFinal = 0;
-                if (item.tieneExoneracion) {
+                if (options.applyExoneration && item.tieneExoneracion && options.applyTax) {
                   let montoExoneracion = (Number(item.porcentajeExoneracion) * Number(montoImpuesto)) / 100;
                   let documentoExoneracion = item.documentoExoneracion != '' ? `<TipoDocumentoEX1>${item.documentoExoneracion}</TipoDocumentoEX1>` : ``;
                   let tipoDocumentoOtro = item.documentoExoneracion == '99' ? `<TipoDocumentoOTRO>${item.detalleExoneracion}</TipoDocumentoOTRO>` : ``;
@@ -1276,6 +1288,11 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
     totalesFinales.totalComprobante += totalesFinales.totalVentaNeta + totalesFinales.totalOtrosCargos + totalesFinales.totalImpuesto;
 
     setDetalleFactura(detalleText)
+    // Forzar actualización de estado para que la tabla de totales se re-renderice
+    setTotalesFinales((prev) => ({
+      ...totalesFinales,
+      medioPago: prev.medioPago
+    }))
   }
 
   const getOtrosCargos = () => {
@@ -1299,6 +1316,18 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
     })
     setOtrosCargosText(otrosCargosText)
   }
+
+  // Mantener XML de OtrosCargos sincronizado
+  useEffect(() => {
+    if (!isOpen) return
+    getOtrosCargos()
+  }, [isOpen, otrosCargos])
+
+  // Recalcular totales/detalle cada vez que cambie la tabla (cantidades/checks) o los otros cargos
+  useEffect(() => {
+    if (!isOpen) return
+    getDetalle()
+  }, [isOpen, cantidadesSeleccionadas, lineOptions, inventarioItems, otrosCargos])
 
   const getDefaultLineOption = (item: InventarioItem): LineOptions => ({
     applyDiscount: Boolean(item.tieneDescuento),
@@ -1534,8 +1563,6 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
 
     setOtrosCargos(prev => [...prev, cargo])
 
-    totalesFinales.totalOtrosCargos += Number(nuevoCargo.montoCargo || 0);
-
     // Resetear el formulario
     setNuevoCargo({
       tipoDocumento: '',
@@ -1552,7 +1579,6 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
 
   const handleRemoveCargo = (id: string) => {
     setOtrosCargos(prev => prev.filter(cargo => cargo.id !== id))
-    totalesFinales.totalOtrosCargos -= Number(otrosCargos.find(cargo => cargo.id === id)?.montoCargo || 0);
   }
 
   const handleAddMedioPago = () => {
@@ -1616,10 +1642,11 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
     })
   }
 
-  const handleClose = () => {
-    if (!loading) {
+  const closeModal = (force = false) => {
+    if (force || (!loading && !isSubmitting)) {
       setTipoDocumento('01')
       setInvoiceData(null)
+      setIsSubmitting(false)
       setConsecutivo('')
       setUbicacionTexto('')
       // Limpiar estados del receptor
@@ -1688,7 +1715,86 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
     }
   }
 
-  const buildAndDownloadXml = () => {
+  const handleClose = () => {
+    closeModal(false)
+  }
+
+  const escapeXml = (input: string) => {
+    return (input ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;')
+  }
+
+  const formatCostaRicaDateTime = () => {
+    const now = new Date()
+    const utcMs = now.getTime() + now.getTimezoneOffset() * 60_000
+    const cr = new Date(utcMs - 6 * 60 * 60_000)
+    const iso = cr.toISOString().replace('Z', '')
+    const noMs = iso.replace(/\.\d{3}$/, '')
+    return `${noMs}-06:00`
+  }
+
+  const toBase64Utf8 = (value: string) => {
+    const bytes = new TextEncoder().encode(value)
+    let binary = ''
+    const chunkSize = 0x8000
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.subarray(i, i + chunkSize)
+      binary += String.fromCharCode.apply(null, Array.from(chunk))
+    }
+    return btoa(binary)
+  }
+
+  const buildOtrosXml = (nodes: AdditionalInfoNode[]): string => {
+    const otroTextoParts: string[] = []
+
+    const buildContenido = (list: AdditionalInfoNode[]): string => {
+      let out = ''
+      for (const n of list || []) {
+        if (n.type === 'field') {
+          const value = (n.value ?? '').trim()
+          if (!value) continue
+
+          // Soporte directo para "OtroTexto"
+          if (n.key === 'OtroTexto') {
+            otroTextoParts.push(value)
+            continue
+          }
+
+          out += `\n          <${n.key}>${escapeXml(value)}</${n.key}>`
+          continue
+        }
+
+        if (n.type === 'group') {
+          const inner = buildContenido(n.children || [])
+          if (!inner.trim()) continue
+          out += `\n          <${n.key}>${inner}\n          </${n.key}>`
+        }
+      }
+      return out
+    }
+
+    const contenido = buildContenido(nodes || [])
+    const otroTextoXml = otroTextoParts
+      .filter((t) => t.trim())
+      .map((t) => `\n        <OtroTexto>${escapeXml(t.trim())}</OtroTexto>`)
+      .join('')
+
+    const otroContenidoXml = contenido.trim()
+      ? `\n        <OtroContenido>${contenido}\n        </OtroContenido>`
+      : ''
+
+    if (!otroTextoXml && !otroContenidoXml) return ''
+
+    return `\n      <Otros>${otroTextoXml}${otroContenidoXml}\n      </Otros>`
+  }
+
+  const buildAndDownloadXml = async () => {
+    if (isSubmitting) return
+
     const map: Record<string, { header: string; tipo: string }> = {
       '01': { header: 'FacturaElectronica', tipo: 'facturaElectronica' },
       '02': { header: 'NotaDebitoElectronica', tipo: 'notaDebitoElectronica' },
@@ -1706,96 +1812,157 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
       return
     }
 
-    const now = new Date()
-    const day = String(now.getDate()).padStart(2, '0')
-    const month = String(now.getMonth() + 1).padStart(2, '0')
-    const year2 = String(now.getFullYear()).slice(-2)
-
-    const canalIdentRaw = String(invoiceData?.channel?.ident || '').replace(/\D/g, '')
-    if (!canalIdentRaw) {
-      alert('No se encontró la identificación (ident) del canal para construir la clave')
-      return
-    }
-    const canalIdent12 = canalIdentRaw.padStart(12, '0').slice(-12)
-
-    const consec = String(consecutivo || '').trim()
-    if (!consec) {
-      alert('No se encontró el consecutivo para construir la clave')
+    const hasDetalleItems = Object.values(cantidadesSeleccionadas).some(
+      (cantidad) => Number(cantidad) > 0
+    )
+    if (!hasDetalleItems) {
+      alert('Debe agregar al menos 1 registro en "Detalle de la factura" antes de generar el XML')
       return
     }
 
-    const random8 = Array.from({ length: 8 }, () => Math.floor(Math.random() * 10)).join('')
-    const clave = `506${day}${month}${year2}${canalIdent12}${consec}1${random8}`
-    const xmlns = `https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.4/${def.tipo}`
-    const schemaLocation = `${xmlns} ${xmlns}.xsd`
-    const codigoActividadReceptor = actividadEconomicaSearch.split(' - ')[0]
-    let fechaEmision = new Date().toISOString();
-    fechaEmision = fechaEmision.split('.')[0];
-    const registroFiscal = invoiceData?.channel?.registro_fiscal_IVA;
-    let registroFiscalNode = '';
-    if (registroFiscal && registroFiscal.trim() !== '') {
-      registroFiscalNode = `<Registrofiscal8707>${registroFiscal}</Registrofiscal8707>`;
+    if (normalizedTipoDocumento === '01') {
+      const clienteFields = [
+        nombreReceptor,
+        tipoIdentificacionReceptor,
+        numeroIdentificacionReceptor,
+        codigoPaisReceptor,
+        numeroTelefonoReceptor,
+        correoElectronicoReceptor
+      ]
+      const clienteIncompleto = clienteFields.some((field) => !String(field || '').trim())
+      if (clienteIncompleto) {
+        alert('La información del cliente está incompleta para Factura electrónica')
+        return
+      }
     }
-    let ubicacionEmisor = `<Ubicacion>`;
-    if (invoiceData?.sucursal?.provincia) { // Provincia de la sucursal
-      ubicacionEmisor += `<Provincia>${invoiceData?.sucursal?.provincia}</Provincia>`;
-      if (invoiceData?.sucursal?.canton) { // Cantón de la sucursal
-        ubicacionEmisor += `<Canton>${invoiceData?.sucursal?.canton}</Canton>`;
-        if (invoiceData?.sucursal?.distrito) { // Distrito de la sucursal
-          ubicacionEmisor += `<Distrito>${invoiceData?.sucursal?.distrito}</Distrito>`;
-          if (invoiceData?.sucursal?.direccion) { // Dirección de la sucursal
-            ubicacionEmisor += `<OtrasSenas>${invoiceData?.sucursal?.direccion}</OtrasSenas>`;
+
+    if (normalizedTipoDocumento === '03') {
+      const referenciaIncompleta =
+        !referenceFile ||
+        !String(referenceClave || '').trim() ||
+        !String(referenceTipoDocumento || '').trim() ||
+        !String(referenceCodigo || '').trim() ||
+        !String(referenceRazon || '').trim()
+
+      if (referenciaIncompleta) {
+        alert('La información de "Documento de referencia" está incompleta para Nota de crédito electrónica')
+        return
+      }
+    }
+
+    const confirmed = window.confirm('Se creara y enviara la factura electronica. Deseas continuar?')
+    if (!confirmed) return
+
+    setIsSubmitting(true)
+    let completed = false
+
+    try {
+      const now = new Date()
+      const day = String(now.getDate()).padStart(2, '0')
+      const month = String(now.getMonth() + 1).padStart(2, '0')
+      const year2 = String(now.getFullYear()).slice(-2)
+
+      const canalIdentRaw = String(invoiceData?.channel?.ident || '').replace(/\D/g, '')
+      if (!canalIdentRaw) {
+        alert('No se encontró la identificación (ident) del canal para construir la clave')
+        return
+      }
+      const canalIdent12 = canalIdentRaw.padStart(12, '0').slice(-12)
+
+      const consec = String(consecutivo || '').trim()
+      if (!consec) {
+        alert('No se encontró el consecutivo para construir la clave')
+        return
+      }
+
+      const random8 = Array.from({ length: 8 }, () => Math.floor(Math.random() * 10)).join('')
+      const clave = `506${day}${month}${year2}${canalIdent12}${consec}1${random8}`
+      const xmlns = `https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.4/${def.tipo}`
+      const schemaLocation = `${xmlns} ${xmlns}.xsd`
+      const codigoActividadReceptor = actividadEconomicaSearch.split(' - ')[0]
+      const fechaEmision = formatCostaRicaDateTime()
+      const registroFiscal = invoiceData?.channel?.registro_fiscal_IVA;
+      let registroFiscalNode = '';
+      if (registroFiscal && registroFiscal.trim() !== '') {
+        registroFiscalNode = `<Registrofiscal8707>${registroFiscal}</Registrofiscal8707>`;
+      }
+      let ubicacionEmisor = `<Ubicacion>`;
+      if (invoiceData?.sucursal?.provincia) { // Provincia de la sucursal
+        ubicacionEmisor += `<Provincia>${invoiceData?.sucursal?.provincia}</Provincia>`;
+        if (invoiceData?.sucursal?.canton) { // Cantón de la sucursal
+          ubicacionEmisor += `<Canton>${invoiceData?.sucursal?.canton}</Canton>`;
+          if (invoiceData?.sucursal?.distrito) { // Distrito de la sucursal
+            ubicacionEmisor += `<Distrito>${invoiceData?.sucursal?.distrito}</Distrito>`;
+            if (invoiceData?.sucursal?.direccion) { // Dirección de la sucursal
+              ubicacionEmisor += `<OtrasSenas>${invoiceData?.sucursal?.direccion}</OtrasSenas>`;
+            }
           }
         }
       }
-    }
-    ubicacionEmisor += `</Ubicacion>`;
+      ubicacionEmisor += `</Ubicacion>`;
 
-    let ubicacionReceptor = `<Ubicacion>`;
-    if (provinciaReceptor) { // Provincia del receptor
-      ubicacionReceptor += `<Provincia>${provinciaReceptor}</Provincia>`;
-      if (cantonReceptor) { // Cantón del receptor
-        ubicacionReceptor += `<Canton>${cantonReceptor}</Canton>`;
-        if (distritoReceptor) { // Distrito del receptor
-          ubicacionReceptor += `<Distrito>${distritoReceptor}</Distrito>`;
-          if (otrasSenasReceptor) { // Otras senas del receptor
-            ubicacionReceptor += `<OtrasSenas>${otrasSenasReceptor}</OtrasSenas>`;
+      let ubicacionReceptor = `<Ubicacion>`;
+      if (provinciaReceptor) { // Provincia del receptor
+        ubicacionReceptor += `<Provincia>${provinciaReceptor}</Provincia>`;
+        if (cantonReceptor) { // Cantón del receptor
+          ubicacionReceptor += `<Canton>${cantonReceptor}</Canton>`;
+          if (distritoReceptor) { // Distrito del receptor
+            ubicacionReceptor += `<Distrito>${distritoReceptor}</Distrito>`;
+            if (otrasSenasReceptor) { // Otras senas del receptor
+              ubicacionReceptor += `<OtrasSenas>${otrasSenasReceptor}</OtrasSenas>`;
+            }
           }
         }
       }
-    }
-    ubicacionReceptor += `</Ubicacion>`;
+      ubicacionReceptor += `</Ubicacion>`;
 
-    const condicionVentaText = condicionVenta.split(' - ')[0];
-    let condicionVentaEspecificacionNode = '';
-    if (condicionVentaText && condicionVentaText.trim() === '99') {
-      condicionVentaEspecificacionNode = `<CondicionVentaOtros>${especificacion}</CondicionVentaOtros>`;
-    }
+      const condicionVentaText = condicionVenta.split(' - ')[0];
+      let condicionVentaEspecificacionNode = '';
+      if (condicionVentaText && condicionVentaText.trim() === '99') {
+        condicionVentaEspecificacionNode = `<CondicionVentaOtros>${especificacion}</CondicionVentaOtros>`;
+      }
 
-    let totalDesgloseImpuesto = '';
-    totalesFinales.totalDesgloseImpuesto.forEach((impuesto) => {
-      totalDesgloseImpuesto += `
+      let totalDesgloseImpuesto = '';
+      totalesFinales.totalDesgloseImpuesto.forEach((impuesto) => {
+        totalDesgloseImpuesto += `
       <TotalDesgloseImpuesto>
         <Codigo>${impuesto.codigo}</Codigo>
         <CodigoTarifaIVA>${impuesto.condigoTarifaIVA}</CodigoTarifaIVA>
         <TotalMontoImpuesto>${impuesto.totalMontoImpuesto}</TotalMontoImpuesto>
       </TotalDesgloseImpuesto>`;
-    });
+      });
 
-    let medioPagoText = '';
-    mediosPago.forEach((pago) => {
-      const medioPagoOtros = pago.tipoMedioPago === '99' ? pago.descripcion : ''
-      const totalMedioPago = pago.usarTotalVenta ? totalesFinales.totalComprobante : pago.totalMedioPago
-      medioPagoText += `
+      let medioPagoText = '';
+      mediosPago.forEach((pago) => {
+        const medioPagoOtros = pago.tipoMedioPago === '99' ? pago.descripcion : ''
+        const totalMedioPago = pago.usarTotalVenta ? totalesFinales.totalComprobante : pago.totalMedioPago
+        medioPagoText += `
       <MedioPago>
         <TipoMedioPago>${pago.tipoMedioPago}</TipoMedioPago>
         <MedioPagoOtros>${medioPagoOtros}</MedioPagoOtros>
         <TotalMedioPago>${totalMedioPago}</TotalMedioPago>
       </MedioPago>`;
-    });
+      });
 
-    const xml =
-      `<?xml version="1.0" encoding="utf-8"?>
+      let infoReferencia = '';
+      if (referenceFile) {
+        let tipoDocOtro = referenceTipoDocumento === '99' ? `<TipoDocOtro>${referenceRazon}</TipoDocOtro>` : '';
+        let codigoOtro = referenceCodigo === '99' ? `<CodigoReferenciaOtro>${referenceRazon}</CodigoReferenciaOtro>` : '';
+        infoReferencia = `
+      <InfoReferencia>
+        <TipoDocIR>${referenceTipoDocumento}</TipoDocIR>
+        ${tipoDocOtro}
+        <Codigo>${referenceCodigo}</Codigo>
+        ${codigoOtro}
+        <Razon>${referenceRazon}</Razon>
+      </InfoReferencia>`;
+      }
+
+      const otrosText = buildOtrosXml(additionalInfo)
+
+
+      let xml =
+        `<?xml version="1.0" encoding="utf-8"?>
       <${def.header} xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="${xmlns}" xsi:schemaLocation="${schemaLocation}">
         <Clave>${clave}</Clave>
         <ProveedorSistemas>000000</ProveedorSistemas>
@@ -1865,21 +2032,110 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
           ${medioPagoText}
           <TotalComprobante>${totalesFinales.totalComprobante}</TotalComprobante>
         </ResumenFactura>
+        ${infoReferencia}
+        ${otrosText}
       </${def.header}>`
 
-    const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
+      // Firmar XML (server-side) con XAdES-EPES. Nunca se expone la llave privada al cliente.
+      try {
+        const signResp = await fetch('/api/xml/sign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            channelId,
+            xml,
+            // Para XAdES-EPES, usamos como policyIdentifier el namespace del comprobante (v4.4)
+            policyIdentifier: xmlns
+          })
+        })
+        const signData = await signResp.json()
+        if (signResp.ok && signData?.success && signData?.signedXml) {
+          xml = signData.signedXml
+        } else {
+          const signError = signData?.error || 'No se pudo firmar el XML'
+          console.error('No se pudo firmar el XML:', signError)
+          alert(signError)
+          return
+        }
+      } catch (e: any) {
+        console.error('Error firmando XML:', e)
+        alert(e?.message || 'Error firmando XML')
+        return
+      }
 
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${def.header}_${clave}.xml`
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    URL.revokeObjectURL(url)
+      try {
+        const includeReceptor = normalizedTipoDocumento === '01'
+        const fechaActualCR = formatCostaRicaDateTime()
+        const xmlBase64 = toBase64Utf8(xml)
+        const tokenResp = await fetch('/api/channel/crypto-key/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            channelId,
+            clave,
+            fecha: fechaActualCR,
+            emisor: {
+              tipoIdentificacion: invoiceData?.channel?.ident_type || '',
+              numeroIdentificacion: invoiceData?.channel?.ident || ''
+            },
+            receptor: includeReceptor
+              ? {
+                tipoIdentificacion: tipoIdentificacionReceptor,
+                numeroIdentificacion: numeroIdentificacionReceptor
+              }
+              : undefined,
+            includeReceptor,
+            comprobanteXml: xmlBase64
+          })
+        })
+        const tokenData = await tokenResp.json()
+
+        const tipoEnvio = invoiceData?.channel?.crypto_key?.status === 'sand' ? 'stag' : 'prod'
+        const [fechaParte, horaParteRaw = ''] = fechaActualCR.split('T')
+        const horaParte = horaParteRaw.split('-')[0] || ''
+        const tipoFacturaLabel =
+          TIPOS_DOCUMENTO.find((t) => t.value === normalizedTipoDocumento)?.label || normalizedTipoDocumento
+
+        await fetch('/api/facturas-generadas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            channel_id: channelId,
+            clave,
+            tipo_factura: tipoFacturaLabel,
+            sucursal: invoiceData?.sucursal?.nombre || '',
+            actividad_economica: invoiceData?.actividadEconomica?.nombre_personal || '',
+            nombre_emisor: invoiceData?.channel?.name || '',
+            cedula_receptor: normalizedTipoDocumento === '01' ? numeroIdentificacionReceptor : '',
+            nombre_receptor: normalizedTipoDocumento === '01' ? nombreReceptor : '',
+            fecha: fechaParte || fechaActualCR,
+            hora: horaParte,
+            total_factura: Number(totalesFinales.totalComprobante || 0),
+            total_impuesto: Number(totalesFinales.totalImpuesto || 0),
+            estado: 'pendiente',
+            xml: xmlBase64,
+            tipo: tipoEnvio
+          })
+        })
+
+        if (!tokenResp.ok || !tokenData?.success) {
+          alert(tokenData?.error || 'No se pudo enviar la factura a la API de recepción')
+        }
+        onFacturaGenerada?.()
+        completed = true
+      } catch (error: any) {
+        alert(error?.message || 'Error enviando factura')
+      }
+    } finally {
+      setIsSubmitting(false)
+      if (completed) {
+        closeModal(true)
+      }
+    }
   }
 
   if (!isOpen) return null
+
 
   const summaryItems = inventarioItems.filter((item) => {
     const cantidad = cantidadesSeleccionadas[item._id] || 0
@@ -1894,7 +2150,7 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
           <button
             className={styles.closeButton}
             onClick={handleClose}
-            disabled={loading}
+            disabled={loading || isSubmitting}
           >
             ×
           </button>
@@ -3168,6 +3424,18 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
                         <label className={styles.totalLabel}>Total venta neta</label>
                         <span className={styles.totalValue}>{totalesFinales.totalVentaNeta.toFixed(2)}</span>
                       </div>
+                      <div className={styles.totalItem}>
+                        <label className={styles.totalLabel}>Total impuesto</label>
+                        <span className={styles.totalValue}>{totalesFinales.totalImpuesto.toFixed(2)}</span>
+                      </div>
+                      <div className={styles.totalItem}>
+                        <label className={styles.totalLabel}>Total otros cargos</label>
+                        <span className={styles.totalValue}>{totalesFinales.totalOtrosCargos.toFixed(2)}</span>
+                      </div>
+                      <div className={styles.totalItem}>
+                        <label className={styles.totalLabel}>Total comprobante</label>
+                        <span className={styles.totalValue}>{totalesFinales.totalComprobante.toFixed(2)}</span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -3284,17 +3552,22 @@ export default function NuevaFacturaModal({ isOpen, onClose, channelId, userId }
             type="button"
             onClick={handleClose}
             className={styles.cancelButton}
-            disabled={loading}
+            disabled={loading || isSubmitting}
           >
             Cancelar
           </button>
           <button
             type="button"
             className={styles.saveButton}
-            disabled={loading}
+            disabled={loading || isSubmitting}
             onClick={buildAndDownloadXml}
           >
-            Confirmar
+            {isSubmitting ? (
+              <>
+                <span className={styles.buttonSpinner}></span>
+                Procesando...
+              </>
+            ) : 'Confirmar'}
           </button>
         </div>
       </div>

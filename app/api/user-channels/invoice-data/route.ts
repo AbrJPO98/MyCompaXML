@@ -90,7 +90,10 @@ export async function GET(request: NextRequest) {
         phone_code: channelData.phone_code,
         phone: channelData.phone,
         email: channelData.email || '',
-        registro_fiscal_IVA: channelData.registro_fiscal_IVA
+        registro_fiscal_IVA: channelData.registro_fiscal_IVA,
+        crypto_key: {
+          status: channelData.crypto_key?.status || ''
+        }
       }
     }
 
@@ -120,9 +123,9 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error('Error obteniendo datos de facturación:', error)
     return NextResponse.json(
-      { 
+      {
         error: error.message || 'Error interno del servidor',
-        success: false 
+        success: false
       },
       { status: 500 }
     )
